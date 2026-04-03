@@ -42,3 +42,20 @@ class TradesSummary(BaseModel):
     total_trades: int
     total_invested: Decimal
     unique_symbols: int
+
+
+class CompletedTradeResponse(BaseModel):
+    id: int
+    user_id: int
+    stock_symbol: str
+    entry_date: date
+    exit_date: date
+    entry_price: Decimal
+    exit_price: Decimal
+    quantity: int
+    pnl: Decimal
+    return_pct: Decimal
+    holding_days: int
+    created_at: datetime
+
+    model_config = {"from_attributes": True}

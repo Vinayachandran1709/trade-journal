@@ -17,3 +17,4 @@ class User(Base):
 
     trades = relationship("Trade", back_populates="user")
     pattern_analyses = relationship("PatternAnalysis", back_populates="user")
+    completed_trades = relationship("CompletedTrade", back_populates="user")
