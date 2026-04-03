@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.routes.auth import router as auth_router
 from app.routes.health import router as health_router
+from app.routes.trades import router as trades_router
 
 app = FastAPI(title="Trade Intelligence Platform", version="1.0.0")
 
@@ -16,3 +17,4 @@ app.add_middleware(
 
 app.include_router(health_router, tags=["health"])
 app.include_router(auth_router)
+app.include_router(trades_router)
