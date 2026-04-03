@@ -36,6 +36,14 @@ def decode_access_token(token: str) -> dict | None:
         return None
 
 
+def authenticate_user(db: Session, email: str, password: str) -> User | None:
+    """Validate credentials and return the user, or None if invalid."""
+    user = get_user_by_email(db, email)
+    if not user or not verify_password(password, user.hashed_password):
+        return None
+    return user
+
+
 def get_user_by_email(db: Session, email: str) -> User | None:
     return db.query(User).filter(User.email == email).first()
 

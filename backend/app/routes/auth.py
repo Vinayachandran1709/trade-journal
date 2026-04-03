@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -6,10 +7,10 @@ from app.models.user import User
 from app.schemas.auth import LoginRequest, SignupRequest, TokenResponse
 from app.schemas.user import UserResponse
 from app.services.auth_service import (
+    authenticate_user,
     create_access_token,
     create_user,
     get_user_by_email,
-    verify_password,
 )
 from app.utils.dependencies import get_current_user
 
@@ -31,11 +32,29 @@ def signup(request: SignupRequest, db: Session = Depends(get_db)):
 
 @router.post("/login", response_model=TokenResponse)
 def login(request: LoginRequest, db: Session = Depends(get_db)):
-    user = get_user_by_email(db, request.email)
-    if not user or not verify_password(request.password, user.hashed_password):
+    user = authenticate_user(db, request.email, request.password)
+    if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid email or password",
+        )
+
+    token = create_access_token(data={"sub": user.email})
+    return TokenResponse(access_token=token)
+
+
+@router.post("/login/oauth", response_model=TokenResponse)
+def login_oauth(
+    form_data: OAuth2PasswordRequestForm = Depends(),
+    db: Session = Depends(get_db),
+):
+    """OAuth2-compatible login for Swagger UI. Accepts form-encoded username/password."""
+    user = authenticate_user(db, form_data.username, form_data.password)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid email or password",
+            headers={"WWW-Authenticate": "Bearer"},
         )
 
     token = create_access_token(data={"sub": user.email})

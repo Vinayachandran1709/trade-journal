@@ -20,8 +20,8 @@ def parse_zerodha_contract_note(email_body: str) -> list[dict]:
         List of dicts with keys: stock_symbol, trade_type, quantity, price, trade_date.
         Returns empty list if no trades are found or parsing fails.
     """
-    buy_pattern = r"bought (\d+) shares of ([A-Z&]+) at \S*([\d,]+\.?\d*) on ([\dA-Z-]+)"
-    sell_pattern = r"sold (\d+) shares of ([A-Z&]+) at \S*([\d,]+\.?\d*) on ([\dA-Z-]+)"
+    buy_pattern = r"bought (\d+) shares of ([A-Z&]+) at \S*?([\d,]+\.?\d*) on ([\dA-Z-]+)"
+    sell_pattern = r"sold (\d+) shares of ([A-Z&]+) at \S*?([\d,]+\.?\d*) on ([\dA-Z-]+)"
 
     trades: list[dict] = []
 
