@@ -1,16 +1,20 @@
 {
   "manifest_version": 3,
-  "name": "Trade Copilot",
-  "description": "Release 0 scaffold for the AI trading copilot Chrome extension.",
-  "version": "0.0.1",
-  "permissions": ["storage", "sidePanel"],
+  "name": "StrategyForge AI - Trading Copilot",
+  "description": "Auto-journal every trade across Zerodha, Groww & 10+ Indian brokers. AI pattern analysis. No manual exports.",
+  "version": "1.0.0",
+  "permissions": ["storage", "sidePanel", "tabs"],
   "host_permissions": [
     "http://localhost:8000/*",
-    "http://127.0.0.1:8000/*"
+    "http://127.0.0.1:8000/*",
+    "https://indiacircle.in/*",
+    "https://www.indiacircle.in/*",
+    "https://kite.zerodha.com/*",
+    "https://web.groww.in/*"
   ],
   "action": {
     "default_popup": "popup.html",
-    "default_title": "Trade Copilot"
+    "default_title": "StrategyForge AI"
   },
   "background": {
     "service_worker": "background.js",
@@ -27,7 +31,10 @@
   },
   "content_scripts": [
     {
-      "matches": ["http://*/*", "https://*/*"],
+      "matches": [
+        "https://kite.zerodha.com/*",
+        "https://web.groww.in/*"
+      ],
       "js": ["content-scripts/broker-detector.js"],
       "run_at": "document_idle"
     }

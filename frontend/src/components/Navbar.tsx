@@ -27,6 +27,18 @@ export default function Navbar() {
         </Link>
 
         <div className="flex items-center gap-4">
+          <Link
+            href="/pricing"
+            className="text-sm font-medium text-gray-700 hover:text-indigo-600"
+          >
+            Pricing
+          </Link>
+          <Link
+            href="/download"
+            className="text-sm font-medium text-gray-700 hover:text-indigo-600"
+          >
+            Download
+          </Link>
           {loggedIn ? (
             <>
               <Link
@@ -34,6 +46,12 @@ export default function Navbar() {
                 className="text-sm font-medium text-gray-700 hover:text-indigo-600"
               >
                 Dashboard
+              </Link>
+              <Link
+                href="/account"
+                className="text-sm font-medium text-gray-700 hover:text-indigo-600"
+              >
+                Account
               </Link>
               <button
                 onClick={handleLogout}

@@ -5,21 +5,31 @@ export default function Home() {
     <div className="flex flex-col">
       {/* Hero */}
       <section className="flex min-h-[calc(100vh-57px)] flex-col items-center justify-center px-4 text-center">
+        <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-indigo-200 bg-indigo-50 px-4 py-1.5 text-sm font-medium text-indigo-700">
+          <span className="h-2 w-2 animate-pulse rounded-full bg-indigo-500" />
+          First 100 users get 3 months Pro free · Code: FOUNDING
+        </div>
         <h1 className="max-w-3xl text-5xl font-extrabold leading-tight tracking-tight sm:text-6xl">
-          Decode Your{" "}
-          <span className="text-indigo-600">Trading Patterns</span>
+          Auto-capture trades across{" "}
+          <span className="text-indigo-600">all Indian brokers</span>
         </h1>
         <p className="mt-6 max-w-xl text-lg text-gray-600">
-          Import trades from Zerodha, Groww, or CSV files. Get AI-powered
-          analysis of your trading behavior, identify recurring patterns, and
-          make smarter decisions.
+          One extension. 10+ brokers. Zero manual exports. TradeIntel
+          auto-captures your trades from Zerodha, Groww, Upstox and more —
+          then gives you AI-powered analysis to trade smarter.
         </p>
-        <div className="mt-10 flex gap-4">
+        <div className="mt-10 flex flex-wrap justify-center gap-4">
           <Link
             href="/signup"
             className="rounded-lg bg-indigo-600 px-6 py-3 text-sm font-semibold text-white hover:bg-indigo-700"
           >
             Get Started Free
+          </Link>
+          <Link
+            href="/download"
+            className="rounded-lg border border-indigo-300 bg-white px-6 py-3 text-sm font-semibold text-indigo-600 hover:bg-indigo-50"
+          >
+            Download Extension
           </Link>
           <Link
             href="/login"

@@ -15,5 +15,7 @@ class Coupon(Base):
     discount_type = Column(String(50), nullable=False)
     discount_value = Column(Numeric(10, 2), nullable=False, default=Decimal("0"))
     is_active = Column(Boolean, default=True, nullable=False)
+    max_redemptions = Column(Integer, nullable=True)
+    current_redemptions = Column(Integer, nullable=False, default=0)
     expires_at = Column(DateTime)
     created_at = Column(DateTime, default=datetime.utcnow)

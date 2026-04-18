@@ -94,17 +94,33 @@ SECRET_KEY=...
 ALGORITHM=HS256
 ACCESS_TOKEN_EXPIRE_MINUTES=10080
 CORS_ALLOW_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
+RAZORPAY_KEY_ID=rzp_test_...
+RAZORPAY_KEY_SECRET=...
+RAZORPAY_WEBHOOK_SECRET=...
 ```
 
 **Frontend** (`.env.local`):
 ```
 NEXT_PUBLIC_API_URL=http://localhost:8000/api
+NEXT_PUBLIC_RAZORPAY_KEY_ID=rzp_test_...
 ```
 
 **Extension** (`.env`):
 ```
 VITE_API_BASE_URL=http://localhost:8000
+VITE_WEB_APP_URL=http://localhost:3000   # set to https://indiacircle.in for prod build
 ```
+
+## Billing (Release 1B)
+
+- **Routes:** `routes/billing.py` — two routers registered in `main.py`: `billing_router` (prefix `/api/billing`) and `webhook_router` (prefix `/api/webhooks`)
+- **Service:** `services/razorpay_service.py` — wraps Razorpay Python SDK; `verify_webhook_signature` uses HMAC-SHA256 over raw request body
+- **Pricing:** Pro Monthly ₹599 (59900 paise), Pro Annual ₹4,999 (499900 paise)
+- **FOUNDING coupon:** seeded by migration `b8e2f1a3c9d0`, max 100 redemptions, grants 90-day Pro access; tracked via `coupons.current_redemptions`
+- **Webhook idempotency:** `PaymentEvent.provider_event_id` (unique constraint) prevents double-processing
+- **Frontend pages:** `/pricing`, `/checkout?plan=…`, `/account`, `/account/billing`, `/download`
+- **Checkout flow:** `createOrder` → load Razorpay JS SDK at runtime → open modal → `verifyPayment` on success
+- **Subscription states:** `"pro"` (active), `"pro_cancelled"` (cancelled, still runs until `subscription_expires_at`), `null`/`"free"` (free)
 
 ## CSV Parser — Broker Detection
 

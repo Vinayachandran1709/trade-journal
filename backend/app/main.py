@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
 from app.routes.auth import router as auth_router
+from app.routes.billing import billing_router, webhook_router
 from app.routes.health import router as health_router
 from app.routes.trades import router as trades_router
 
@@ -20,3 +21,5 @@ app.add_middleware(
 app.include_router(health_router, tags=["health"])
 app.include_router(auth_router)
 app.include_router(trades_router)
+app.include_router(billing_router)
+app.include_router(webhook_router)

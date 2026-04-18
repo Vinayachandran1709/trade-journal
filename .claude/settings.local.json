@@ -2,7 +2,8 @@
   "permissions": {
     "allow": [
       "Bash(cd:*)",
-      "Bash(python test_trade_processor.py)"
+      "Bash(python test_trade_processor.py)",
+      "Bash(python generate_icons.py)"
     ]
   }
 }

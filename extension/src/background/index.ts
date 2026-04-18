@@ -9,11 +9,15 @@ import { fetchCurrentUser } from "../shared/api";
 import type { BackgroundResponse, ExtensionMessage } from "../shared/types";
 
 const POPUP_PATH = "popup.html";
+const WEB_APP_URL = (import.meta.env.VITE_WEB_APP_URL || "https://indiacircle.in").replace(/\/$/, "");
 
 void syncActionSurface();
 
-chrome.runtime.onInstalled.addListener(() => {
+chrome.runtime.onInstalled.addListener((details) => {
   void syncActionSurface();
+  if (details.reason === chrome.runtime.OnInstalledReason.INSTALL) {
+    void chrome.tabs.create({ url: `${WEB_APP_URL}/welcome` });
+  }
 });
 
 chrome.runtime.onStartup.addListener(() => {

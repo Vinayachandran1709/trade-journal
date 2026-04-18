@@ -4,6 +4,8 @@ import { fetchCurrentUser, loginWithPassword } from "../shared/api";
 import { clearAuthToken, getAuthToken, setAuthToken } from "../shared/auth";
 import type { User } from "../shared/types";
 
+const WEB_APP_URL = (import.meta.env.VITE_WEB_APP_URL || "https://indiacircle.in").replace(/\/$/, "");
+
 type ViewState = "loading" | "ready" | "submitting";
 
 export default function App() {
@@ -103,14 +105,19 @@ export default function App() {
     setError(null);
   }
 
+  function handleUpgradeToPro() {
+    void chrome.tabs.create({ url: `${WEB_APP_URL}/pricing` });
+    window.close();
+  }
+
   return (
     <main className="popup-shell">
       <section className="panel">
         <div className="panel-header">
-          <p className="eyebrow">Release 0</p>
-          <h1>Trade Copilot</h1>
+          <p className="eyebrow">StrategyForge AI</p>
+          <h1>Trading Copilot</h1>
           <p className="subcopy">
-            Chrome extension scaffold with backend auth connectivity.
+            Auto-journal trades from Zerodha, Groww &amp; 10+ Indian brokers.
           </p>
         </div>
 
@@ -122,6 +129,11 @@ export default function App() {
               <span className="status-label">Signed in</span>
               <strong>{user.email}</strong>
             </div>
+            {user.subscription_status !== "pro" && (
+              <button className="upgrade-button" onClick={handleUpgradeToPro}>
+                ⚡ Upgrade to Pro
+              </button>
+            )}
             <button className="secondary-button" onClick={handleLogout}>
               Log out
             </button>

@@ -14,8 +14,13 @@ class Settings(BaseSettings):
         "http://127.0.0.1:3000",
     ]
     CORS_ALLOW_ORIGIN_REGEX: str = (
-        r"^(chrome-extension://.*|https?://(localhost|127\.0\.0\.1)(:\d+)?)$"
+        r"^(chrome-extension://.*"
+        r"|https?://(localhost|127\.0\.0\.1)(:\d+)?"
+        r"|https://(www\.)?indiacircle\.in)$"
     )
+    RAZORPAY_KEY_ID: str = ""
+    RAZORPAY_KEY_SECRET: str = ""
+    RAZORPAY_WEBHOOK_SECRET: str = ""
 
     @field_validator("CORS_ALLOW_ORIGINS", mode="before")
     @classmethod

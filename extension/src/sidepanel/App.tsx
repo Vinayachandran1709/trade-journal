@@ -5,6 +5,8 @@ import { clearAuthToken, getAuthToken, onAuthTokenChange } from "../shared/auth"
 import { getCaptureState, type CaptureState } from "../shared/captures";
 import type { User } from "../shared/types";
 
+const WEB_APP_URL = (import.meta.env.VITE_WEB_APP_URL || "https://indiacircle.in").replace(/\/$/, "");
+
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
   const [status, setStatus] = useState("Checking connection...");
@@ -113,10 +115,12 @@ export default function App() {
     }
   }
 
+  const isPro = user?.subscription_status === "pro";
+
   return (
     <main className="sidepanel-shell">
       <section className="hero-card">
-        <p className="eyebrow">Trade Copilot Extension</p>
+        <p className="eyebrow">StrategyForge AI</p>
         <h1>Ghost auto-journal is live.</h1>
         <p className="hero-copy">
           Keep your broker tab open on Zerodha or Groww. The extension reads the
@@ -195,6 +199,29 @@ export default function App() {
           </article>
         </section>
       )}
+
+      {/* Upgrade to Pro banner — shown only to free users */}
+      {user && !isPro ? (
+        <div className="pro-banner">
+          <div className="pro-banner-text">
+            <span className="pro-banner-title">Unlock Pro</span>
+            <span className="pro-banner-desc">
+              AI analysis, unlimited imports &amp; 10+ brokers
+            </span>
+          </div>
+          <button
+            className="pro-banner-button"
+            onClick={() => void chrome.tabs.create({ url: `${WEB_APP_URL}/pricing` })}
+          >
+            Upgrade ⚡
+          </button>
+        </div>
+      ) : null}
+
+      {/* SEBI disclaimer */}
+      <footer className="sebi-footer">
+        This is analytics, not investment advice. Trading involves risk.
+      </footer>
     </main>
   );
 }
