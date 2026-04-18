@@ -1,0 +1,5144 @@
+This file is a merged representation of the entire codebase, combined into a single document by Repomix.
+
+<file_summary>
+This section contains a summary of this file.
+
+<purpose>
+This file contains a packed representation of the entire repository's contents.
+It is designed to be easily consumable by AI systems for analysis, code review,
+or other automated processes.
+</purpose>
+
+<file_format>
+The content is organized as follows:
+1. This summary section
+2. Repository information
+3. Directory structure
+4. Repository files (if enabled)
+5. Multiple file entries, each consisting of:
+  - File path as an attribute
+  - Full contents of the file
+</file_format>
+
+<usage_guidelines>
+- This file should be treated as read-only. Any changes should be made to the
+  original repository files, not this packed version.
+- When processing this file, use the file path to distinguish
+  between different files in the repository.
+- Be aware that this file may contain sensitive information. Handle it with
+  the same level of security as you would the original repository.
+</usage_guidelines>
+
+<notes>
+- Some files may have been excluded based on .gitignore rules and Repomix's configuration
+- Binary files are not included in this packed representation. Please refer to the Repository Structure section for a complete list of file paths, including binary files
+- Files matching patterns in .gitignore are excluded
+- Files matching default ignore patterns are excluded
+- Files are sorted by Git change count (files with more changes are at the bottom)
+</notes>
+
+</file_summary>
+
+<directory_structure>
+.claude/settings.local.json
+.gitignore
+backend/.env.example
+backend/.gitignore
+backend/alembic.ini
+backend/alembic/env.py
+backend/alembic/script.py.mako
+backend/alembic/versions/4333c1cfe0d1_add_completed_trades_table.py
+backend/alembic/versions/7b6d4db0190a_release_0_extension_foundation.py
+backend/alembic/versions/f273bc656ae9_initial_tables.py
+backend/app/__init__.py
+backend/app/config.py
+backend/app/database.py
+backend/app/main.py
+backend/app/models/__init__.py
+backend/app/models/behavioral_pattern.py
+backend/app/models/completed_trade.py
+backend/app/models/coupon.py
+backend/app/models/market_data_cache.py
+backend/app/models/pattern_analysis.py
+backend/app/models/payment_event.py
+backend/app/models/trade_checklist.py
+backend/app/models/trade_setup.py
+backend/app/models/trade.py
+backend/app/models/user.py
+backend/app/routes/__init__.py
+backend/app/routes/auth.py
+backend/app/routes/health.py
+backend/app/routes/trades.py
+backend/app/schemas/__init__.py
+backend/app/schemas/auth.py
+backend/app/schemas/trade.py
+backend/app/schemas/user.py
+backend/app/services/__init__.py
+backend/app/services/auth_service.py
+backend/app/services/csv_parser.py
+backend/app/services/email_parser.py
+backend/app/services/trade_processor.py
+backend/app/utils/__init__.py
+backend/app/utils/dependencies.py
+backend/curl
+backend/delete_bad_trades.py
+backend/README.md
+backend/requirements.txt
+backend/test_csv_debug.py
+backend/test_csv_parser.py
+backend/test_csv.csv
+backend/test_email_parser.py
+backend/test_import.py
+backend/test_parser_debug.py
+backend/test_setup.py
+backend/test_trade_processor.py
+extension/.env
+extension/.env.example
+extension/package.json
+extension/popup.html
+extension/public/icons/icon128.png
+extension/public/icons/icon16.png
+extension/public/icons/icon32.png
+extension/public/icons/icon48.png
+extension/public/manifest.json
+extension/README.md
+extension/sidepanel.html
+extension/src/background/index.ts
+extension/src/content-scripts/broker-detector.ts
+extension/src/popup/App.tsx
+extension/src/popup/main.tsx
+extension/src/shared/api.ts
+extension/src/shared/auth.ts
+extension/src/shared/chrome.ts
+extension/src/shared/types.ts
+extension/src/sidepanel/App.tsx
+extension/src/sidepanel/main.tsx
+extension/src/styles/popup.css
+extension/src/styles/sidepanel.css
+extension/tsconfig.json
+extension/vite.config.ts
+frontend/.env.local.example
+frontend/.gitignore
+frontend/next.config.js
+frontend/package.json
+frontend/postcss.config.js
+frontend/README.md
+frontend/src/app/dashboard/page.tsx
+frontend/src/app/dashboard/trades/page.tsx
+frontend/src/app/globals.css
+frontend/src/app/import/groww/page.tsx
+frontend/src/app/import/page.tsx
+frontend/src/app/import/zerodha/page.tsx
+frontend/src/app/layout.tsx
+frontend/src/app/login/page.tsx
+frontend/src/app/page.tsx
+frontend/src/app/signup/page.tsx
+frontend/src/components/AuthGuard.tsx
+frontend/src/components/Navbar.tsx
+frontend/src/components/ui/Button.tsx
+frontend/src/components/ui/Card.tsx
+frontend/src/components/ui/FileUpload.tsx
+frontend/src/components/ui/Input.tsx
+frontend/src/lib/api.ts
+frontend/src/lib/auth.ts
+frontend/src/lib/trades.ts
+frontend/src/types/trade.ts
+frontend/src/types/user.ts
+frontend/tailwind.config.ts
+frontend/tsconfig.json
+</directory_structure>
+
+<files>
+This section contains the contents of the repository's files.
+
+<file path=".gitignore">
+backend/.env
+backend/venv/
+backend/__pycache__/
+backend/app/__pycache__/
+frontend/.next/
+frontend/node_modules/
+extension/node_modules/
+extension/dist/
+*.pyc
+</file>
+
+<file path="backend/.env.example">
+DATABASE_URL=postgresql://postgres:password@localhost:5432/trade_journal
+SECRET_KEY=replace-with-a-long-random-secret
+ALGORITHM=HS256
+ACCESS_TOKEN_EXPIRE_MINUTES=10080
+CORS_ALLOW_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
+</file>
+
+<file path="backend/alembic/versions/7b6d4db0190a_release_0_extension_foundation.py">
+"""Release 0 extension foundation
+
+Revision ID: 7b6d4db0190a
+Revises: 4333c1cfe0d1
+Create Date: 2026-04-18 13:40:00.000000
+
+"""
+
+from typing import Sequence, Union
+
+from alembic import op
+import sqlalchemy as sa
+
+
+# revision identifiers, used by Alembic.
+revision: str = "7b6d4db0190a"
+down_revision: Union[str, None] = "4333c1cfe0d1"
+branch_labels: Union[str, Sequence[str], None] = None
+depends_on: Union[str, Sequence[str], None] = None
+
+
+def upgrade() -> None:
+    op.add_column("users", sa.Column("subscription_status", sa.String(length=50), nullable=True))
+    op.add_column("users", sa.Column("subscription_plan", sa.String(length=50), nullable=True))
+    op.add_column("users", sa.Column("subscription_expires_at", sa.DateTime(), nullable=True))
+    op.add_column("users", sa.Column("razorpay_customer_id", sa.String(length=255), nullable=True))
+    op.add_column("users", sa.Column("razorpay_subscription_id", sa.String(length=255), nullable=True))
+
+    op.add_column("trades", sa.Column("emotion_tag", sa.String(length=50), nullable=True))
+    op.add_column("trades", sa.Column("notes", sa.Text(), nullable=True))
+    op.add_column("trades", sa.Column("screenshot_url", sa.String(length=500), nullable=True))
+    op.add_column("trades", sa.Column("entry_method", sa.String(length=100), nullable=True))
+    op.add_column("trades", sa.Column("trade_time", sa.Time(), nullable=True))
+    op.add_column("trades", sa.Column("instrument_type", sa.String(length=50), nullable=True))
+
+    op.create_table(
+        "behavioral_patterns",
+        sa.Column("id", sa.Integer(), nullable=False),
+        sa.Column("user_id", sa.Integer(), nullable=False),
+        sa.Column("name", sa.String(length=100), nullable=False),
+        sa.Column("pattern_type", sa.String(length=50), nullable=True),
+        sa.Column("description", sa.Text(), nullable=True),
+        sa.Column("pattern_config", sa.JSON(), nullable=True),
+        sa.Column("is_active", sa.Boolean(), nullable=False),
+        sa.Column("created_at", sa.DateTime(), nullable=True),
+        sa.Column("updated_at", sa.DateTime(), nullable=True),
+        sa.ForeignKeyConstraint(["user_id"], ["users.id"]),
+        sa.PrimaryKeyConstraint("id"),
+    )
+    op.create_index(
+        op.f("ix_behavioral_patterns_id"),
+        "behavioral_patterns",
+        ["id"],
+        unique=False,
+    )
+    op.create_index(
+        op.f("ix_behavioral_patterns_user_id"),
+        "behavioral_patterns",
+        ["user_id"],
+        unique=False,
+    )
+
+    op.create_table(
+        "trade_setups",
+        sa.Column("id", sa.Integer(), nullable=False),
+        sa.Column("user_id", sa.Integer(), nullable=False),
+        sa.Column("name", sa.String(length=100), nullable=False),
+        sa.Column("description", sa.Text(), nullable=True),
+        sa.Column("setup_config", sa.JSON(), nullable=True),
+        sa.Column("is_active", sa.Boolean(), nullable=False),
+        sa.Column("created_at", sa.DateTime(), nullable=True),
+        sa.Column("updated_at", sa.DateTime(), nullable=True),
+        sa.ForeignKeyConstraint(["user_id"], ["users.id"]),
+        sa.PrimaryKeyConstraint("id"),
+    )
+    op.create_index(op.f("ix_trade_setups_id"), "trade_setups", ["id"], unique=False)
+    op.create_index(
+        op.f("ix_trade_setups_user_id"),
+        "trade_setups",
+        ["user_id"],
+        unique=False,
+    )
+
+    op.create_table(
+        "trade_checklists",
+        sa.Column("id", sa.Integer(), nullable=False),
+        sa.Column("user_id", sa.Integer(), nullable=False),
+        sa.Column("trade_setup_id", sa.Integer(), nullable=True),
+        sa.Column("name", sa.String(length=100), nullable=False),
+        sa.Column("checklist_items", sa.JSON(), nullable=True),
+        sa.Column("is_active", sa.Boolean(), nullable=False),
+        sa.Column("created_at", sa.DateTime(), nullable=True),
+        sa.Column("updated_at", sa.DateTime(), nullable=True),
+        sa.ForeignKeyConstraint(["trade_setup_id"], ["trade_setups.id"]),
+        sa.ForeignKeyConstraint(["user_id"], ["users.id"]),
+        sa.PrimaryKeyConstraint("id"),
+    )
+    op.create_index(
+        op.f("ix_trade_checklists_id"),
+        "trade_checklists",
+        ["id"],
+        unique=False,
+    )
+    op.create_index(
+        op.f("ix_trade_checklists_trade_setup_id"),
+        "trade_checklists",
+        ["trade_setup_id"],
+        unique=False,
+    )
+    op.create_index(
+        op.f("ix_trade_checklists_user_id"),
+        "trade_checklists",
+        ["user_id"],
+        unique=False,
+    )
+
+    op.create_table(
+        "market_data_cache",
+        sa.Column("id", sa.Integer(), nullable=False),
+        sa.Column("cache_key", sa.String(length=255), nullable=False),
+        sa.Column("symbol", sa.String(length=50), nullable=False),
+        sa.Column("timeframe", sa.String(length=50), nullable=True),
+        sa.Column("provider", sa.String(length=50), nullable=True),
+        sa.Column("payload", sa.JSON(), nullable=True),
+        sa.Column("source_url", sa.Text(), nullable=True),
+        sa.Column("fetched_at", sa.DateTime(), nullable=False),
+        sa.Column("expires_at", sa.DateTime(), nullable=True),
+        sa.Column("created_at", sa.DateTime(), nullable=True),
+        sa.PrimaryKeyConstraint("id"),
+        sa.UniqueConstraint("cache_key"),
+    )
+    op.create_index(
+        op.f("ix_market_data_cache_cache_key"),
+        "market_data_cache",
+        ["cache_key"],
+        unique=True,
+    )
+    op.create_index(
+        op.f("ix_market_data_cache_id"),
+        "market_data_cache",
+        ["id"],
+        unique=False,
+    )
+    op.create_index(
+        op.f("ix_market_data_cache_symbol"),
+        "market_data_cache",
+        ["symbol"],
+        unique=False,
+    )
+
+    op.create_table(
+        "payment_events",
+        sa.Column("id", sa.Integer(), nullable=False),
+        sa.Column("user_id", sa.Integer(), nullable=True),
+        sa.Column("provider", sa.String(length=50), nullable=False),
+        sa.Column("event_type", sa.String(length=100), nullable=False),
+        sa.Column("provider_event_id", sa.String(length=255), nullable=False),
+        sa.Column("payload", sa.JSON(), nullable=True),
+        sa.Column("processed_at", sa.DateTime(), nullable=True),
+        sa.Column("created_at", sa.DateTime(), nullable=True),
+        sa.ForeignKeyConstraint(["user_id"], ["users.id"]),
+        sa.PrimaryKeyConstraint("id"),
+        sa.UniqueConstraint("provider_event_id"),
+    )
+    op.create_index(
+        op.f("ix_payment_events_id"),
+        "payment_events",
+        ["id"],
+        unique=False,
+    )
+    op.create_index(
+        op.f("ix_payment_events_provider_event_id"),
+        "payment_events",
+        ["provider_event_id"],
+        unique=True,
+    )
+    op.create_index(
+        op.f("ix_payment_events_user_id"),
+        "payment_events",
+        ["user_id"],
+        unique=False,
+    )
+
+    op.create_table(
+        "coupons",
+        sa.Column("id", sa.Integer(), nullable=False),
+        sa.Column("code", sa.String(length=100), nullable=False),
+        sa.Column("description", sa.Text(), nullable=True),
+        sa.Column("discount_type", sa.String(length=50), nullable=False),
+        sa.Column("discount_value", sa.Numeric(precision=10, scale=2), nullable=False),
+        sa.Column("is_active", sa.Boolean(), nullable=False),
+        sa.Column("expires_at", sa.DateTime(), nullable=True),
+        sa.Column("created_at", sa.DateTime(), nullable=True),
+        sa.PrimaryKeyConstraint("id"),
+        sa.UniqueConstraint("code"),
+    )
+    op.create_index(op.f("ix_coupons_code"), "coupons", ["code"], unique=True)
+    op.create_index(op.f("ix_coupons_id"), "coupons", ["id"], unique=False)
+
+
+def downgrade() -> None:
+    op.drop_index(op.f("ix_coupons_id"), table_name="coupons")
+    op.drop_index(op.f("ix_coupons_code"), table_name="coupons")
+    op.drop_table("coupons")
+
+    op.drop_index(op.f("ix_payment_events_user_id"), table_name="payment_events")
+    op.drop_index(
+        op.f("ix_payment_events_provider_event_id"),
+        table_name="payment_events",
+    )
+    op.drop_index(op.f("ix_payment_events_id"), table_name="payment_events")
+    op.drop_table("payment_events")
+
+    op.drop_index(op.f("ix_market_data_cache_symbol"), table_name="market_data_cache")
+    op.drop_index(
+        op.f("ix_market_data_cache_id"),
+        table_name="market_data_cache",
+    )
+    op.drop_index(
+        op.f("ix_market_data_cache_cache_key"),
+        table_name="market_data_cache",
+    )
+    op.drop_table("market_data_cache")
+
+    op.drop_index(
+        op.f("ix_trade_checklists_user_id"),
+        table_name="trade_checklists",
+    )
+    op.drop_index(
+        op.f("ix_trade_checklists_trade_setup_id"),
+        table_name="trade_checklists",
+    )
+    op.drop_index(op.f("ix_trade_checklists_id"), table_name="trade_checklists")
+    op.drop_table("trade_checklists")
+
+    op.drop_index(op.f("ix_trade_setups_user_id"), table_name="trade_setups")
+    op.drop_index(op.f("ix_trade_setups_id"), table_name="trade_setups")
+    op.drop_table("trade_setups")
+
+    op.drop_index(
+        op.f("ix_behavioral_patterns_user_id"),
+        table_name="behavioral_patterns",
+    )
+    op.drop_index(
+        op.f("ix_behavioral_patterns_id"),
+        table_name="behavioral_patterns",
+    )
+    op.drop_table("behavioral_patterns")
+
+    op.drop_column("trades", "instrument_type")
+    op.drop_column("trades", "trade_time")
+    op.drop_column("trades", "entry_method")
+    op.drop_column("trades", "screenshot_url")
+    op.drop_column("trades", "notes")
+    op.drop_column("trades", "emotion_tag")
+
+    op.drop_column("users", "razorpay_subscription_id")
+    op.drop_column("users", "razorpay_customer_id")
+    op.drop_column("users", "subscription_expires_at")
+    op.drop_column("users", "subscription_plan")
+    op.drop_column("users", "subscription_status")
+</file>
+
+<file path="backend/app/models/behavioral_pattern.py">
+from datetime import datetime
+
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, JSON, String, Text
+from sqlalchemy.orm import relationship
+
+from app.database import Base
+
+
+class BehavioralPattern(Base):
+    __tablename__ = "behavioral_patterns"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    name = Column(String(100), nullable=False)
+    pattern_type = Column(String(50))
+    description = Column(Text)
+    pattern_config = Column(JSON)
+    is_active = Column(Boolean, default=True, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    user = relationship("User", back_populates="behavioral_patterns")
+</file>
+
+<file path="backend/app/models/coupon.py">
+from datetime import datetime
+from decimal import Decimal
+
+from sqlalchemy import Boolean, Column, DateTime, Integer, Numeric, String, Text
+
+from app.database import Base
+
+
+class Coupon(Base):
+    __tablename__ = "coupons"
+
+    id = Column(Integer, primary_key=True, index=True)
+    code = Column(String(100), nullable=False, unique=True, index=True)
+    description = Column(Text)
+    discount_type = Column(String(50), nullable=False)
+    discount_value = Column(Numeric(10, 2), nullable=False, default=Decimal("0"))
+    is_active = Column(Boolean, default=True, nullable=False)
+    expires_at = Column(DateTime)
+    created_at = Column(DateTime, default=datetime.utcnow)
+</file>
+
+<file path="backend/app/models/market_data_cache.py">
+from datetime import datetime
+
+from sqlalchemy import Column, DateTime, Integer, JSON, String, Text
+
+from app.database import Base
+
+
+class MarketDataCache(Base):
+    __tablename__ = "market_data_cache"
+
+    id = Column(Integer, primary_key=True, index=True)
+    cache_key = Column(String(255), nullable=False, unique=True, index=True)
+    symbol = Column(String(50), nullable=False, index=True)
+    timeframe = Column(String(50))
+    provider = Column(String(50))
+    payload = Column(JSON)
+    source_url = Column(Text)
+    fetched_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    expires_at = Column(DateTime)
+    created_at = Column(DateTime, default=datetime.utcnow)
+</file>
+
+<file path="backend/app/models/payment_event.py">
+from datetime import datetime
+
+from sqlalchemy import Column, DateTime, ForeignKey, Integer, JSON, String
+from sqlalchemy.orm import relationship
+
+from app.database import Base
+
+
+class PaymentEvent(Base):
+    __tablename__ = "payment_events"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), index=True)
+    provider = Column(String(50), nullable=False)
+    event_type = Column(String(100), nullable=False)
+    provider_event_id = Column(String(255), nullable=False, unique=True, index=True)
+    payload = Column(JSON)
+    processed_at = Column(DateTime)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    user = relationship("User", back_populates="payment_events")
+</file>
+
+<file path="backend/app/models/trade_checklist.py">
+from datetime import datetime
+
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, JSON, String
+from sqlalchemy.orm import relationship
+
+from app.database import Base
+
+
+class TradeChecklist(Base):
+    __tablename__ = "trade_checklists"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    trade_setup_id = Column(Integer, ForeignKey("trade_setups.id"), index=True)
+    name = Column(String(100), nullable=False)
+    checklist_items = Column(JSON)
+    is_active = Column(Boolean, default=True, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    user = relationship("User", back_populates="trade_checklists")
+    trade_setup = relationship("TradeSetup", back_populates="trade_checklists")
+</file>
+
+<file path="backend/app/models/trade_setup.py">
+from datetime import datetime
+
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, JSON, String, Text
+from sqlalchemy.orm import relationship
+
+from app.database import Base
+
+
+class TradeSetup(Base):
+    __tablename__ = "trade_setups"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    name = Column(String(100), nullable=False)
+    description = Column(Text)
+    setup_config = Column(JSON)
+    is_active = Column(Boolean, default=True, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    user = relationship("User", back_populates="trade_setups")
+    trade_checklists = relationship("TradeChecklist", back_populates="trade_setup")
+</file>
+
+<file path="extension/.env">
+VITE_API_BASE_URL=http://localhost:8000
+</file>
+
+<file path="extension/.env.example">
+VITE_API_BASE_URL=http://localhost:8000
+</file>
+
+<file path="extension/package.json">
+{
+  "name": "trade-copilot-extension",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite build --watch",
+    "build": "vite build",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/chrome": "^0.0.321",
+    "@types/node": "^22.15.2",
+    "@types/react": "^18.3.14",
+    "@types/react-dom": "^18.3.5",
+    "@vitejs/plugin-react": "^4.4.1",
+    "typescript": "^5.7.2",
+    "vite": "^5.4.19"
+  }
+}
+</file>
+
+<file path="extension/popup.html">
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0"
+    />
+    <title>Trade Copilot</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/popup/main.tsx"></script>
+  </body>
+</html>
+</file>
+
+<file path="extension/public/manifest.json">
+{
+  "manifest_version": 3,
+  "name": "Trade Copilot",
+  "description": "Release 0 scaffold for the AI trading copilot Chrome extension.",
+  "version": "0.0.1",
+  "permissions": ["storage", "sidePanel"],
+  "host_permissions": [
+    "http://localhost:8000/*",
+    "http://127.0.0.1:8000/*"
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Trade Copilot"
+  },
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "side_panel": {
+    "default_path": "sidepanel.html"
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "content_scripts": [
+    {
+      "matches": ["http://*/*", "https://*/*"],
+      "js": ["content-scripts/broker-detector.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}
+</file>
+
+<file path="extension/README.md">
+# Trade Copilot Extension
+
+Chrome Manifest V3 extension scaffold for Release 0.
+
+## Setup
+
+```cmd
+cd extension
+copy .env.example .env
+npm install
+```
+
+## Build
+
+```cmd
+cd extension
+npm run build
+```
+
+Load the unpacked extension from `extension\dist` in Chrome.
+
+## Development
+
+```cmd
+cd extension
+npm run dev
+```
+
+`npm run dev` runs `vite build --watch` so the unpacked extension can be reloaded in Chrome after file changes.
+</file>
+
+<file path="extension/sidepanel.html">
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0"
+    />
+    <title>Trade Copilot Side Panel</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/sidepanel/main.tsx"></script>
+  </body>
+</html>
+</file>
+
+<file path="extension/src/background/index.ts">
+import { clearAuthToken, getAuthToken } from "../shared/auth";
+import { fetchCurrentUser } from "../shared/api";
+import type { BackgroundResponse, ExtensionMessage } from "../shared/types";
+
+chrome.runtime.onInstalled.addListener(() => {
+  chrome.sidePanel
+    .setPanelBehavior({ openPanelOnActionClick: true })
+    .catch(() => undefined);
+});
+
+chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+  void handleMessage(message as ExtensionMessage, sendResponse);
+  return true;
+});
+
+async function handleMessage(
+  message: ExtensionMessage,
+  sendResponse: (response: BackgroundResponse) => void
+): Promise<void> {
+  try {
+    switch (message.type) {
+      case "auth:get-token": {
+        const token = await getAuthToken();
+        sendResponse({ ok: true, token });
+        return;
+      }
+      case "auth:get-me": {
+        const token = await getAuthToken();
+        if (!token) {
+          sendResponse({ ok: false, error: "Not authenticated." });
+          return;
+        }
+
+        const user = await fetchCurrentUser(token);
+        sendResponse({ ok: true, user });
+        return;
+      }
+      case "auth:logout": {
+        await clearAuthToken();
+        sendResponse({ ok: true });
+        return;
+      }
+      case "health:ping": {
+        sendResponse({ ok: true, timestamp: new Date().toISOString() });
+        return;
+      }
+      case "broker:page-detected": {
+        sendResponse({ ok: true });
+        return;
+      }
+      default: {
+        sendResponse({ ok: false, error: "Unknown message type." });
+      }
+    }
+  } catch (error) {
+    sendResponse({
+      ok: false,
+      error: error instanceof Error ? error.message : "Unexpected error.",
+    });
+  }
+}
+</file>
+
+<file path="extension/src/content-scripts/broker-detector.ts">
+const SUPPORTED_BROKER_HOSTS = new Set([
+  "kite.zerodha.com",
+  "web.groww.in",
+]);
+
+const currentHost = window.location.hostname;
+
+if (SUPPORTED_BROKER_HOSTS.has(currentHost)) {
+  chrome.runtime.sendMessage(
+    {
+      type: "broker:page-detected",
+      payload: {
+        host: currentHost,
+        href: window.location.href,
+      },
+    },
+    () => {
+      void chrome.runtime.lastError;
+    }
+  );
+}
+</file>
+
+<file path="extension/src/popup/App.tsx">
+import { FormEvent, useEffect, useState } from "react";
+
+import { fetchCurrentUser, loginWithPassword } from "../shared/api";
+import { clearAuthToken, getAuthToken, setAuthToken } from "../shared/auth";
+import type { User } from "../shared/types";
+
+type ViewState = "loading" | "ready" | "submitting";
+
+export default function App() {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [status, setStatus] = useState<ViewState>("loading");
+  const [user, setUser] = useState<User | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadSession() {
+      try {
+        const token = await getAuthToken();
+        if (!token) {
+          if (active) {
+            setStatus("ready");
+          }
+          return;
+        }
+
+        const currentUser = await fetchCurrentUser(token);
+        if (!active) {
+          return;
+        }
+
+        setUser(currentUser);
+      } catch (sessionError) {
+        await clearAuthToken();
+        if (active) {
+          setError(
+            sessionError instanceof Error
+              ? sessionError.message
+              : "Session expired. Please log in again."
+          );
+        }
+      } finally {
+        if (active) {
+          setStatus("ready");
+        }
+      }
+    }
+
+    void loadSession();
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setStatus("submitting");
+    setError(null);
+
+    try {
+      const tokenResponse = await loginWithPassword({ email, password });
+      await setAuthToken(tokenResponse.access_token);
+
+      const currentUser = await fetchCurrentUser(tokenResponse.access_token);
+      setUser(currentUser);
+      setPassword("");
+    } catch (submitError) {
+      await clearAuthToken();
+      setError(
+        submitError instanceof Error
+          ? submitError.message
+          : "Unable to log in."
+      );
+      setUser(null);
+    } finally {
+      setStatus("ready");
+    }
+  }
+
+  async function handleLogout() {
+    await clearAuthToken();
+    setUser(null);
+    setPassword("");
+    setError(null);
+  }
+
+  return (
+    <main className="popup-shell">
+      <section className="panel">
+        <div className="panel-header">
+          <p className="eyebrow">Release 0</p>
+          <h1>Trade Copilot</h1>
+          <p className="subcopy">
+            Chrome extension scaffold with backend auth connectivity.
+          </p>
+        </div>
+
+        {status === "loading" ? (
+          <div className="status-card">Checking saved session...</div>
+        ) : user ? (
+          <div className="status-stack">
+            <div className="status-card success">
+              <span className="status-label">Signed in</span>
+              <strong>{user.email}</strong>
+            </div>
+            <button className="secondary-button" onClick={handleLogout}>
+              Log out
+            </button>
+          </div>
+        ) : (
+          <form className="auth-form" onSubmit={handleSubmit}>
+            <label>
+              Email
+              <input
+                autoComplete="email"
+                placeholder="you@example.com"
+                type="email"
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+                required
+              />
+            </label>
+
+            <label>
+              Password
+              <input
+                autoComplete="current-password"
+                placeholder="Password"
+                type="password"
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                required
+              />
+            </label>
+
+            <button
+              className="primary-button"
+              disabled={status === "submitting"}
+              type="submit"
+            >
+              {status === "submitting" ? "Signing in..." : "Sign in"}
+            </button>
+          </form>
+        )}
+
+        {error ? <p className="error-text">{error}</p> : null}
+      </section>
+    </main>
+  );
+}
+</file>
+
+<file path="extension/src/popup/main.tsx">
+import React from "react";
+import ReactDOM from "react-dom/client";
+
+import App from "./App";
+import "../styles/popup.css";
+
+ReactDOM.createRoot(document.getElementById("root")!).render(
+  <React.StrictMode>
+    <App />
+  </React.StrictMode>
+);
+</file>
+
+<file path="extension/src/shared/api.ts">
+import type { LoginRequest, TokenResponse, User } from "./types";
+
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "http://localhost:8000")
+  .replace(/\/$/, "");
+
+async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
+  const headers = new Headers(options.headers);
+
+  if (!headers.has("Content-Type")) {
+    headers.set("Content-Type", "application/json");
+  }
+
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    ...options,
+    headers,
+  });
+
+  if (!response.ok) {
+    const error = await response
+      .json()
+      .catch(() => ({ detail: "Request failed" }));
+    throw new Error(error.detail || `Request failed with status ${response.status}`);
+  }
+
+  return response.json() as Promise<T>;
+}
+
+export async function loginWithPassword(
+  payload: LoginRequest
+): Promise<TokenResponse> {
+  return request<TokenResponse>("/api/auth/login", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function fetchCurrentUser(token: string): Promise<User> {
+  return request<User>("/api/auth/me", {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+}
+</file>
+
+<file path="extension/src/shared/auth.ts">
+import { storageGet, storageRemove, storageSet } from "./chrome";
+
+const AUTH_TOKEN_KEY = "authToken";
+
+export async function getAuthToken(): Promise<string | null> {
+  return storageGet<string>(AUTH_TOKEN_KEY);
+}
+
+export async function setAuthToken(token: string): Promise<void> {
+  await storageSet(AUTH_TOKEN_KEY, token);
+}
+
+export async function clearAuthToken(): Promise<void> {
+  await storageRemove(AUTH_TOKEN_KEY);
+}
+</file>
+
+<file path="extension/src/shared/chrome.ts">
+function getRuntimeErrorMessage(): string | null {
+  return chrome.runtime.lastError?.message ?? null;
+}
+
+export async function storageGet<T>(key: string): Promise<T | null> {
+  return new Promise((resolve, reject) => {
+    chrome.storage.local.get([key], (result) => {
+      const errorMessage = getRuntimeErrorMessage();
+      if (errorMessage) {
+        reject(new Error(errorMessage));
+        return;
+      }
+
+      resolve((result[key] as T | undefined) ?? null);
+    });
+  });
+}
+
+export async function storageSet<T>(key: string, value: T): Promise<void> {
+  return new Promise((resolve, reject) => {
+    chrome.storage.local.set({ [key]: value }, () => {
+      const errorMessage = getRuntimeErrorMessage();
+      if (errorMessage) {
+        reject(new Error(errorMessage));
+        return;
+      }
+
+      resolve();
+    });
+  });
+}
+
+export async function storageRemove(key: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    chrome.storage.local.remove(key, () => {
+      const errorMessage = getRuntimeErrorMessage();
+      if (errorMessage) {
+        reject(new Error(errorMessage));
+        return;
+      }
+
+      resolve();
+    });
+  });
+}
+</file>
+
+<file path="extension/src/shared/types.ts">
+export interface LoginRequest {
+  email: string;
+  password: string;
+}
+
+export interface TokenResponse {
+  access_token: string;
+  token_type: string;
+}
+
+export interface User {
+  id: number;
+  email: string;
+  name: string | null;
+  subscription_status?: string | null;
+  subscription_plan?: string | null;
+  subscription_expires_at?: string | null;
+  razorpay_customer_id?: string | null;
+  razorpay_subscription_id?: string | null;
+  created_at: string;
+}
+
+export interface ExtensionMessage {
+  type:
+    | "auth:get-token"
+    | "auth:get-me"
+    | "auth:logout"
+    | "health:ping"
+    | "broker:page-detected";
+  payload?: Record<string, unknown>;
+}
+
+export interface BackgroundResponse {
+  ok: boolean;
+  error?: string;
+  token?: string | null;
+  user?: User;
+  timestamp?: string;
+}
+</file>
+
+<file path="extension/src/sidepanel/App.tsx">
+import { useEffect, useState } from "react";
+
+import { fetchCurrentUser } from "../shared/api";
+import { getAuthToken } from "../shared/auth";
+import type { User } from "../shared/types";
+
+export default function App() {
+  const [user, setUser] = useState<User | null>(null);
+  const [status, setStatus] = useState("Checking connection...");
+
+  useEffect(() => {
+    let active = true;
+
+    async function hydrate() {
+      try {
+        const token = await getAuthToken();
+        if (!token) {
+          if (active) {
+            setStatus("Not connected yet. Sign in from the popup.");
+          }
+          return;
+        }
+
+        const currentUser = await fetchCurrentUser(token);
+        if (active) {
+          setUser(currentUser);
+          setStatus("Connected to backend.");
+        }
+      } catch {
+        if (active) {
+          setStatus("Unable to load the account right now.");
+        }
+      }
+    }
+
+    void hydrate();
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  return (
+    <main className="sidepanel-shell">
+      <section className="hero-card">
+        <p className="eyebrow">Trade Copilot Extension</p>
+        <h1>Daily workflow will live here.</h1>
+        <p className="hero-copy">
+          Release 0 keeps this intentionally light while the extension shell,
+          auth wiring, and side panel foundation settle in.
+        </p>
+        <div className="status-pill">{status}</div>
+        {user ? <p className="signed-in-copy">Signed in as {user.email}</p> : null}
+      </section>
+
+      <section className="placeholder-grid">
+        <article className="placeholder-card">
+          <h2>Capture</h2>
+          <p>Broker-aware capture flows will plug in here in a later release.</p>
+        </article>
+        <article className="placeholder-card">
+          <h2>Analytics</h2>
+          <p>
+            Completed trade analytics will continue using the backend FIFO
+            processing source of truth.
+          </p>
+        </article>
+        <article className="placeholder-card">
+          <h2>Checklists</h2>
+          <p>Pre-trade and post-trade workflows are scaffolded but not active yet.</p>
+        </article>
+      </section>
+    </main>
+  );
+}
+</file>
+
+<file path="extension/src/sidepanel/main.tsx">
+import React from "react";
+import ReactDOM from "react-dom/client";
+
+import App from "./App";
+import "../styles/sidepanel.css";
+
+ReactDOM.createRoot(document.getElementById("root")!).render(
+  <React.StrictMode>
+    <App />
+  </React.StrictMode>
+);
+</file>
+
+<file path="extension/src/styles/popup.css">
+:root {
+  color: #e5eefb;
+  background: #08111f;
+  font-family: "Segoe UI", sans-serif;
+}
+
+body {
+  margin: 0;
+  min-width: 360px;
+  min-height: 480px;
+  background:
+    radial-gradient(circle at top, rgba(59, 130, 246, 0.35), transparent 42%),
+    linear-gradient(180deg, #09121f 0%, #030712 100%);
+}
+
+button,
+input {
+  font: inherit;
+}
+
+.popup-shell {
+  padding: 16px;
+}
+
+.panel {
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  border-radius: 18px;
+  background: rgba(15, 23, 42, 0.9);
+  box-shadow: 0 20px 40px rgba(2, 6, 23, 0.35);
+  padding: 18px;
+}
+
+.panel-header h1 {
+  margin: 6px 0;
+  font-size: 24px;
+}
+
+.eyebrow {
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-size: 12px;
+  color: #93c5fd;
+}
+
+.subcopy {
+  margin: 0 0 18px;
+  color: #cbd5e1;
+  line-height: 1.5;
+}
+
+.auth-form {
+  display: grid;
+  gap: 14px;
+}
+
+.auth-form label {
+  display: grid;
+  gap: 6px;
+  font-size: 14px;
+  color: #dbeafe;
+}
+
+.auth-form input {
+  border: 1px solid rgba(148, 163, 184, 0.4);
+  border-radius: 12px;
+  padding: 12px 14px;
+  background: rgba(15, 23, 42, 0.75);
+  color: #f8fafc;
+}
+
+.primary-button,
+.secondary-button {
+  border: 0;
+  border-radius: 12px;
+  padding: 12px 14px;
+  cursor: pointer;
+}
+
+.primary-button {
+  background: linear-gradient(135deg, #38bdf8, #2563eb);
+  color: white;
+  font-weight: 700;
+}
+
+.primary-button:disabled {
+  opacity: 0.65;
+  cursor: wait;
+}
+
+.secondary-button {
+  background: rgba(148, 163, 184, 0.14);
+  color: #e2e8f0;
+}
+
+.status-stack {
+  display: grid;
+  gap: 12px;
+}
+
+.status-card {
+  border-radius: 14px;
+  padding: 14px;
+  background: rgba(15, 23, 42, 0.75);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+}
+
+.status-card.success {
+  border-color: rgba(56, 189, 248, 0.45);
+  background: rgba(8, 47, 73, 0.45);
+}
+
+.status-label {
+  display: block;
+  margin-bottom: 6px;
+  color: #93c5fd;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+
+.error-text {
+  margin: 14px 0 0;
+  color: #fca5a5;
+  font-size: 13px;
+}
+</file>
+
+<file path="extension/src/styles/sidepanel.css">
+:root {
+  color: #f8fafc;
+  background: #f3f6fb;
+  font-family: "Segoe UI", sans-serif;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at top left, rgba(14, 165, 233, 0.18), transparent 28%),
+    linear-gradient(180deg, #f8fbff 0%, #eef4fb 100%);
+}
+
+.sidepanel-shell {
+  padding: 20px;
+  display: grid;
+  gap: 16px;
+}
+
+.hero-card,
+.placeholder-card {
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.86);
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.08);
+}
+
+.hero-card {
+  padding: 24px;
+}
+
+.eyebrow {
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  font-size: 12px;
+  color: #0369a1;
+}
+
+.hero-card h1 {
+  margin: 10px 0 12px;
+  font-size: 30px;
+  line-height: 1.1;
+  color: #0f172a;
+}
+
+.hero-copy,
+.placeholder-card p,
+.signed-in-copy {
+  color: #334155;
+  line-height: 1.6;
+}
+
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 10px 14px;
+  border-radius: 999px;
+  background: rgba(14, 165, 233, 0.12);
+  color: #0f172a;
+  font-weight: 600;
+}
+
+.placeholder-grid {
+  display: grid;
+  gap: 16px;
+}
+
+.placeholder-card {
+  padding: 18px 20px;
+}
+
+.placeholder-card h2 {
+  margin: 0 0 8px;
+  color: #0f172a;
+}
+</file>
+
+<file path="extension/tsconfig.json">
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "useDefineForClassFields": true,
+    "lib": ["DOM", "DOM.Iterable", "ES2020"],
+    "allowJs": false,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "strict": true,
+    "forceConsistentCasingInFileNames": true,
+    "module": "ESNext",
+    "moduleResolution": "Node",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "jsx": "react-jsx",
+    "types": ["chrome", "node", "vite/client"]
+  },
+  "include": ["src", "popup.html", "sidepanel.html", "vite.config.ts"]
+}
+</file>
+
+<file path="extension/vite.config.ts">
+import { resolve } from "path";
+import { fileURLToPath } from "url";
+
+import react from "@vitejs/plugin-react";
+import { defineConfig } from "vite";
+
+const rootDir = fileURLToPath(new URL(".", import.meta.url));
+
+export default defineConfig({
+  plugins: [react()],
+  build: {
+    outDir: "dist",
+    emptyOutDir: true,
+    sourcemap: true,
+    rollupOptions: {
+      input: {
+        popup: resolve(rootDir, "popup.html"),
+        sidepanel: resolve(rootDir, "sidepanel.html"),
+        background: resolve(rootDir, "src/background/index.ts"),
+        brokerDetector: resolve(
+          rootDir,
+          "src/content-scripts/broker-detector.ts"
+        ),
+      },
+      output: {
+        entryFileNames: (chunkInfo) => {
+          if (chunkInfo.name === "background") {
+            return "background.js";
+          }
+          if (chunkInfo.name === "brokerDetector") {
+            return "content-scripts/broker-detector.js";
+          }
+          return "assets/[name].js";
+        },
+        chunkFileNames: "assets/chunks/[name].js",
+        assetFileNames: "assets/[name].[ext]",
+      },
+    },
+  },
+});
+</file>
+
+<file path="backend/.gitignore">
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+.env
+.venv/
+venv/
+env/
+*.db
+*.sqlite3
+.pytest_cache/
+.mypy_cache/
+</file>
+
+<file path="backend/alembic.ini">
+[alembic]
+script_location = alembic
+#sqlalchemy.url = driver://user:pass@localhost/dbname
+sqlalchemy.url =
+
+[loggers]
+keys = root,sqlalchemy,alembic
+
+[handlers]
+keys = console
+
+[formatters]
+keys = generic
+
+[logger_root]
+level = WARN
+handlers = console
+
+[logger_sqlalchemy]
+level = WARN
+handlers =
+qualname = sqlalchemy.engine
+
+[logger_alembic]
+level = INFO
+handlers =
+qualname = alembic
+
+[handler_console]
+class = StreamHandler
+args = (sys.stderr,)
+level = NOTSET
+formatter = generic
+
+[formatter_generic]
+format = %(levelname)-5.5s [%(name)s] %(message)s
+datefmt = %H:%M:%S
+</file>
+
+<file path="backend/alembic/env.py">
+import sys
+from pathlib import Path
+from logging.config import fileConfig
+
+from sqlalchemy import engine_from_config
+from sqlalchemy import pool
+
+from alembic import context
+
+# Add the backend directory to Python path
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+# Import your app's config and models
+from app.config import settings
+from app.database import Base
+from app import models  # noqa: F401
+
+# this is the Alembic Config object
+config = context.config
+
+# Set the sqlalchemy.url from environment variable
+config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
+
+# Interpret the config file for Python logging
+if config.config_file_name is not None:
+    fileConfig(config.config_file_name)
+
+# Set target metadata for autogenerate
+target_metadata = Base.metadata
+
+def run_migrations_offline() -> None:
+    """Run migrations in 'offline' mode."""
+    url = config.get_main_option("sqlalchemy.url")
+    context.configure(
+        url=url,
+        target_metadata=target_metadata,
+        literal_binds=True,
+        dialect_opts={"paramstyle": "named"},
+    )
+
+    with context.begin_transaction():
+        context.run_migrations()
+
+
+def run_migrations_online() -> None:
+    """Run migrations in 'online' mode."""
+    connectable = engine_from_config(
+        config.get_section(config.config_ini_section, {}),
+        prefix="sqlalchemy.",
+        poolclass=pool.NullPool,
+    )
+
+    with connectable.connect() as connection:
+        context.configure(
+            connection=connection, 
+            target_metadata=target_metadata
+        )
+
+        with context.begin_transaction():
+            context.run_migrations()
+
+
+if context.is_offline_mode():
+    run_migrations_offline()
+else:
+    run_migrations_online()
+</file>
+
+<file path="backend/alembic/script.py.mako">
+"""${message}
+
+Revision ID: ${up_revision}
+Revises: ${down_revision | comma,n}
+Create Date: ${create_date}
+
+"""
+from typing import Sequence, Union
+
+from alembic import op
+import sqlalchemy as sa
+${imports if imports else ""}
+
+# revision identifiers, used by Alembic.
+revision: str = ${repr(up_revision)}
+down_revision: Union[str, None] = ${repr(down_revision)}
+branch_labels: Union[str, Sequence[str], None] = ${repr(branch_labels)}
+depends_on: Union[str, Sequence[str], None] = ${repr(depends_on)}
+
+
+def upgrade() -> None:
+    ${upgrades if upgrades else "pass"}
+
+
+def downgrade() -> None:
+    ${downgrades if downgrades else "pass"}
+</file>
+
+<file path="backend/alembic/versions/4333c1cfe0d1_add_completed_trades_table.py">
+"""Add completed_trades table
+
+Revision ID: 4333c1cfe0d1
+Revises: f273bc656ae9
+Create Date: 2026-04-04 01:27:11.878041
+
+"""
+from typing import Sequence, Union
+
+from alembic import op
+import sqlalchemy as sa
+
+
+# revision identifiers, used by Alembic.
+revision: str = '4333c1cfe0d1'
+down_revision: Union[str, None] = 'f273bc656ae9'
+branch_labels: Union[str, Sequence[str], None] = None
+depends_on: Union[str, Sequence[str], None] = None
+
+
+def upgrade() -> None:
+    # ### commands auto generated by Alembic - please adjust! ###
+    op.create_table('completed_trades',
+    sa.Column('id', sa.Integer(), nullable=False),
+    sa.Column('user_id', sa.Integer(), nullable=False),
+    sa.Column('stock_symbol', sa.String(length=20), nullable=False),
+    sa.Column('entry_date', sa.Date(), nullable=False),
+    sa.Column('exit_date', sa.Date(), nullable=False),
+    sa.Column('entry_price', sa.Numeric(precision=10, scale=2), nullable=False),
+    sa.Column('exit_price', sa.Numeric(precision=10, scale=2), nullable=False),
+    sa.Column('quantity', sa.Integer(), nullable=False),
+    sa.Column('pnl', sa.Numeric(precision=12, scale=2), nullable=False),
+    sa.Column('return_pct', sa.Numeric(precision=6, scale=2), nullable=False),
+    sa.Column('holding_days', sa.Integer(), nullable=False),
+    sa.Column('created_at', sa.DateTime(), nullable=True),
+    sa.ForeignKeyConstraint(['user_id'], ['users.id'], ),
+    sa.PrimaryKeyConstraint('id')
+    )
+    op.create_index(op.f('ix_completed_trades_id'), 'completed_trades', ['id'], unique=False)
+    op.create_index(op.f('ix_completed_trades_user_id'), 'completed_trades', ['user_id'], unique=False)
+    # ### end Alembic commands ###
+
+
+def downgrade() -> None:
+    # ### commands auto generated by Alembic - please adjust! ###
+    op.drop_index(op.f('ix_completed_trades_user_id'), table_name='completed_trades')
+    op.drop_index(op.f('ix_completed_trades_id'), table_name='completed_trades')
+    op.drop_table('completed_trades')
+    # ### end Alembic commands ###
+</file>
+
+<file path="backend/alembic/versions/f273bc656ae9_initial_tables.py">
+"""Initial tables
+
+Revision ID: f273bc656ae9
+Revises: 
+Create Date: 2026-03-31 01:07:59.860916
+
+"""
+from typing import Sequence, Union
+
+from alembic import op
+import sqlalchemy as sa
+from sqlalchemy.dialects import postgresql
+
+# revision identifiers, used by Alembic.
+revision: str = 'f273bc656ae9'
+down_revision: Union[str, None] = None
+branch_labels: Union[str, Sequence[str], None] = None
+depends_on: Union[str, Sequence[str], None] = None
+
+
+def upgrade() -> None:
+    # ### commands auto generated by Alembic - please adjust! ###
+    op.create_table('users',
+    sa.Column('id', sa.Integer(), nullable=False),
+    sa.Column('email', sa.String(length=255), nullable=False),
+    sa.Column('hashed_password', sa.String(length=255), nullable=False),
+    sa.Column('name', sa.String(length=100), nullable=True),
+    sa.Column('created_at', sa.DateTime(), nullable=True),
+    sa.PrimaryKeyConstraint('id')
+    )
+    op.create_index(op.f('ix_users_email'), 'users', ['email'], unique=True)
+    op.create_index(op.f('ix_users_id'), 'users', ['id'], unique=False)
+    op.create_table('pattern_analyses',
+    sa.Column('id', sa.Integer(), nullable=False),
+    sa.Column('user_id', sa.Integer(), nullable=False),
+    sa.Column('patterns', postgresql.JSONB(astext_type=sa.Text()), nullable=False),
+    sa.Column('analyzed_at', sa.DateTime(), nullable=True),
+    sa.ForeignKeyConstraint(['user_id'], ['users.id'], ),
+    sa.PrimaryKeyConstraint('id')
+    )
+    op.create_index(op.f('ix_pattern_analyses_id'), 'pattern_analyses', ['id'], unique=False)
+    op.create_index(op.f('ix_pattern_analyses_user_id'), 'pattern_analyses', ['user_id'], unique=False)
+    op.create_table('trades',
+    sa.Column('id', sa.Integer(), nullable=False),
+    sa.Column('user_id', sa.Integer(), nullable=False),
+    sa.Column('stock_symbol', sa.String(length=20), nullable=False),
+    sa.Column('trade_type', sa.String(length=10), nullable=False),
+    sa.Column('quantity', sa.Integer(), nullable=False),
+    sa.Column('price', sa.Numeric(precision=10, scale=2), nullable=False),
+    sa.Column('trade_date', sa.Date(), nullable=False),
+    sa.Column('broker', sa.String(length=50), nullable=True),
+    sa.Column('import_source', sa.String(length=20), nullable=True),
+    sa.Column('created_at', sa.DateTime(), nullable=True),
+    sa.ForeignKeyConstraint(['user_id'], ['users.id'], ),
+    sa.PrimaryKeyConstraint('id')
+    )
+    op.create_index(op.f('ix_trades_id'), 'trades', ['id'], unique=False)
+    op.create_index(op.f('ix_trades_user_id'), 'trades', ['user_id'], unique=False)
+    # ### end Alembic commands ###
+
+
+def downgrade() -> None:
+    # ### commands auto generated by Alembic - please adjust! ###
+    op.drop_index(op.f('ix_trades_user_id'), table_name='trades')
+    op.drop_index(op.f('ix_trades_id'), table_name='trades')
+    op.drop_table('trades')
+    op.drop_index(op.f('ix_pattern_analyses_user_id'), table_name='pattern_analyses')
+    op.drop_index(op.f('ix_pattern_analyses_id'), table_name='pattern_analyses')
+    op.drop_table('pattern_analyses')
+    op.drop_index(op.f('ix_users_id'), table_name='users')
+    op.drop_index(op.f('ix_users_email'), table_name='users')
+    op.drop_table('users')
+    # ### end Alembic commands ###
+</file>
+
+<file path="backend/app/__init__.py">
+
+</file>
+
+<file path="backend/app/config.py">
+import json
+
+from pydantic import field_validator
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+class Settings(BaseSettings):
+    DATABASE_URL: str
+    SECRET_KEY: str
+    ALGORITHM: str = "HS256"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 10080
+    CORS_ALLOW_ORIGINS: list[str] = [
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+    ]
+    CORS_ALLOW_ORIGIN_REGEX: str = (
+        r"^(chrome-extension://.*|https?://(localhost|127\.0\.0\.1)(:\d+)?)$"
+    )
+
+    @field_validator("CORS_ALLOW_ORIGINS", mode="before")
+    @classmethod
+    def parse_cors_allow_origins(cls, value: str | list[str]) -> list[str]:
+        if isinstance(value, list):
+            return value
+        if not value:
+            return []
+
+        value = value.strip()
+        if value.startswith("["):
+            return json.loads(value)
+
+        return [origin.strip() for origin in value.split(",") if origin.strip()]
+
+    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+
+
+settings = Settings()
+</file>
+
+<file path="backend/app/models/completed_trade.py">
+from datetime import datetime
+
+from sqlalchemy import Column, Date, DateTime, ForeignKey, Integer, Numeric, String
+from sqlalchemy.orm import relationship
+
+from app.database import Base
+
+
+class CompletedTrade(Base):
+    __tablename__ = "completed_trades"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    stock_symbol = Column(String(20), nullable=False)
+    entry_date = Column(Date, nullable=False)
+    exit_date = Column(Date, nullable=False)
+    entry_price = Column(Numeric(10, 2), nullable=False)
+    exit_price = Column(Numeric(10, 2), nullable=False)
+    quantity = Column(Integer, nullable=False)
+    pnl = Column(Numeric(12, 2), nullable=False)
+    return_pct = Column(Numeric(6, 2), nullable=False)
+    holding_days = Column(Integer, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    user = relationship("User", back_populates="completed_trades")
+</file>
+
+<file path="backend/app/models/pattern_analysis.py">
+from datetime import datetime
+
+from sqlalchemy import Column, DateTime, ForeignKey, Integer
+from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.orm import relationship
+
+from app.database import Base
+
+
+class PatternAnalysis(Base):
+    __tablename__ = "pattern_analyses"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    patterns = Column(JSONB, nullable=False)
+    analyzed_at = Column(DateTime, default=datetime.utcnow)
+
+    user = relationship("User", back_populates="pattern_analyses")
+</file>
+
+<file path="backend/app/models/trade.py">
+from datetime import datetime
+
+from sqlalchemy import (
+    Column,
+    Date,
+    DateTime,
+    ForeignKey,
+    Integer,
+    Numeric,
+    String,
+    Text,
+    Time,
+)
+from sqlalchemy.orm import relationship
+
+from app.database import Base
+
+
+class Trade(Base):
+    __tablename__ = "trades"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    stock_symbol = Column(String(20), nullable=False)
+    trade_type = Column(String(10), nullable=False)
+    quantity = Column(Integer, nullable=False)
+    price = Column(Numeric(10, 2), nullable=False)
+    trade_date = Column(Date, nullable=False)
+    broker = Column(String(50))
+    import_source = Column(String(20))
+    emotion_tag = Column(String(50))
+    notes = Column(Text)
+    screenshot_url = Column(String(500))
+    entry_method = Column(String(100))
+    trade_time = Column(Time)
+    instrument_type = Column(String(50))
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    user = relationship("User", back_populates="trades")
+</file>
+
+<file path="backend/app/routes/__init__.py">
+
+</file>
+
+<file path="backend/app/routes/health.py">
+from fastapi import APIRouter
+
+router = APIRouter()
+
+
+@router.get("/health")
+async def health_check():
+    return {"status": "healthy"}
+</file>
+
+<file path="backend/app/schemas/__init__.py">
+
+</file>
+
+<file path="backend/app/schemas/auth.py">
+from pydantic import BaseModel, EmailStr
+
+
+class SignupRequest(BaseModel):
+    email: EmailStr
+    password: str
+    name: str | None = None
+
+
+class LoginRequest(BaseModel):
+    email: EmailStr
+    password: str
+
+
+class TokenResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+</file>
+
+<file path="backend/app/schemas/user.py">
+from datetime import datetime
+
+from pydantic import BaseModel, EmailStr
+
+
+class UserResponse(BaseModel):
+    id: int
+    email: str
+    name: str | None = None
+    subscription_status: str | None = None
+    subscription_plan: str | None = None
+    subscription_expires_at: datetime | None = None
+    razorpay_customer_id: str | None = None
+    razorpay_subscription_id: str | None = None
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+</file>
+
+<file path="backend/app/services/__init__.py">
+
+</file>
+
+<file path="backend/app/services/csv_parser.py">
+import io
+import csv
+from datetime import datetime
+
+
+def parse_groww_csv(file_content: bytes) -> list[dict]:
+    """Parse Groww CSV export files to extract trade details.
+
+    Expected CSV format with headers:
+        Trade Date,Stock Symbol,Transaction Type,Quantity,Price
+
+    Example rows:
+        2026-03-10,TCS,BUY,10,3850.00
+        2026-03-11,INFY,SELL,5,1420.50
+
+    Args:
+        file_content: Raw bytes of the CSV file.
+
+    Returns:
+        List of dicts with keys: stock_symbol, trade_type, quantity, price, trade_date.
+        Returns empty list if file is empty.
+
+    Raises:
+        ValueError: If required columns are missing from the CSV.
+    """
+    if not file_content or not file_content.strip():
+        return []
+
+    text = file_content.decode("utf-8")
+    reader = csv.DictReader(io.StringIO(text))
+
+    required_columns = {"Trade Date", "Stock Symbol", "Transaction Type", "Quantity", "Price"}
+    if reader.fieldnames is None or not required_columns.issubset(set(reader.fieldnames)):
+        raise ValueError(
+            f"Missing required columns. Expected: {required_columns}, "
+            f"Found: {set(reader.fieldnames) if reader.fieldnames else 'none'}"
+        )
+
+    trades: list[dict] = []
+
+    for row in reader:
+        try:
+            trade_date = datetime.strptime(row["Trade Date"].strip(), "%Y-%m-%d").date()
+            quantity = int(row["Quantity"].strip())
+            price = float(row["Price"].strip())
+            trade_type = row["Transaction Type"].strip().upper()
+            stock_symbol = row["Stock Symbol"].strip()
+
+            trades.append({
+                "stock_symbol": stock_symbol,
+                "trade_type": trade_type,
+                "quantity": quantity,
+                "price": price,
+                "trade_date": trade_date,
+            })
+        except (ValueError, KeyError):
+            continue
+
+    return trades
+</file>
+
+<file path="backend/app/services/trade_processor.py">
+import re
+from datetime import date
+from decimal import Decimal, InvalidOperation
+
+from sqlalchemy.orm import Session
+
+from app.models.completed_trade import CompletedTrade
+from app.models.trade import Trade
+
+
+def clean_stock_symbol(symbol: str) -> str:
+    """Remove exchange suffixes and normalize stock symbol."""
+    symbol = symbol.strip().upper()
+    symbol = re.sub(r"\.(NS|BO|NSE|BSE)$", "", symbol)
+    return symbol
+
+
+def validate_trade_data(trade_dict: dict) -> bool:
+    """Validate that a trade dictionary has all required fields with valid values."""
+    required_fields = ["stock_symbol", "trade_type", "quantity", "price", "trade_date"]
+
+    for field in required_fields:
+        if field not in trade_dict or trade_dict[field] is None:
+            return False
+
+    if trade_dict["trade_type"] not in ["BUY", "SELL"]:
+        return False
+
+    try:
+        if int(trade_dict["quantity"]) <= 0:
+            return False
+    except (ValueError, TypeError):
+        return False
+
+    try:
+        if Decimal(str(trade_dict["price"])) <= 0:
+            return False
+    except (InvalidOperation, ValueError, TypeError):
+        return False
+
+    if not isinstance(trade_dict["trade_date"], date):
+        try:
+            date.fromisoformat(str(trade_dict["trade_date"]))
+        except (ValueError, TypeError):
+            return False
+
+    return True
+
+
+def calculate_completed_trades(db: Session, user_id: int) -> list[CompletedTrade]:
+    """Match BUY/SELL pairs using FIFO and calculate P&L for each completed trade."""
+    trades = (
+        db.query(Trade)
+        .filter(Trade.user_id == user_id)
+        .order_by(Trade.trade_date.asc(), Trade.id.asc())
+        .all()
+    )
+
+    # Track open positions: {symbol: [(remaining_qty, price, date), ...]}
+    positions: dict[str, list[list]] = {}
+    completed_trades: list[CompletedTrade] = []
+
+    for trade in trades:
+        symbol = clean_stock_symbol(trade.stock_symbol)
+        qty = int(trade.quantity)
+        price = Decimal(str(trade.price))
+        trade_date = trade.trade_date
+
+        if trade.trade_type == "BUY":
+            if symbol not in positions:
+                positions[symbol] = []
+            positions[symbol].append([qty, price, trade_date])
+
+        elif trade.trade_type == "SELL":
+            if symbol not in positions or not positions[symbol]:
+                continue
+
+            remaining_sell_qty = qty
+
+            while remaining_sell_qty > 0 and positions[symbol]:
+                buy_entry = positions[symbol][0]
+                buy_qty, buy_price, buy_date = buy_entry[0], buy_entry[1], buy_entry[2]
+
+                matched_qty = min(buy_qty, remaining_sell_qty)
+
+                pnl = (price - buy_price) * matched_qty
+                return_pct = ((price - buy_price) / buy_price) * 100
+                holding_days = (trade_date - buy_date).days
+
+                completed = CompletedTrade(
+                    user_id=user_id,
+                    stock_symbol=symbol,
+                    entry_date=buy_date,
+                    exit_date=trade_date,
+                    entry_price=buy_price,
+                    exit_price=price,
+                    quantity=matched_qty,
+                    pnl=pnl,
+                    return_pct=return_pct,
+                    holding_days=holding_days,
+                )
+                completed_trades.append(completed)
+
+                buy_entry[0] -= matched_qty
+                remaining_sell_qty -= matched_qty
+
+                if buy_entry[0] <= 0:
+                    positions[symbol].pop(0)
+
+    return completed_trades
+</file>
+
+<file path="backend/app/utils/__init__.py">
+
+</file>
+
+<file path="backend/curl">
+
+</file>
+
+<file path="backend/delete_bad_trades.py">
+from app.database import SessionLocal
+from app.models.trade import Trade
+
+db = SessionLocal()
+
+# Delete trades with 0.00 price
+bad_trades = db.query(Trade).filter(Trade.price == 0).all()
+
+print(f"Found {len(bad_trades)} bad trades with price = 0.00:")
+for trade in bad_trades:
+    print(f"  ID {trade.id}: {trade.trade_type} {trade.quantity} {trade.stock_symbol} @ ₹{trade.price}")
+
+confirm = input("\nDelete these trades? (yes/no): ")
+
+if confirm.lower() == 'yes':
+    for trade in bad_trades:
+        db.delete(trade)
+    db.commit()
+    print(f"\n✅ Deleted {len(bad_trades)} bad trades")
+else:
+    print("\n❌ Cancelled")
+
+db.close()
+</file>
+
+<file path="backend/README.md">
+# Trade Intelligence Platform - Backend
+
+FastAPI backend with PostgreSQL (Neon DB), JWT authentication, and SQLAlchemy ORM.
+
+## Setup
+
+```cmd
+cd backend
+python -m venv venv
+venv\Scripts\activate
+pip install -r requirements.txt
+```
+
+## Configuration
+
+Copy `.env.example` to `.env` and fill in your values:
+
+```cmd
+copy .env.example .env
+```
+
+Release 0 adds optional CORS configuration for local web and extension work:
+
+```env
+CORS_ALLOW_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
+```
+
+`chrome-extension://<extension-id>` origins are already allowed by regex for local unpacked extension development.
+
+## Database Migrations
+
+```cmd
+# Generate a migration after model changes
+alembic revision --autogenerate -m "description"
+
+# Apply migrations
+alembic upgrade head
+```
+
+## Run
+
+```cmd
+uvicorn app.main:app --reload
+```
+
+API docs available at `http://localhost:8000/docs`
+
+## Endpoints
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | /health | Health check |
+| POST | /api/auth/signup | Register new user |
+| POST | /api/auth/login | Login, returns JWT |
+| GET | /api/auth/me | Get current user (auth required) |
+</file>
+
+<file path="backend/requirements.txt">
+fastapi==0.135.1
+uvicorn[standard]==0.36.0
+sqlalchemy==2.0.37
+alembic==1.15.0
+pydantic==2.12.5
+pydantic-settings==2.12.0
+python-multipart==0.0.22
+python-dotenv==1.0.1
+psycopg2-binary==2.9.11
+PyJWT==2.10.1
+bcrypt==4.2.1
+pydantic[email]
+</file>
+
+<file path="backend/test_csv_debug.py">
+from app.services.csv_parser import parse_groww_csv
+
+# Read the actual CSV file you created
+with open('test_csv.csv', 'rb') as f:
+    content = f.read()
+
+print("Testing CSV parser...")
+print("="*60)
+print("File size:", len(content), "bytes")
+print("\nFile content (first 200 chars):")
+print(content[:200].decode('utf-8'))
+print("="*60)
+
+try:
+    result = parse_groww_csv(content)
+    
+    print(f"\nParsed {len(result)} trades:")
+    if len(result) == 0:
+        print("❌ NO TRADES FOUND - Parser is not working!")
+        print("\nDEBUGGING INFO:")
+        print("1. Check if file has correct headers")
+        print("2. Check if date format is YYYY-MM-DD")
+        print("3. Check for extra spaces or special characters")
+    else:
+        for i, trade in enumerate(result, 1):
+            print(f"\n{i}. {trade['trade_type']} {trade['quantity']} {trade['stock_symbol']}")
+            print(f"   Price: ₹{trade['price']}")
+            print(f"   Date: {trade['trade_date']}")
+except Exception as e:
+    print(f"\n❌ ERROR: {e}")
+    print(f"Error type: {type(e).__name__}")
+</file>
+
+<file path="backend/test_csv_parser.py">
+from app.services.csv_parser import parse_groww_csv
+
+with open('test_csv.csv', 'rb') as f:
+    content = f.read()
+
+result = parse_groww_csv(content)
+
+print(f"Parsed {len(result)} trades:")
+for trade in result:
+    print(f"  {trade['trade_type']} {trade['quantity']} {trade['stock_symbol']} @ ₹{trade['price']} on {trade['trade_date']}")
+</file>
+
+<file path="backend/test_csv.csv">
+Trade Date,Stock Symbol,Transaction Type,Quantity,Price
+2026-03-10,TCS,BUY,10,3850.00
+2026-03-11,INFY,SELL,5,1420.50
+2026-03-12,RELIANCE,BUY,25,2450.00
+</file>
+
+<file path="backend/test_email_parser.py">
+from app.services.email_parser import parse_zerodha_contract_note
+
+email = """
+You have bought 10 shares of TCS at ₹3,850 on 10-MAR-2026
+You have sold 5 shares of INFY at ₹1,420.50 on 11-MAR-2026
+You have bought 25 shares of RELIANCE at ₹2,450 on 12-MAR-2026
+"""
+
+result = parse_zerodha_contract_note(email)
+
+print(f"Parsed {len(result)} trades:")
+for trade in result:
+    print(f"  {trade['trade_type']} {trade['quantity']} {trade['stock_symbol']} @ ₹{trade['price']} on {trade['trade_date']}")
+</file>
+
+<file path="backend/test_import.py">
+"from app.config import settings; print('? Import successful!'); print(f'Database: {settings.DATABASE_URL[:20]}...')"
+</file>
+
+<file path="backend/test_parser_debug.py">
+from app.services.email_parser import parse_zerodha_contract_note
+
+email = """You have bought 10 shares of TCS at ₹3,850 on 10-MAR-2026
+You have sold 5 shares of INFY at ₹1,420.50 on 11-MAR-2026"""
+
+print("Testing email parser...")
+print("="*60)
+print("Input email:")
+print(email)
+print("="*60)
+
+result = parse_zerodha_contract_note(email)
+
+print(f"\nParsed {len(result)} trades:")
+if len(result) == 0:
+    print("❌ NO TRADES FOUND - Parser is not working!")
+else:
+    for i, trade in enumerate(result, 1):
+        print(f"\n{i}. {trade['trade_type']} {trade['quantity']} {trade['stock_symbol']}")
+        print(f"   Price: ₹{trade['price']}")
+        print(f"   Date: {trade['trade_date']}")
+</file>
+
+<file path="backend/test_setup.py">
+"""Backend setup verification script. Run with: python test_setup.py"""
+
+import sys
+from pathlib import Path
+
+# Ensure the backend directory is on the Python path
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+passed = 0
+failed = 0
+
+
+def check(label, fn):
+    global passed, failed
+    try:
+        fn()
+        passed += 1
+    except Exception as e:
+        failed += 1
+        print(f"   Error: {e}\n")
+
+
+print("Testing backend setup...\n")
+
+# ── 1. Config ────────────────────────────────────────────────
+print("1. Config Import:", end=" ")
+def test_config():
+    from app.config import settings
+    print("\u2705 Success")
+    url_preview = settings.DATABASE_URL[:30] + "..." if len(settings.DATABASE_URL) > 30 else settings.DATABASE_URL
+    print(f"   Database URL: {url_preview}")
+    print(f"   Algorithm: {settings.ALGORITHM}")
+    print(f"   Token Expiry: {settings.ACCESS_TOKEN_EXPIRE_MINUTES} minutes\n")
+check("Config Import", test_config)
+
+# ── 2. Database ──────────────────────────────────────────────
+print("2. Database Import:", end=" ")
+def test_database():
+    from app.database import Base, engine, SessionLocal, get_db
+    print("\u2705 Success")
+    print(f"   Base class exists: {Base is not None}")
+    print(f"   Engine created: {engine is not None}")
+    print(f"   SessionLocal ready: {SessionLocal is not None}\n")
+check("Database Import", test_database)
+
+# ── 3. Models ────────────────────────────────────────────────
+print("3. Models Import:", end=" ")
+models_ok = True
+def test_models():
+    global models_ok
+    errors = []
+
+    try:
+        from app.models.user import User
+        user_status = "\u2705"
+        user_table = User.__tablename__
+    except Exception as e:
+        user_status = f"\u274c ({e})"
+        user_table = None
+        models_ok = False
+
+    try:
+        from app.models.trade import Trade
+        trade_status = "\u2705"
+        trade_table = Trade.__tablename__
+    except Exception as e:
+        trade_status = f"\u274c ({e})"
+        trade_table = None
+        models_ok = False
+
+    try:
+        from app.models.pattern_analysis import PatternAnalysis
+        pattern_status = "\u2705"
+        pattern_table = PatternAnalysis.__tablename__
+    except Exception as e:
+        pattern_status = f"\u274c ({e})"
+        pattern_table = None
+        models_ok = False
+
+    try:
+        from app.models.behavioral_pattern import BehavioralPattern
+        behavioral_status = "\u2705"
+        behavioral_table = BehavioralPattern.__tablename__
+    except Exception as e:
+        behavioral_status = f"\u274c ({e})"
+        behavioral_table = None
+        models_ok = False
+
+    if models_ok:
+        print("\u2705 Success")
+    else:
+        print("\u274c Partial failure")
+
+    print(f"   - User model: {user_status}  (table: {user_table})")
+    print(f"   - Trade model: {trade_status}  (table: {trade_table})")
+    print(f"   - PatternAnalysis model: {pattern_status}  (table: {pattern_table})\n")
+    print(
+        f"   - BehavioralPattern model: {behavioral_status}  "
+        f"(table: {behavioral_table})\n"
+    )
+check("Models Import", test_models)
+
+# ── 4. Auth Service ──────────────────────────────────────────
+print("4. Auth Service:", end=" ")
+def test_auth_service():
+    from app.services.auth_service import hash_password, verify_password, create_access_token, decode_access_token
+    hashed = hash_password("testpass123")
+    assert verify_password("testpass123", hashed), "Password verification failed"
+    token = create_access_token({"sub": "test@example.com"})
+    payload = decode_access_token(token)
+    assert payload is not None and payload["sub"] == "test@example.com", "Token decode failed"
+    print("\u2705 Success")
+    print("   Password hashing: \u2705")
+    print("   JWT create/decode: \u2705\n")
+check("Auth Service", test_auth_service)
+
+# ── 5. Database Connection ───────────────────────────────────
+print("5. Database Connection:", end=" ")
+def test_connection():
+    from app.database import engine
+    from sqlalchemy import text
+    with engine.connect() as conn:
+        result = conn.execute(text("SELECT 1"))
+        value = result.scalar()
+        assert value == 1
+    print("\u2705 Success")
+    print("   Connection test passed\n")
+check("Database Connection", test_connection)
+
+# ── Summary ──────────────────────────────────────────────────
+print("=" * 45)
+if failed == 0:
+    print(f"\u2705 All {passed} checks passed! Backend is ready.")
+else:
+    print(f"\u274c {failed} check(s) failed, {passed} passed.")
+    print("   Fix the errors above before running the server.")
+</file>
+
+<file path="backend/test_trade_processor.py">
+from app.database import SessionLocal
+from app.models.trade import Trade
+from app.services.trade_processor import calculate_completed_trades
+
+db = SessionLocal()
+
+# Debug: Show all trades for user_id=1
+all_trades = db.query(Trade).filter(Trade.user_id == 1).order_by(Trade.trade_date.asc()).all()
+print(f"\n--- DEBUG: All trades for user_id=1 ---")
+print(f"Total trades in DB: {len(all_trades)}")
+for t in all_trades:
+    print(f"  {t.stock_symbol} | {t.trade_type} | qty={t.quantity} | price={t.price} | date={t.trade_date}")
+print("--- END DEBUG ---\n")
+
+# Assuming user_id = 1
+completed = calculate_completed_trades(db, user_id=1)
+
+print(f"Found {len(completed)} completed trades:")
+for trade in completed:
+    print(f"  {trade.stock_symbol}: {trade.quantity} shares")
+    print(f"    Entry: ₹{trade.entry_price} on {trade.entry_date}")
+    print(f"    Exit: ₹{trade.exit_price} on {trade.exit_date}")
+    print(f"    P&L: ₹{trade.pnl} ({trade.return_pct}%)")
+    print(f"    Holding: {trade.holding_days} days\n")
+
+db.close()
+</file>
+
+<file path="frontend/.env.local.example">
+NEXT_PUBLIC_API_URL=http://localhost:8000/api
+</file>
+
+<file path="frontend/.gitignore">
+node_modules/
+.next/
+out/
+.env.local
+*.tsbuildinfo
+next-env.d.ts
+</file>
+
+<file path="frontend/next.config.js">
+/** @type {import('next').NextConfig} */
+const nextConfig = {};
+
+module.exports = nextConfig;
+</file>
+
+<file path="frontend/package.json">
+{
+  "name": "trade-journal-frontend",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "next": "14.2.21",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.17.10",
+    "@types/react": "^18.3.14",
+    "@types/react-dom": "^18.3.5",
+    "autoprefixer": "^10.4.20",
+    "postcss": "^8.4.49",
+    "tailwindcss": "^3.4.17",
+    "typescript": "^5.7.2"
+  }
+}
+</file>
+
+<file path="frontend/postcss.config.js">
+module.exports = {
+  plugins: {
+    tailwindcss: {},
+    autoprefixer: {},
+  },
+};
+</file>
+
+<file path="frontend/README.md">
+# Trade Intelligence Platform - Frontend
+
+Next.js 14 frontend with TypeScript, Tailwind CSS, and JWT authentication.
+
+## Setup
+
+```cmd
+cd frontend
+npm install
+copy .env.local.example .env.local
+```
+
+## Run
+
+```cmd
+npm run dev
+```
+
+Opens at `http://localhost:3000`. Requires the backend running on `http://localhost:8000`.
+
+## Pages
+
+| Route | Description |
+|-------|-------------|
+| `/` | Landing page |
+| `/signup` | Create account |
+| `/login` | Login |
+| `/dashboard` | Protected dashboard |
+</file>
+
+<file path="frontend/src/app/dashboard/page.tsx">
+"use client";
+
+import { useEffect, useState } from "react";
+import AuthGuard from "@/components/AuthGuard";
+import Card from "@/components/ui/Card";
+import { getMe } from "@/lib/auth";
+import type { User } from "@/types/user";
+
+function DashboardContent() {
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    getMe()
+      .then(setUser)
+      .catch((err) =>
+        setError(err instanceof Error ? err.message : "Failed to load user")
+      )
+      .finally(() => setLoading(false));
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="flex min-h-[calc(100vh-57px)] items-center justify-center">
+        <svg
+          className="h-8 w-8 animate-spin text-indigo-600"
+          viewBox="0 0 24 24"
+          fill="none"
+        >
+          <circle
+            className="opacity-25"
+            cx="12"
+            cy="12"
+            r="10"
+            stroke="currentColor"
+            strokeWidth="4"
+          />
+          <path
+            className="opacity-75"
+            fill="currentColor"
+            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+          />
+        </svg>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="mx-auto max-w-4xl px-4 py-12">
+        <div className="rounded-lg bg-red-50 p-4 text-sm text-red-700">
+          {error}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mx-auto max-w-4xl px-4 py-12">
+      <h1 className="text-3xl font-bold">Dashboard</h1>
+      <p className="mt-1 text-gray-500">
+        Welcome back, {user?.name || user?.email}!
+      </p>
+
+      <div className="mt-8 grid gap-6 sm:grid-cols-2">
+        <Card>
+          <h2 className="text-sm font-medium text-gray-500">Account</h2>
+          <p className="mt-1 text-lg font-semibold">{user?.email}</p>
+          <p className="mt-0.5 text-xs text-gray-400">
+            Joined {new Date(user!.created_at).toLocaleDateString()}
+          </p>
+        </Card>
+
+        <Card>
+          <h2 className="text-sm font-medium text-gray-500">Trades</h2>
+          <p className="mt-1 text-lg font-semibold">0 trades</p>
+          <p className="mt-0.5 text-xs text-gray-400">
+            Import your first trades to get started
+          </p>
+        </Card>
+      </div>
+
+      <Card className="mt-6">
+        <div className="flex flex-col items-center py-8 text-center">
+          <div className="rounded-full bg-indigo-50 p-4">
+            <svg
+              className="h-8 w-8 text-indigo-600"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={1.5}
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"
+              />
+            </svg>
+          </div>
+          <h3 className="mt-4 text-lg font-semibold">Upload Trades</h3>
+          <p className="mt-1 max-w-sm text-sm text-gray-500">
+            Trade import from Zerodha, Groww, and CSV files coming soon. Stay
+            tuned!
+          </p>
+        </div>
+      </Card>
+    </div>
+  );
+}
+
+export default function DashboardPage() {
+  return (
+    <AuthGuard>
+      <DashboardContent />
+    </AuthGuard>
+  );
+}
+</file>
+
+<file path="frontend/src/app/dashboard/trades/page.tsx">
+"use client";
+
+import { useCallback, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import AuthGuard from "@/components/AuthGuard";
+import Card from "@/components/ui/Card";
+import Button from "@/components/ui/Button";
+import { getTrades, getTradesSummary } from "@/lib/trades";
+import type { Trade, TradesSummary } from "@/types/trade";
+
+const PAGE_SIZE = 20;
+
+function formatCurrency(value: number): string {
+  return "₹" + value.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function formatDate(dateStr: string): string {
+  return new Date(dateStr).toLocaleDateString("en-IN", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+function Spinner() {
+  return (
+    <div className="flex min-h-[calc(100vh-57px)] items-center justify-center">
+      <svg className="h-8 w-8 animate-spin text-indigo-600" viewBox="0 0 24 24" fill="none">
+        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+      </svg>
+    </div>
+  );
+}
+
+function TradesContent() {
+  const router = useRouter();
+  const [trades, setTrades] = useState<Trade[]>([]);
+  const [summary, setSummary] = useState<TradesSummary | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [page, setPage] = useState(0);
+
+  const [filters, setFilters] = useState({
+    symbol: "",
+    start_date: "",
+    end_date: "",
+  });
+  const [appliedFilters, setAppliedFilters] = useState({
+    symbol: "",
+    start_date: "",
+    end_date: "",
+  });
+
+  const fetchTrades = useCallback(
+    async (currentFilters: typeof appliedFilters, currentPage: number) => {
+      setLoading(true);
+      setError("");
+      try {
+        const [tradesData, summaryData] = await Promise.all([
+          getTrades({
+            ...(currentFilters.symbol ? { symbol: currentFilters.symbol } : {}),
+            ...(currentFilters.start_date ? { start_date: currentFilters.start_date } : {}),
+            ...(currentFilters.end_date ? { end_date: currentFilters.end_date } : {}),
+            limit: PAGE_SIZE,
+            offset: currentPage * PAGE_SIZE,
+          }),
+          getTradesSummary(),
+        ]);
+        setTrades(tradesData);
+        setSummary(summaryData);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to load trades");
+      } finally {
+        setLoading(false);
+      }
+    },
+    []
+  );
+
+  useEffect(() => {
+    fetchTrades(appliedFilters, page);
+  }, [appliedFilters, page, fetchTrades]);
+
+  function applyFilters() {
+    setPage(0);
+    setAppliedFilters({ ...filters });
+  }
+
+  function clearFilters() {
+    const empty = { symbol: "", start_date: "", end_date: "" };
+    setFilters(empty);
+    setAppliedFilters(empty);
+    setPage(0);
+  }
+
+  if (loading && trades.length === 0) return <Spinner />;
+
+  return (
+    <div className="mx-auto max-w-7xl px-4 py-10">
+      {/* Header */}
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">Your Trades</h1>
+          <p className="mt-1 text-gray-500">View and filter your imported trades</p>
+        </div>
+        <Button onClick={() => router.push("/import")}>
+          + Import Trades
+        </Button>
+      </div>
+
+      {/* Summary cards */}
+      {summary && (
+        <div className="mt-8 grid gap-4 sm:grid-cols-3">
+          <Card>
+            <p className="text-sm font-medium text-gray-500">Total Trades</p>
+            <p className="mt-1 text-2xl font-bold text-gray-900">
+              {summary.total_trades.toLocaleString("en-IN")}
+            </p>
+          </Card>
+          <Card>
+            <p className="text-sm font-medium text-gray-500">Total Invested</p>
+            <p className="mt-1 text-2xl font-bold text-gray-900">
+              {formatCurrency(summary.total_invested)}
+            </p>
+          </Card>
+          <Card>
+            <p className="text-sm font-medium text-gray-500">Unique Symbols</p>
+            <p className="mt-1 text-2xl font-bold text-gray-900">
+              {summary.unique_symbols}
+            </p>
+          </Card>
+        </div>
+      )}
+
+      {/* Filters */}
+      <Card className="mt-6">
+        <h2 className="mb-4 text-sm font-semibold text-gray-700">Filters</h2>
+        <div className="grid gap-3 sm:grid-cols-3">
+          <div>
+            <label className="mb-1 block text-xs font-medium text-gray-600">
+              Symbol
+            </label>
+            <input
+              type="text"
+              placeholder="e.g. INFY"
+              value={filters.symbol}
+              onChange={(e) =>
+                setFilters((f) => ({ ...f, symbol: e.target.value.toUpperCase() }))
+              }
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-gray-600">
+              Start Date
+            </label>
+            <input
+              type="date"
+              value={filters.start_date}
+              onChange={(e) =>
+                setFilters((f) => ({ ...f, start_date: e.target.value }))
+              }
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-gray-600">
+              End Date
+            </label>
+            <input
+              type="date"
+              value={filters.end_date}
+              onChange={(e) =>
+                setFilters((f) => ({ ...f, end_date: e.target.value }))
+              }
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+          </div>
+        </div>
+        <div className="mt-4 flex gap-3">
+          <Button onClick={applyFilters} loading={loading}>
+            Apply Filters
+          </Button>
+          <Button variant="outline" onClick={clearFilters}>
+            Clear Filters
+          </Button>
+        </div>
+      </Card>
+
+      {/* Error */}
+      {error && (
+        <div className="mt-6 rounded-lg bg-red-50 p-4 text-sm text-red-700">
+          {error}
+        </div>
+      )}
+
+      {/* Trades table */}
+      <div className="mt-6">
+        {trades.length === 0 && !loading ? (
+          <Card>
+            <div className="flex flex-col items-center py-16 text-center">
+              <div className="rounded-full bg-gray-100 p-4">
+                <svg
+                  className="h-8 w-8 text-gray-400"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={1.5}
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z"
+                  />
+                </svg>
+              </div>
+              <h3 className="mt-4 text-lg font-semibold text-gray-900">
+                No trades yet
+              </h3>
+              <p className="mt-1 text-sm text-gray-500">
+                Import your first trades to get started.
+              </p>
+              <Button className="mt-6" onClick={() => router.push("/import")}>
+                Import Trades
+              </Button>
+            </div>
+          </Card>
+        ) : (
+          <>
+            <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-sm">
+              <table className="min-w-full divide-y divide-gray-200 text-sm">
+                <thead className="bg-gray-50">
+                  <tr>
+                    {["Date", "Symbol", "Type", "Quantity", "Price", "Total", "Broker", "Source"].map(
+                      (col) => (
+                        <th
+                          key={col}
+                          className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500"
+                        >
+                          {col}
+                        </th>
+                      )
+                    )}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {trades.map((trade) => {
+                    const total = trade.quantity * trade.price;
+                    return (
+                      <tr key={trade.id} className="hover:bg-gray-50">
+                        <td className="whitespace-nowrap px-4 py-3 text-gray-600">
+                          {formatDate(trade.trade_date)}
+                        </td>
+                        <td className="px-4 py-3 font-semibold text-gray-900">
+                          {trade.stock_symbol}
+                        </td>
+                        <td className="px-4 py-3">
+                          <span
+                            className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+                              trade.trade_type === "BUY"
+                                ? "bg-green-100 text-green-700"
+                                : "bg-red-100 text-red-700"
+                            }`}
+                          >
+                            {trade.trade_type}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-gray-700">
+                          {trade.quantity.toLocaleString("en-IN")}
+                        </td>
+                        <td className="px-4 py-3 text-gray-700">
+                          {formatCurrency(trade.price)}
+                        </td>
+                        <td className="px-4 py-3 font-medium text-gray-900">
+                          {formatCurrency(total)}
+                        </td>
+                        <td className="px-4 py-3">
+                          {trade.broker ? (
+                            <span className="inline-block rounded-full bg-indigo-50 px-2.5 py-0.5 text-xs font-medium text-indigo-700">
+                              {trade.broker}
+                            </span>
+                          ) : (
+                            <span className="text-gray-400">—</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 text-gray-500">
+                          {trade.import_source || "—"}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Pagination */}
+            <div className="mt-4 flex items-center justify-between">
+              <p className="text-sm text-gray-500">
+                Showing {page * PAGE_SIZE + 1}–
+                {page * PAGE_SIZE + trades.length} trades
+              </p>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  disabled={page === 0 || loading}
+                  onClick={() => setPage((p) => Math.max(0, p - 1))}
+                >
+                  ← Previous
+                </Button>
+                <Button
+                  variant="outline"
+                  disabled={trades.length < PAGE_SIZE || loading}
+                  onClick={() => setPage((p) => p + 1)}
+                >
+                  Next →
+                </Button>
+              </div>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+export default function TradesPage() {
+  return (
+    <AuthGuard>
+      <TradesContent />
+    </AuthGuard>
+  );
+}
+</file>
+
+<file path="frontend/src/app/globals.css">
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+</file>
+
+<file path="frontend/src/app/import/groww/page.tsx">
+"use client";
+
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import AuthGuard from "@/components/AuthGuard";
+import Card from "@/components/ui/Card";
+import Button from "@/components/ui/Button";
+import FileUpload from "@/components/ui/FileUpload";
+import { importGrowwCSV } from "@/lib/trades";
+import type { TradeImportResponse } from "@/types/trade";
+
+function GrowwImportContent() {
+  const router = useRouter();
+  const [file, setFile] = useState<File | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState(false);
+  const [importResult, setImportResult] = useState<TradeImportResponse | null>(
+    null
+  );
+
+  async function handleSubmit() {
+    if (!file) return;
+
+    setLoading(true);
+    setError("");
+    setSuccess(false);
+
+    try {
+      const result = await importGrowwCSV(file);
+      setImportResult(result);
+      setSuccess(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Import failed");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div className="mx-auto max-w-3xl px-4 py-12">
+      <button
+        onClick={() => router.push("/import")}
+        className="mb-6 flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800"
+      >
+        <svg
+          className="h-4 w-4"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+          strokeWidth={2}
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="M15.75 19.5L8.25 12l7.5-7.5"
+          />
+        </svg>
+        Back to Import
+      </button>
+
+      <h1 className="text-3xl font-bold text-gray-900">
+        Import from Groww CSV
+      </h1>
+      <p className="mt-2 text-gray-500">
+        Upload your Groww trades CSV file to import your trade history
+      </p>
+
+      {/* Instructions */}
+      <Card className="mt-6">
+        <h2 className="text-sm font-semibold text-gray-700">How to export from Groww</h2>
+        <ol className="mt-3 space-y-2 text-sm text-gray-600">
+          {[
+            "Open the Groww app on your phone or visit groww.in",
+            "Go to Profile → Reports → Trade History",
+            "Select the date range and click Download",
+            "Upload the downloaded CSV file below",
+          ].map((step, i) => (
+            <li key={i} className="flex gap-3">
+              <span className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-green-100 text-xs font-semibold text-green-700">
+                {i + 1}
+              </span>
+              <span>{step}</span>
+            </li>
+          ))}
+        </ol>
+      </Card>
+
+      {/* Success message */}
+      {success && importResult && (
+        <div className="mt-6 rounded-lg bg-green-50 p-4">
+          <div className="flex items-start gap-3">
+            <svg
+              className="mt-0.5 h-5 w-5 flex-shrink-0 text-green-600"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={2}
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
+            </svg>
+            <div className="flex-1">
+              <p className="text-sm font-semibold text-green-800">
+                Imported {importResult.imported} trade
+                {importResult.imported !== 1 ? "s" : ""} successfully!
+              </p>
+              <p className="mt-0.5 text-xs text-green-700">
+                Your trades have been added to your journal.
+              </p>
+            </div>
+          </div>
+          <Button
+            variant="outline"
+            className="mt-3 w-full"
+            onClick={() => router.push("/dashboard/trades")}
+          >
+            View Trades
+          </Button>
+        </div>
+      )}
+
+      {/* Error message */}
+      {error && (
+        <div className="mt-6 rounded-lg bg-red-50 p-4 text-sm text-red-700">
+          {error}
+        </div>
+      )}
+
+      {/* File upload zone */}
+      <div className="mt-6">
+        <FileUpload
+          accept=".csv"
+          onChange={(f) => {
+            setFile(f);
+            setError("");
+            setSuccess(false);
+          }}
+          maxSize={10 * 1024 * 1024}
+        />
+      </div>
+
+      <Button
+        className="mt-4 w-full"
+        loading={loading}
+        disabled={!file || loading}
+        onClick={handleSubmit}
+      >
+        {loading ? "Uploading..." : "Import Trades"}
+      </Button>
+    </div>
+  );
+}
+
+export default function GrowwImportPage() {
+  return (
+    <AuthGuard>
+      <GrowwImportContent />
+    </AuthGuard>
+  );
+}
+</file>
+
+<file path="frontend/src/app/import/page.tsx">
+"use client";
+
+import { useRouter } from "next/navigation";
+import AuthGuard from "@/components/AuthGuard";
+import Card from "@/components/ui/Card";
+import Button from "@/components/ui/Button";
+
+function ImportContent() {
+  const router = useRouter();
+
+  return (
+    <div className="mx-auto max-w-4xl px-4 py-12">
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold text-gray-900">Import Your Trades</h1>
+        <p className="mt-2 text-gray-500">
+          Choose your broker to import trade history
+        </p>
+      </div>
+
+      <div className="grid gap-6 sm:grid-cols-2">
+        {/* Zerodha Card */}
+        <Card className="flex flex-col">
+          <div className="flex items-center gap-3">
+            <div className="flex h-11 w-11 items-center justify-center rounded-full bg-orange-50">
+              <svg
+                className="h-6 w-6 text-orange-500"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={1.5}
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75"
+                />
+              </svg>
+            </div>
+            <h2 className="text-lg font-semibold text-gray-900">
+              Import from Zerodha
+            </h2>
+          </div>
+
+          <p className="mt-4 flex-1 text-sm text-gray-500">
+            Paste your Zerodha contract note email content to import your
+            trades automatically.
+          </p>
+
+          <Button
+            className="mt-6 w-full"
+            onClick={() => router.push("/import/zerodha")}
+          >
+            Import via Email
+          </Button>
+        </Card>
+
+        {/* Groww Card */}
+        <Card className="flex flex-col">
+          <div className="flex items-center gap-3">
+            <div className="flex h-11 w-11 items-center justify-center rounded-full bg-green-50">
+              <svg
+                className="h-6 w-6 text-green-600"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={1.5}
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"
+                />
+              </svg>
+            </div>
+            <h2 className="text-lg font-semibold text-gray-900">
+              Import from Groww
+            </h2>
+          </div>
+
+          <p className="mt-4 flex-1 text-sm text-gray-500">
+            Upload your Groww trades CSV file exported from the Groww app or
+            website.
+          </p>
+
+          <Button
+            className="mt-6 w-full"
+            onClick={() => router.push("/import/groww")}
+          >
+            Upload CSV
+          </Button>
+        </Card>
+      </div>
+
+      <div className="mt-8 rounded-xl border border-gray-200 bg-gray-50 p-5">
+        <h3 className="text-sm font-semibold text-gray-700">
+          More brokers coming soon
+        </h3>
+        <p className="mt-1 text-sm text-gray-500">
+          Support for Upstox, Angel One, ICICI Direct, and more brokers is in
+          progress.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+export default function ImportPage() {
+  return (
+    <AuthGuard>
+      <ImportContent />
+    </AuthGuard>
+  );
+}
+</file>
+
+<file path="frontend/src/app/import/zerodha/page.tsx">
+"use client";
+
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import AuthGuard from "@/components/AuthGuard";
+import Card from "@/components/ui/Card";
+import Button from "@/components/ui/Button";
+import { importZerodhaEmail } from "@/lib/trades";
+import type { TradeImportResponse } from "@/types/trade";
+
+function ZerodhaImportContent() {
+  const router = useRouter();
+  const [emailContent, setEmailContent] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState(false);
+  const [importResult, setImportResult] = useState<TradeImportResponse | null>(
+    null
+  );
+
+  async function handleSubmit() {
+    if (!emailContent.trim()) return;
+
+    setLoading(true);
+    setError("");
+    setSuccess(false);
+
+    try {
+      const result = await importZerodhaEmail(emailContent);
+      setImportResult(result);
+      setSuccess(true);
+      setTimeout(() => setEmailContent(""), 2000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Import failed");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div className="mx-auto max-w-3xl px-4 py-12">
+      <button
+        onClick={() => router.push("/import")}
+        className="mb-6 flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800"
+      >
+        <svg
+          className="h-4 w-4"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+          strokeWidth={2}
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="M15.75 19.5L8.25 12l7.5-7.5"
+          />
+        </svg>
+        Back to Import
+      </button>
+
+      <h1 className="text-3xl font-bold text-gray-900">
+        Import from Zerodha Email
+      </h1>
+      <p className="mt-2 text-gray-500">
+        Paste your Zerodha contract note email to import trades
+      </p>
+
+      {/* Instructions */}
+      <Card className="mt-6">
+        <h2 className="text-sm font-semibold text-gray-700">How to import</h2>
+        <ol className="mt-3 space-y-2 text-sm text-gray-600">
+          {[
+            "Open your email inbox and find Zerodha contract note emails",
+            'Look for emails with subject like "Contract note" from Zerodha',
+            "Open the email and select all text (Ctrl+A or Cmd+A)",
+            "Copy the entire email content and paste it below",
+          ].map((step, i) => (
+            <li key={i} className="flex gap-3">
+              <span className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-indigo-100 text-xs font-semibold text-indigo-700">
+                {i + 1}
+              </span>
+              <span>{step}</span>
+            </li>
+          ))}
+        </ol>
+      </Card>
+
+      {/* Success message */}
+      {success && importResult && (
+        <div className="mt-6 rounded-lg bg-green-50 p-4">
+          <div className="flex items-start gap-3">
+            <svg
+              className="mt-0.5 h-5 w-5 flex-shrink-0 text-green-600"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={2}
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
+            </svg>
+            <div className="flex-1">
+              <p className="text-sm font-semibold text-green-800">
+                Imported {importResult.imported} trade
+                {importResult.imported !== 1 ? "s" : ""} successfully!
+              </p>
+              <p className="mt-0.5 text-xs text-green-700">
+                Your trades have been added to your journal.
+              </p>
+            </div>
+          </div>
+          <Button
+            variant="outline"
+            className="mt-3 w-full"
+            onClick={() => router.push("/dashboard/trades")}
+          >
+            View Trades
+          </Button>
+        </div>
+      )}
+
+      {/* Error message */}
+      {error && (
+        <div className="mt-6 rounded-lg bg-red-50 p-4 text-sm text-red-700">
+          {error}
+        </div>
+      )}
+
+      {/* Email textarea */}
+      <div className="mt-6">
+        <label className="mb-1.5 block text-sm font-medium text-gray-700">
+          Email Content
+        </label>
+        <textarea
+          value={emailContent}
+          onChange={(e) => setEmailContent(e.target.value)}
+          rows={14}
+          placeholder="Paste the full email content here..."
+          className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm text-gray-900 placeholder-gray-400 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+        />
+      </div>
+
+      <Button
+        className="mt-4 w-full"
+        loading={loading}
+        disabled={!emailContent.trim() || loading}
+        onClick={handleSubmit}
+      >
+        {loading ? "Importing..." : "Import Trades"}
+      </Button>
+    </div>
+  );
+}
+
+export default function ZerodhaImportPage() {
+  return (
+    <AuthGuard>
+      <ZerodhaImportContent />
+    </AuthGuard>
+  );
+}
+</file>
+
+<file path="frontend/src/app/layout.tsx">
+import type { Metadata } from "next";
+import { Inter } from "next/font/google";
+import "./globals.css";
+import Navbar from "@/components/Navbar";
+
+const inter = Inter({ subsets: ["latin"] });
+
+export const metadata: Metadata = {
+  title: "TradeIntel - Trading Intelligence Platform",
+  description: "Analyze your trading patterns and improve your strategy",
+};
+
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <html lang="en">
+      <body className={`${inter.className} bg-gray-50 text-gray-900 antialiased`}>
+        <Navbar />
+        <main>{children}</main>
+      </body>
+    </html>
+  );
+}
+</file>
+
+<file path="frontend/src/app/login/page.tsx">
+"use client";
+
+import { FormEvent, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
+import { login } from "@/lib/auth";
+import Button from "@/components/ui/Button";
+import Input from "@/components/ui/Input";
+import Card from "@/components/ui/Card";
+
+export default function LoginPage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const justRegistered = searchParams.get("registered") === "1";
+
+  const [form, setForm] = useState({ email: "", password: "" });
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [apiError, setApiError] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const validate = () => {
+    const e: Record<string, string> = {};
+    if (!form.email) e.email = "Email is required";
+    if (!form.password) e.password = "Password is required";
+    setErrors(e);
+    return Object.keys(e).length === 0;
+  };
+
+  const handleSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    setApiError("");
+    if (!validate()) return;
+
+    setLoading(true);
+    try {
+      await login({ email: form.email, password: form.password });
+      router.push("/dashboard");
+    } catch (err) {
+      setApiError(err instanceof Error ? err.message : "Login failed");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="flex min-h-[calc(100vh-57px)] items-center justify-center px-4">
+      <Card className="w-full max-w-md">
+        <h1 className="text-2xl font-bold">Welcome back</h1>
+        <p className="mt-1 text-sm text-gray-500">
+          Login to access your trading dashboard.
+        </p>
+
+        {justRegistered && (
+          <div className="mt-4 rounded-lg bg-green-50 p-3 text-sm text-green-700">
+            Account created successfully! Please login.
+          </div>
+        )}
+
+        {apiError && (
+          <div className="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">
+            {apiError}
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} className="mt-6 space-y-4">
+          <Input
+            id="email"
+            label="Email"
+            type="email"
+            placeholder="you@example.com"
+            value={form.email}
+            onChange={(e) => setForm({ ...form, email: e.target.value })}
+            error={errors.email}
+          />
+          <Input
+            id="password"
+            label="Password"
+            type="password"
+            placeholder="Your password"
+            value={form.password}
+            onChange={(e) => setForm({ ...form, password: e.target.value })}
+            error={errors.password}
+          />
+          <Button type="submit" loading={loading} className="w-full">
+            Login
+          </Button>
+        </form>
+
+        <p className="mt-6 text-center text-sm text-gray-500">
+          Don&apos;t have an account?{" "}
+          <Link href="/signup" className="font-medium text-indigo-600 hover:text-indigo-500">
+            Sign Up
+          </Link>
+        </p>
+      </Card>
+    </div>
+  );
+}
+</file>
+
+<file path="frontend/src/app/page.tsx">
+import Link from "next/link";
+
+export default function Home() {
+  return (
+    <div className="flex flex-col">
+      {/* Hero */}
+      <section className="flex min-h-[calc(100vh-57px)] flex-col items-center justify-center px-4 text-center">
+        <h1 className="max-w-3xl text-5xl font-extrabold leading-tight tracking-tight sm:text-6xl">
+          Decode Your{" "}
+          <span className="text-indigo-600">Trading Patterns</span>
+        </h1>
+        <p className="mt-6 max-w-xl text-lg text-gray-600">
+          Import trades from Zerodha, Groww, or CSV files. Get AI-powered
+          analysis of your trading behavior, identify recurring patterns, and
+          make smarter decisions.
+        </p>
+        <div className="mt-10 flex gap-4">
+          <Link
+            href="/signup"
+            className="rounded-lg bg-indigo-600 px-6 py-3 text-sm font-semibold text-white hover:bg-indigo-700"
+          >
+            Get Started Free
+          </Link>
+          <Link
+            href="/login"
+            className="rounded-lg border border-gray-300 px-6 py-3 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+          >
+            Login
+          </Link>
+        </div>
+      </section>
+
+      {/* Features */}
+      <section className="mx-auto max-w-6xl px-4 py-24">
+        <h2 className="text-center text-3xl font-bold">
+          Everything You Need to Trade Smarter
+        </h2>
+        <div className="mt-14 grid gap-8 sm:grid-cols-3">
+          {[
+            {
+              title: "Import Trades",
+              desc: "Connect your Zerodha or Groww account, or upload CSV files to import your complete trade history.",
+              icon: "M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12",
+            },
+            {
+              title: "Pattern Analysis",
+              desc: "AI identifies your trading patterns — overtrading, revenge trading, sector bias, and more.",
+              icon: "M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z",
+            },
+            {
+              title: "Actionable Insights",
+              desc: "Get personalized recommendations to improve your strategy based on your actual trading data.",
+              icon: "M13 10V3L4 14h7v7l9-11h-7z",
+            },
+          ].map((f) => (
+            <div
+              key={f.title}
+              className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm"
+            >
+              <div className="mb-4 inline-flex rounded-lg bg-indigo-50 p-3">
+                <svg
+                  className="h-6 w-6 text-indigo-600"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d={f.icon}
+                  />
+                </svg>
+              </div>
+              <h3 className="text-lg font-semibold">{f.title}</h3>
+              <p className="mt-2 text-sm text-gray-600">{f.desc}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+    </div>
+  );
+}
+</file>
+
+<file path="frontend/src/app/signup/page.tsx">
+"use client";
+
+import { FormEvent, useState } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { signup } from "@/lib/auth";
+import Button from "@/components/ui/Button";
+import Input from "@/components/ui/Input";
+import Card from "@/components/ui/Card";
+
+export default function SignupPage() {
+  const router = useRouter();
+  const [form, setForm] = useState({ name: "", email: "", password: "" });
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [apiError, setApiError] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const validate = () => {
+    const e: Record<string, string> = {};
+    if (!form.email) e.email = "Email is required";
+    else if (!/\S+@\S+\.\S+/.test(form.email)) e.email = "Invalid email";
+    if (!form.password) e.password = "Password is required";
+    else if (form.password.length < 6)
+      e.password = "Password must be at least 6 characters";
+    setErrors(e);
+    return Object.keys(e).length === 0;
+  };
+
+  const handleSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    setApiError("");
+    if (!validate()) return;
+
+    setLoading(true);
+    try {
+      await signup({
+        email: form.email,
+        password: form.password,
+        name: form.name || undefined,
+      });
+      router.push("/login?registered=1");
+    } catch (err) {
+      setApiError(err instanceof Error ? err.message : "Signup failed");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="flex min-h-[calc(100vh-57px)] items-center justify-center px-4">
+      <Card className="w-full max-w-md">
+        <h1 className="text-2xl font-bold">Create your account</h1>
+        <p className="mt-1 text-sm text-gray-500">
+          Start analyzing your trading patterns today.
+        </p>
+
+        {apiError && (
+          <div className="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">
+            {apiError}
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} className="mt-6 space-y-4">
+          <Input
+            id="name"
+            label="Name"
+            placeholder="Your name"
+            value={form.name}
+            onChange={(e) => setForm({ ...form, name: e.target.value })}
+          />
+          <Input
+            id="email"
+            label="Email"
+            type="email"
+            placeholder="you@example.com"
+            value={form.email}
+            onChange={(e) => setForm({ ...form, email: e.target.value })}
+            error={errors.email}
+          />
+          <Input
+            id="password"
+            label="Password"
+            type="password"
+            placeholder="At least 6 characters"
+            value={form.password}
+            onChange={(e) => setForm({ ...form, password: e.target.value })}
+            error={errors.password}
+          />
+          <Button type="submit" loading={loading} className="w-full">
+            Sign Up
+          </Button>
+        </form>
+
+        <p className="mt-6 text-center text-sm text-gray-500">
+          Already have an account?{" "}
+          <Link href="/login" className="font-medium text-indigo-600 hover:text-indigo-500">
+            Login
+          </Link>
+        </p>
+      </Card>
+    </div>
+  );
+}
+</file>
+
+<file path="frontend/src/components/AuthGuard.tsx">
+"use client";
+
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { isAuthenticated } from "@/lib/auth";
+
+export default function AuthGuard({ children }: { children: React.ReactNode }) {
+  const router = useRouter();
+  const [checked, setChecked] = useState(false);
+
+  useEffect(() => {
+    if (!isAuthenticated()) {
+      router.replace("/login");
+    } else {
+      setChecked(true);
+    }
+  }, [router]);
+
+  if (!checked) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <svg
+          className="h-8 w-8 animate-spin text-indigo-600"
+          viewBox="0 0 24 24"
+          fill="none"
+        >
+          <circle
+            className="opacity-25"
+            cx="12"
+            cy="12"
+            r="10"
+            stroke="currentColor"
+            strokeWidth="4"
+          />
+          <path
+            className="opacity-75"
+            fill="currentColor"
+            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+          />
+        </svg>
+      </div>
+    );
+  }
+
+  return <>{children}</>;
+}
+</file>
+
+<file path="frontend/src/components/Navbar.tsx">
+"use client";
+
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { isAuthenticated, logout } from "@/lib/auth";
+
+export default function Navbar() {
+  const router = useRouter();
+  const [loggedIn, setLoggedIn] = useState(false);
+
+  useEffect(() => {
+    setLoggedIn(isAuthenticated());
+  }, []);
+
+  const handleLogout = () => {
+    logout();
+    setLoggedIn(false);
+    router.push("/");
+  };
+
+  return (
+    <nav className="border-b border-gray-200 bg-white">
+      <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
+        <Link href="/" className="text-xl font-bold text-indigo-600">
+          TradeIntel
+        </Link>
+
+        <div className="flex items-center gap-4">
+          {loggedIn ? (
+            <>
+              <Link
+                href="/dashboard"
+                className="text-sm font-medium text-gray-700 hover:text-indigo-600"
+              >
+                Dashboard
+              </Link>
+              <button
+                onClick={handleLogout}
+                className="rounded-lg border border-gray-300 px-4 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
+              >
+                Logout
+              </button>
+            </>
+          ) : (
+            <>
+              <Link
+                href="/login"
+                className="text-sm font-medium text-gray-700 hover:text-indigo-600"
+              >
+                Login
+              </Link>
+              <Link
+                href="/signup"
+                className="rounded-lg bg-indigo-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-indigo-700"
+              >
+                Sign Up
+              </Link>
+            </>
+          )}
+        </div>
+      </div>
+    </nav>
+  );
+}
+</file>
+
+<file path="frontend/src/components/ui/Button.tsx">
+import { ButtonHTMLAttributes } from "react";
+
+interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
+  variant?: "primary" | "secondary" | "outline";
+  loading?: boolean;
+}
+
+export default function Button({
+  children,
+  variant = "primary",
+  loading = false,
+  className = "",
+  disabled,
+  ...props
+}: ButtonProps) {
+  const base =
+    "inline-flex items-center justify-center rounded-lg px-5 py-2.5 text-sm font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed";
+
+  const variants = {
+    primary: "bg-indigo-600 text-white hover:bg-indigo-700 focus:ring-indigo-500",
+    secondary: "bg-gray-800 text-white hover:bg-gray-700 focus:ring-gray-500",
+    outline:
+      "border border-gray-300 bg-transparent text-gray-700 hover:bg-gray-50 focus:ring-indigo-500",
+  };
+
+  return (
+    <button
+      className={`${base} ${variants[variant]} ${className}`}
+      disabled={disabled || loading}
+      {...props}
+    >
+      {loading && (
+        <svg
+          className="mr-2 h-4 w-4 animate-spin"
+          viewBox="0 0 24 24"
+          fill="none"
+        >
+          <circle
+            className="opacity-25"
+            cx="12"
+            cy="12"
+            r="10"
+            stroke="currentColor"
+            strokeWidth="4"
+          />
+          <path
+            className="opacity-75"
+            fill="currentColor"
+            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+          />
+        </svg>
+      )}
+      {children}
+    </button>
+  );
+}
+</file>
+
+<file path="frontend/src/components/ui/Card.tsx">
+import { ReactNode } from "react";
+
+interface CardProps {
+  children: ReactNode;
+  className?: string;
+}
+
+export default function Card({ children, className = "" }: CardProps) {
+  return (
+    <div
+      className={`rounded-xl border border-gray-200 bg-white p-6 shadow-sm ${className}`}
+    >
+      {children}
+    </div>
+  );
+}
+</file>
+
+<file path="frontend/src/components/ui/FileUpload.tsx">
+"use client";
+
+import { useRef, useState, DragEvent, ChangeEvent } from "react";
+
+interface FileUploadProps {
+  accept: string;
+  onChange: (file: File) => void;
+  maxSize?: number;
+}
+
+function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+export default function FileUpload({ accept, onChange, maxSize }: FileUploadProps) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [dragging, setDragging] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [error, setError] = useState("");
+
+  function validateAndSet(file: File) {
+    setError("");
+
+    const ext = file.name.split(".").pop()?.toLowerCase();
+    const acceptedExts = accept
+      .split(",")
+      .map((a) => a.trim().replace(".", "").toLowerCase());
+
+    if (!acceptedExts.includes(ext || "")) {
+      setError(`Only ${accept} files are accepted.`);
+      return;
+    }
+
+    if (maxSize && file.size > maxSize) {
+      setError(`File must be smaller than ${formatBytes(maxSize)}.`);
+      return;
+    }
+
+    setSelectedFile(file);
+    onChange(file);
+  }
+
+  function handleDragOver(e: DragEvent<HTMLDivElement>) {
+    e.preventDefault();
+    setDragging(true);
+  }
+
+  function handleDragLeave() {
+    setDragging(false);
+  }
+
+  function handleDrop(e: DragEvent<HTMLDivElement>) {
+    e.preventDefault();
+    setDragging(false);
+    const file = e.dataTransfer.files[0];
+    if (file) validateAndSet(file);
+  }
+
+  function handleChange(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (file) validateAndSet(file);
+  }
+
+  return (
+    <div>
+      <div
+        onClick={() => inputRef.current?.click()}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+        className={`flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed px-6 py-10 transition-colors ${
+          dragging
+            ? "border-indigo-500 bg-indigo-50"
+            : "border-gray-300 bg-gray-50 hover:border-indigo-400 hover:bg-gray-100"
+        }`}
+      >
+        <svg
+          className={`h-10 w-10 ${dragging ? "text-indigo-500" : "text-gray-400"}`}
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+          strokeWidth={1.5}
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"
+          />
+        </svg>
+
+        {selectedFile ? (
+          <div className="mt-3 text-center">
+            <p className="text-sm font-semibold text-gray-800">
+              {selectedFile.name}
+            </p>
+            <p className="mt-0.5 text-xs text-gray-500">
+              {formatBytes(selectedFile.size)}
+            </p>
+            <p className="mt-1 text-xs text-indigo-600">Click to change file</p>
+          </div>
+        ) : (
+          <div className="mt-3 text-center">
+            <p className="text-sm font-semibold text-gray-700">
+              Drag & drop your file here
+            </p>
+            <p className="mt-0.5 text-xs text-gray-500">
+              or{" "}
+              <span className="font-medium text-indigo-600">browse to upload</span>
+            </p>
+            <p className="mt-1 text-xs text-gray-400">Accepted: {accept}</p>
+          </div>
+        )}
+      </div>
+
+      {error && (
+        <p className="mt-2 text-xs text-red-600">{error}</p>
+      )}
+
+      <input
+        ref={inputRef}
+        type="file"
+        accept={accept}
+        onChange={handleChange}
+        className="hidden"
+      />
+    </div>
+  );
+}
+</file>
+
+<file path="frontend/src/components/ui/Input.tsx">
+import { InputHTMLAttributes } from "react";
+
+interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
+  label: string;
+  error?: string;
+}
+
+export default function Input({
+  label,
+  error,
+  id,
+  className = "",
+  ...props
+}: InputProps) {
+  return (
+    <div className="w-full">
+      <label
+        htmlFor={id}
+        className="mb-1 block text-sm font-medium text-gray-700"
+      >
+        {label}
+      </label>
+      <input
+        id={id}
+        className={`w-full rounded-lg border px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 ${
+          error ? "border-red-500" : "border-gray-300"
+        } ${className}`}
+        {...props}
+      />
+      {error && <p className="mt-1 text-xs text-red-600">{error}</p>}
+    </div>
+  );
+}
+</file>
+
+<file path="frontend/src/lib/api.ts">
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
+
+export async function apiFetch<T>(
+  endpoint: string,
+  options: RequestInit = {}
+): Promise<T> {
+  const token =
+    typeof window !== "undefined" ? localStorage.getItem("token") : null;
+
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    ...((options.headers as Record<string, string>) || {}),
+  };
+
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+
+  const res = await fetch(`${API_URL}${endpoint}`, {
+    ...options,
+    headers,
+  });
+
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({ detail: "Request failed" }));
+    throw new Error(error.detail || `Error ${res.status}`);
+  }
+
+  return res.json();
+}
+</file>
+
+<file path="frontend/src/lib/auth.ts">
+import { apiFetch } from "./api";
+import type { LoginRequest, SignupRequest, TokenResponse, User } from "@/types/user";
+
+export async function signup(data: SignupRequest): Promise<User> {
+  return apiFetch<User>("/auth/signup", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function login(data: LoginRequest): Promise<string> {
+  const res = await apiFetch<TokenResponse>("/auth/login", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+  localStorage.setItem("token", res.access_token);
+  return res.access_token;
+}
+
+export async function getMe(): Promise<User> {
+  return apiFetch<User>("/auth/me");
+}
+
+export function logout(): void {
+  localStorage.removeItem("token");
+}
+
+export function isAuthenticated(): boolean {
+  return typeof window !== "undefined" && !!localStorage.getItem("token");
+}
+</file>
+
+<file path="frontend/src/lib/trades.ts">
+import { apiFetch } from "@/lib/api";
+import type {
+  Trade,
+  TradeImportResponse,
+  TradesSummary,
+  CompletedTrade,
+} from "@/types/trade";
+
+const API_URL =
+  process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
+
+export async function importZerodhaEmail(
+  emailContent: string
+): Promise<TradeImportResponse> {
+  return apiFetch<TradeImportResponse>("/trades/import/zerodha-email", {
+    method: "POST",
+    body: JSON.stringify({ email_content: emailContent }),
+  });
+}
+
+export async function importGrowwCSV(
+  file: File
+): Promise<TradeImportResponse> {
+  const token =
+    typeof window !== "undefined" ? localStorage.getItem("token") : null;
+
+  const formData = new FormData();
+  formData.append("file", file);
+
+  const headers: Record<string, string> = {};
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+
+  const res = await fetch(`${API_URL}/trades/import/groww-csv`, {
+    method: "POST",
+    headers,
+    body: formData,
+  });
+
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({ detail: "Request failed" }));
+    throw new Error(error.detail || `Error ${res.status}`);
+  }
+
+  return res.json();
+}
+
+export async function getTrades(filters?: {
+  symbol?: string;
+  start_date?: string;
+  end_date?: string;
+  limit?: number;
+  offset?: number;
+}): Promise<Trade[]> {
+  const params = new URLSearchParams();
+  if (filters?.symbol) params.set("symbol", filters.symbol);
+  if (filters?.start_date) params.set("start_date", filters.start_date);
+  if (filters?.end_date) params.set("end_date", filters.end_date);
+  if (filters?.limit !== undefined) params.set("limit", String(filters.limit));
+  if (filters?.offset !== undefined)
+    params.set("offset", String(filters.offset));
+
+  const query = params.toString();
+  return apiFetch<Trade[]>(`/trades${query ? `?${query}` : ""}`);
+}
+
+export async function getTradesSummary(): Promise<TradesSummary> {
+  return apiFetch<TradesSummary>("/trades/summary");
+}
+
+export async function processTrades(): Promise<{
+  processed: number;
+  completed_trades: number;
+  message: string;
+}> {
+  return apiFetch<{
+    processed: number;
+    completed_trades: number;
+    message: string;
+  }>("/trades/process", { method: "POST" });
+}
+
+export async function getCompletedTrades(
+  limit?: number,
+  offset?: number
+): Promise<CompletedTrade[]> {
+  const params = new URLSearchParams();
+  if (limit !== undefined) params.set("limit", String(limit));
+  if (offset !== undefined) params.set("offset", String(offset));
+
+  const query = params.toString();
+  return apiFetch<CompletedTrade[]>(
+    `/trades/completed${query ? `?${query}` : ""}`
+  );
+}
+</file>
+
+<file path="frontend/src/types/trade.ts">
+export interface Trade {
+  id: number;
+  user_id: number;
+  stock_symbol: string;
+  trade_type: string;
+  quantity: number;
+  price: number;
+  trade_date: string;
+  broker: string | null;
+  import_source: string | null;
+  created_at: string;
+}
+
+export interface TradeImportResponse {
+  imported: number;
+  trades: Trade[];
+}
+
+export interface TradesSummary {
+  total_trades: number;
+  total_invested: number;
+  unique_symbols: number;
+}
+
+export interface CompletedTrade {
+  id: number;
+  user_id: number;
+  stock_symbol: string;
+  entry_date: string;
+  exit_date: string;
+  entry_price: number;
+  exit_price: number;
+  quantity: number;
+  pnl: number;
+  return_pct: number;
+  holding_days: number;
+  created_at: string;
+}
+</file>
+
+<file path="frontend/src/types/user.ts">
+export interface User {
+  id: number;
+  email: string;
+  name: string | null;
+  subscription_status?: string | null;
+  subscription_plan?: string | null;
+  subscription_expires_at?: string | null;
+  razorpay_customer_id?: string | null;
+  razorpay_subscription_id?: string | null;
+  created_at: string;
+}
+
+export interface LoginRequest {
+  email: string;
+  password: string;
+}
+
+export interface SignupRequest {
+  email: string;
+  password: string;
+  name?: string;
+}
+
+export interface TokenResponse {
+  access_token: string;
+  token_type: string;
+}
+
+export interface ApiError {
+  detail: string;
+}
+</file>
+
+<file path="frontend/tailwind.config.ts">
+import type { Config } from "tailwindcss";
+
+const config: Config = {
+  content: ["./src/**/*.{js,ts,jsx,tsx,mdx}"],
+  theme: {
+    extend: {},
+  },
+  plugins: [],
+};
+
+export default config;
+</file>
+
+<file path="frontend/tsconfig.json">
+{
+  "compilerOptions": {
+    "target": "es5",
+    "lib": ["dom", "dom.iterable", "esnext"],
+    "allowJs": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "noEmit": true,
+    "esModuleInterop": true,
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "jsx": "preserve",
+    "incremental": true,
+    "plugins": [{ "name": "next" }],
+    "paths": { "@/*": ["./src/*"] }
+  },
+  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
+  "exclude": ["node_modules"]
+}
+</file>
+
+<file path=".claude/settings.local.json">
+{
+  "permissions": {
+    "allow": [
+      "Bash(cd:*)",
+      "Bash(python test_trade_processor.py)"
+    ]
+  }
+}
+</file>
+
+<file path="backend/app/database.py">
+from sqlalchemy import create_engine
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import sessionmaker
+
+from app.config import settings
+
+# Create engine with connection pool settings optimized for Neon
+engine = create_engine(
+    settings.DATABASE_URL,
+    pool_pre_ping=True,  # Verify connections before using
+    pool_recycle=300,    # Recycle connections after 5 minutes
+    pool_size=5,         # Keep 5 connections in pool
+    max_overflow=10,     # Allow up to 10 additional connections
+    echo=False
+)
+
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+Base = declarative_base()
+
+
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+</file>
+
+<file path="backend/app/main.py">
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+
+from app.config import settings
+from app.routes.auth import router as auth_router
+from app.routes.health import router as health_router
+from app.routes.trades import router as trades_router
+
+app = FastAPI(title="Trade Intelligence Platform", version="1.0.0")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.CORS_ALLOW_ORIGINS,
+    allow_origin_regex=settings.CORS_ALLOW_ORIGIN_REGEX,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+app.include_router(health_router, tags=["health"])
+app.include_router(auth_router)
+app.include_router(trades_router)
+</file>
+
+<file path="backend/app/models/__init__.py">
+from app.models.user import User
+from app.models.trade import Trade
+from app.models.pattern_analysis import PatternAnalysis
+from app.models.completed_trade import CompletedTrade
+from app.models.behavioral_pattern import BehavioralPattern
+from app.models.trade_setup import TradeSetup
+from app.models.trade_checklist import TradeChecklist
+from app.models.market_data_cache import MarketDataCache
+from app.models.payment_event import PaymentEvent
+from app.models.coupon import Coupon
+
+__all__ = [
+    "User",
+    "Trade",
+    "PatternAnalysis",
+    "CompletedTrade",
+    "BehavioralPattern",
+    "TradeSetup",
+    "TradeChecklist",
+    "MarketDataCache",
+    "PaymentEvent",
+    "Coupon",
+]
+</file>
+
+<file path="backend/app/models/user.py">
+from datetime import datetime
+
+from sqlalchemy import Column, DateTime, Integer, String
+from sqlalchemy.orm import relationship
+
+from app.database import Base
+
+
+class User(Base):
+    __tablename__ = "users"
+
+    id = Column(Integer, primary_key=True, index=True)
+    email = Column(String(255), unique=True, nullable=False, index=True)
+    hashed_password = Column(String(255), nullable=False)
+    name = Column(String(100))
+    subscription_status = Column(String(50))
+    subscription_plan = Column(String(50))
+    subscription_expires_at = Column(DateTime)
+    razorpay_customer_id = Column(String(255))
+    razorpay_subscription_id = Column(String(255))
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    trades = relationship("Trade", back_populates="user")
+    pattern_analyses = relationship("PatternAnalysis", back_populates="user")
+    completed_trades = relationship("CompletedTrade", back_populates="user")
+    behavioral_patterns = relationship("BehavioralPattern", back_populates="user")
+    trade_setups = relationship("TradeSetup", back_populates="user")
+    trade_checklists = relationship("TradeChecklist", back_populates="user")
+    payment_events = relationship("PaymentEvent", back_populates="user")
+</file>
+
+<file path="backend/app/routes/auth.py">
+from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordRequestForm
+from sqlalchemy.orm import Session
+
+from app.database import get_db
+from app.models.user import User
+from app.schemas.auth import LoginRequest, SignupRequest, TokenResponse
+from app.schemas.user import UserResponse
+from app.services.auth_service import (
+    authenticate_user,
+    create_access_token,
+    create_user,
+    get_user_by_email,
+)
+from app.utils.dependencies import get_current_user
+
+router = APIRouter(prefix="/api/auth", tags=["auth"])
+
+
+@router.post("/signup", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
+def signup(request: SignupRequest, db: Session = Depends(get_db)):
+    existing = get_user_by_email(db, request.email)
+    if existing:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Email already registered",
+        )
+
+    user = create_user(db, request.email, request.password, request.name)
+    return user
+
+
+@router.post("/login", response_model=TokenResponse)
+def login(request: LoginRequest, db: Session = Depends(get_db)):
+    user = authenticate_user(db, request.email, request.password)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid email or password",
+        )
+
+    token = create_access_token(data={"sub": user.email})
+    return TokenResponse(access_token=token)
+
+
+@router.post("/login/oauth", response_model=TokenResponse)
+def login_oauth(
+    form_data: OAuth2PasswordRequestForm = Depends(),
+    db: Session = Depends(get_db),
+):
+    """OAuth2-compatible login for Swagger UI. Accepts form-encoded username/password."""
+    user = authenticate_user(db, form_data.username, form_data.password)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid email or password",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    token = create_access_token(data={"sub": user.email})
+    return TokenResponse(access_token=token)
+
+
+@router.get("/me", response_model=UserResponse)
+def get_me(current_user: User = Depends(get_current_user)):
+    return current_user
+</file>
+
+<file path="backend/app/routes/trades.py">
+from datetime import date
+from decimal import Decimal
+
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
+from sqlalchemy.orm import Session
+
+from app.database import get_db
+from app.models.completed_trade import CompletedTrade
+from app.models.trade import Trade
+from app.models.user import User
+from app.schemas.trade import (
+    CompletedTradeResponse,
+    TradeCreate,
+    TradeImportRequest,
+    TradeImportResponse,
+    TradeResponse,
+    TradesSummary,
+)
+from app.services.csv_parser import parse_groww_csv
+from app.services.email_parser import parse_zerodha_contract_note
+from app.services.trade_processor import calculate_completed_trades, clean_stock_symbol
+from app.utils.dependencies import get_current_user
+
+router = APIRouter(prefix="/api/trades", tags=["trades"])
+
+
+@router.post("/import/zerodha-email", response_model=TradeImportResponse)
+def import_zerodha_email(
+    request: TradeImportRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> TradeImportResponse:
+    parsed_trades = parse_zerodha_contract_note(request.email_content)
+
+    if not parsed_trades:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No trades found in email",
+        )
+
+    imported_trades: list[Trade] = []
+
+    for trade in parsed_trades:
+        duplicate = (
+            db.query(Trade)
+            .filter(
+                Trade.user_id == current_user.id,
+                Trade.stock_symbol == trade["stock_symbol"],
+                Trade.trade_type == trade["trade_type"],
+                Trade.quantity == trade["quantity"],
+                Trade.price == Decimal(str(trade["price"])),
+                Trade.trade_date == trade["trade_date"],
+            )
+            .first()
+        )
+
+        if duplicate:
+            continue
+
+        new_trade = Trade(
+            user_id=current_user.id,
+            stock_symbol=trade["stock_symbol"],
+            trade_type=trade["trade_type"],
+            quantity=trade["quantity"],
+            price=Decimal(str(trade["price"])),
+            trade_date=trade["trade_date"],
+            broker="zerodha",
+            import_source="email",
+        )
+        db.add(new_trade)
+        imported_trades.append(new_trade)
+
+    db.commit()
+
+    for trade in imported_trades:
+        db.refresh(trade)
+
+    return TradeImportResponse(imported=len(imported_trades), trades=imported_trades)
+
+
+@router.post("/import/groww-csv", response_model=TradeImportResponse)
+async def import_groww_csv_endpoint(
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> TradeImportResponse:
+    if not file.filename or not file.filename.endswith(".csv"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Only CSV files are allowed",
+        )
+
+    content = await file.read()
+    parsed_trades = parse_groww_csv(content)
+
+    if not parsed_trades:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No trades found in CSV",
+        )
+
+    imported_trades: list[Trade] = []
+
+    for trade in parsed_trades:
+        duplicate = (
+            db.query(Trade)
+            .filter(
+                Trade.user_id == current_user.id,
+                Trade.stock_symbol == trade["stock_symbol"],
+                Trade.trade_type == trade["trade_type"],
+                Trade.quantity == trade["quantity"],
+                Trade.price == Decimal(str(trade["price"])),
+                Trade.trade_date == trade["trade_date"],
+            )
+            .first()
+        )
+
+        if duplicate:
+            continue
+
+        new_trade = Trade(
+            user_id=current_user.id,
+            stock_symbol=trade["stock_symbol"],
+            trade_type=trade["trade_type"],
+            quantity=trade["quantity"],
+            price=Decimal(str(trade["price"])),
+            trade_date=trade["trade_date"],
+            broker="groww",
+            import_source="csv",
+        )
+        db.add(new_trade)
+        imported_trades.append(new_trade)
+
+    db.commit()
+
+    for trade in imported_trades:
+        db.refresh(trade)
+
+    return TradeImportResponse(imported=len(imported_trades), trades=imported_trades)
+
+
+@router.get("/summary", response_model=TradesSummary)
+def get_trades_summary(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> TradesSummary:
+    trades = db.query(Trade).filter(Trade.user_id == current_user.id).all()
+
+    total_trades = len(trades)
+    total_invested = sum(
+        trade.price * trade.quantity
+        for trade in trades
+        if trade.trade_type == "BUY"
+    )
+    unique_symbols = len({trade.stock_symbol for trade in trades})
+
+    return TradesSummary(
+        total_trades=total_trades,
+        total_invested=Decimal(str(total_invested)),
+        unique_symbols=unique_symbols,
+    )
+
+
+@router.get("/", response_model=list[TradeResponse])
+def get_trades(
+    symbol: str | None = Query(None),
+    start_date: date | None = Query(None),
+    end_date: date | None = Query(None),
+    limit: int = Query(100, ge=1, le=500),
+    offset: int = Query(0, ge=0),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> list[TradeResponse]:
+    query = db.query(Trade).filter(Trade.user_id == current_user.id)
+
+    if symbol:
+        query = query.filter(Trade.stock_symbol == symbol.upper())
+    if start_date:
+        query = query.filter(Trade.trade_date >= start_date)
+    if end_date:
+        query = query.filter(Trade.trade_date <= end_date)
+
+    query = query.order_by(Trade.trade_date.desc())
+    trades = query.limit(limit).offset(offset).all()
+
+    return trades
+
+
+@router.post("/process")
+def process_trades(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    completed = calculate_completed_trades(db, current_user.id)
+
+    # Delete existing completed trades for user
+    db.query(CompletedTrade).filter(
+        CompletedTrade.user_id == current_user.id
+    ).delete()
+
+    # Add all new completed trades
+    for trade in completed:
+        db.add(trade)
+
+    db.commit()
+
+    return {
+        "processed": len(completed),
+        "completed_trades": len(completed),
+        "message": "Trades processed successfully",
+    }
+
+
+@router.get("/completed", response_model=list[CompletedTradeResponse])
+def get_completed_trades(
+    limit: int = Query(100, ge=1, le=500),
+    offset: int = Query(0, ge=0),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> list[CompletedTradeResponse]:
+    trades = (
+        db.query(CompletedTrade)
+        .filter(CompletedTrade.user_id == current_user.id)
+        .order_by(CompletedTrade.exit_date.desc())
+        .limit(limit)
+        .offset(offset)
+        .all()
+    )
+    return trades
+</file>
+
+<file path="backend/app/schemas/trade.py">
+from datetime import date, datetime, time
+from decimal import Decimal
+
+from pydantic import BaseModel, Field
+
+
+class TradeCreate(BaseModel):
+    stock_symbol: str
+    trade_type: str
+    quantity: int
+    price: Decimal
+    trade_date: date
+    broker: str | None = None
+    import_source: str | None = None
+    emotion_tag: str | None = None
+    notes: str | None = None
+    screenshot_url: str | None = None
+    entry_method: str | None = None
+    trade_time: time | None = None
+    instrument_type: str | None = None
+
+
+class TradeResponse(BaseModel):
+    id: int
+    user_id: int
+    stock_symbol: str
+    trade_type: str
+    quantity: int
+    price: Decimal
+    trade_date: date
+    broker: str | None
+    import_source: str | None
+    emotion_tag: str | None
+    notes: str | None
+    screenshot_url: str | None
+    entry_method: str | None
+    trade_time: time | None
+    instrument_type: str | None
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class TradeImportRequest(BaseModel):
+    email_content: str = Field(..., min_length=1)
+
+
+class TradeImportResponse(BaseModel):
+    imported: int
+    trades: list[TradeResponse]
+
+
+class TradesSummary(BaseModel):
+    total_trades: int
+    total_invested: Decimal
+    unique_symbols: int
+
+
+class CompletedTradeResponse(BaseModel):
+    id: int
+    user_id: int
+    stock_symbol: str
+    entry_date: date
+    exit_date: date
+    entry_price: Decimal
+    exit_price: Decimal
+    quantity: int
+    pnl: Decimal
+    return_pct: Decimal
+    holding_days: int
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+</file>
+
+<file path="backend/app/services/auth_service.py">
+from datetime import datetime, timedelta, timezone
+
+import bcrypt
+import jwt
+from sqlalchemy.orm import Session
+
+from app.config import settings
+from app.models.user import User
+
+
+def hash_password(password: str) -> str:
+    return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+
+
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    return bcrypt.checkpw(
+        plain_password.encode("utf-8"), hashed_password.encode("utf-8")
+    )
+
+
+def create_access_token(data: dict) -> str:
+    to_encode = data.copy()
+    expire = datetime.now(timezone.utc) + timedelta(
+        minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES
+    )
+    to_encode.update({"exp": expire})
+    return jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
+
+
+def decode_access_token(token: str) -> dict | None:
+    try:
+        return jwt.decode(
+            token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
+        )
+    except (jwt.InvalidTokenError, jwt.ExpiredSignatureError):
+        return None
+
+
+def authenticate_user(db: Session, email: str, password: str) -> User | None:
+    """Validate credentials and return the user, or None if invalid."""
+    user = get_user_by_email(db, email)
+    if not user or not verify_password(password, user.hashed_password):
+        return None
+    return user
+
+
+def get_user_by_email(db: Session, email: str) -> User | None:
+    return db.query(User).filter(User.email == email).first()
+
+
+def create_user(db: Session, email: str, password: str, name: str | None) -> User:
+    user = User(email=email, hashed_password=hash_password(password), name=name)
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    return user
+</file>
+
+<file path="backend/app/services/email_parser.py">
+import re
+from datetime import datetime, date
+from decimal import Decimal
+
+
+def parse_zerodha_contract_note(email_body: str) -> list[dict]:
+    """Parse Zerodha contract note emails to extract trade details.
+
+    Supports formats like:
+        "You have bought 10 shares of TCS at ₹3,850 on 10-MAR-2026"
+        "You have sold 5 shares of INFY at ₹1,420.50 on 11-MAR-2026"
+        "You have bought 25 shares of M&M at ₹1,234.56 on 15-MAR-2026"
+
+    Multiple trades in one email (separated by newlines) are supported.
+
+    Args:
+        email_body: Raw email text content.
+
+    Returns:
+        List of dicts with keys: stock_symbol, trade_type, quantity, price, trade_date.
+        Returns empty list if no trades are found or parsing fails.
+    """
+    buy_pattern = r"bought (\d+) shares of ([A-Z&]+) at \S*?([\d,]+\.?\d*) on ([\dA-Z-]+)"
+    sell_pattern = r"sold (\d+) shares of ([A-Z&]+) at \S*?([\d,]+\.?\d*) on ([\dA-Z-]+)"
+
+    trades: list[dict] = []
+
+    try:
+        for pattern, trade_type in [(buy_pattern, "BUY"), (sell_pattern, "SELL")]:
+            matches = re.findall(pattern, email_body)
+            for match in matches:
+                quantity_str, stock_symbol, price_str, date_str = match
+                price = float(price_str.replace(",", ""))
+                trade_date = datetime.strptime(date_str, "%d-%b-%Y").date()
+
+                trades.append({
+                    "stock_symbol": stock_symbol,
+                    "trade_type": trade_type,
+                    "quantity": int(quantity_str),
+                    "price": price,
+                    "trade_date": trade_date,
+                })
+    except (ValueError, AttributeError):
+        return []
+
+    return trades
+</file>
+
+<file path="backend/app/utils/dependencies.py">
+from fastapi import Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordBearer
+from sqlalchemy.orm import Session
+
+from app.database import get_db
+from app.models.user import User
+from app.services.auth_service import decode_access_token, get_user_by_email
+
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login/oauth")
+
+
+def get_current_user(
+    token: str = Depends(oauth2_scheme),
+    db: Session = Depends(get_db),
+) -> User:
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Invalid or expired token",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+
+    payload = decode_access_token(token)
+    if payload is None:
+        raise credentials_exception
+
+    email: str | None = payload.get("sub")
+    if email is None:
+        raise credentials_exception
+
+    user = get_user_by_email(db, email)
+    if user is None:
+        raise credentials_exception
+
+    return user
+</file>
+
+</files>

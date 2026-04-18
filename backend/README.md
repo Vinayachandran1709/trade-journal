@@ -4,10 +4,10 @@ FastAPI backend with PostgreSQL (Neon DB), JWT authentication, and SQLAlchemy OR
 
 ## Setup
 
-```bash
+```cmd
 cd backend
 python -m venv venv
-source venv/bin/activate  # Windows: venv\Scripts\activate
+venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
@@ -15,13 +15,21 @@ pip install -r requirements.txt
 
 Copy `.env.example` to `.env` and fill in your values:
 
-```bash
-cp .env.example .env
+```cmd
+copy .env.example .env
 ```
+
+Release 0 adds optional CORS configuration for local web and extension work:
+
+```env
+CORS_ALLOW_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
+```
+
+`chrome-extension://<extension-id>` origins are already allowed by regex for local unpacked extension development.
 
 ## Database Migrations
 
-```bash
+```cmd
 # Generate a migration after model changes
 alembic revision --autogenerate -m "description"
 
@@ -31,7 +39,7 @@ alembic upgrade head
 
 ## Run
 
-```bash
+```cmd
 uvicorn app.main:app --reload
 ```
 

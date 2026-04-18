@@ -77,6 +77,15 @@ def test_models():
         pattern_table = None
         models_ok = False
 
+    try:
+        from app.models.behavioral_pattern import BehavioralPattern
+        behavioral_status = "\u2705"
+        behavioral_table = BehavioralPattern.__tablename__
+    except Exception as e:
+        behavioral_status = f"\u274c ({e})"
+        behavioral_table = None
+        models_ok = False
+
     if models_ok:
         print("\u2705 Success")
     else:
@@ -85,6 +94,10 @@ def test_models():
     print(f"   - User model: {user_status}  (table: {user_table})")
     print(f"   - Trade model: {trade_status}  (table: {trade_table})")
     print(f"   - PatternAnalysis model: {pattern_status}  (table: {pattern_table})\n")
+    print(
+        f"   - BehavioralPattern model: {behavioral_status}  "
+        f"(table: {behavioral_table})\n"
+    )
 check("Models Import", test_models)
 
 # ── 4. Auth Service ──────────────────────────────────────────

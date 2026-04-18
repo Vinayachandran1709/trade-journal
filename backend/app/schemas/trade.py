@@ -1,4 +1,4 @@
-from datetime import date, datetime
+from datetime import date, datetime, time
 from decimal import Decimal
 
 from pydantic import BaseModel, Field
@@ -12,6 +12,12 @@ class TradeCreate(BaseModel):
     trade_date: date
     broker: str | None = None
     import_source: str | None = None
+    emotion_tag: str | None = None
+    notes: str | None = None
+    screenshot_url: str | None = None
+    entry_method: str | None = None
+    trade_time: time | None = None
+    instrument_type: str | None = None
 
 
 class TradeResponse(BaseModel):
@@ -24,6 +30,12 @@ class TradeResponse(BaseModel):
     trade_date: date
     broker: str | None
     import_source: str | None
+    emotion_tag: str | None
+    notes: str | None
+    screenshot_url: str | None
+    entry_method: str | None
+    trade_time: time | None
+    instrument_type: str | None
     created_at: datetime
 
     model_config = {"from_attributes": True}

@@ -1,6 +1,16 @@
 from datetime import datetime
 
-from sqlalchemy import Column, Date, DateTime, ForeignKey, Integer, Numeric, String
+from sqlalchemy import (
+    Column,
+    Date,
+    DateTime,
+    ForeignKey,
+    Integer,
+    Numeric,
+    String,
+    Text,
+    Time,
+)
 from sqlalchemy.orm import relationship
 
 from app.database import Base
@@ -18,6 +28,12 @@ class Trade(Base):
     trade_date = Column(Date, nullable=False)
     broker = Column(String(50))
     import_source = Column(String(20))
+    emotion_tag = Column(String(50))
+    notes = Column(Text)
+    screenshot_url = Column(String(500))
+    entry_method = Column(String(100))
+    trade_time = Column(Time)
+    instrument_type = Column(String(50))
     created_at = Column(DateTime, default=datetime.utcnow)
 
     user = relationship("User", back_populates="trades")

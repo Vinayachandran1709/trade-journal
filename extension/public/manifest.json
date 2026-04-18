@@ -1,0 +1,35 @@
+{
+  "manifest_version": 3,
+  "name": "Trade Copilot",
+  "description": "Release 0 scaffold for the AI trading copilot Chrome extension.",
+  "version": "0.0.1",
+  "permissions": ["storage", "sidePanel"],
+  "host_permissions": [
+    "http://localhost:8000/*",
+    "http://127.0.0.1:8000/*"
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Trade Copilot"
+  },
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "side_panel": {
+    "default_path": "sidepanel.html"
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "content_scripts": [
+    {
+      "matches": ["http://*/*", "https://*/*"],
+      "js": ["content-scripts/broker-detector.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}

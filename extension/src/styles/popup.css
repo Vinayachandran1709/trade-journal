@@ -1,0 +1,126 @@
+:root {
+  color: #e5eefb;
+  background: #08111f;
+  font-family: "Segoe UI", sans-serif;
+}
+
+body {
+  margin: 0;
+  min-width: 360px;
+  min-height: 480px;
+  background:
+    radial-gradient(circle at top, rgba(59, 130, 246, 0.35), transparent 42%),
+    linear-gradient(180deg, #09121f 0%, #030712 100%);
+}
+
+button,
+input {
+  font: inherit;
+}
+
+.popup-shell {
+  padding: 16px;
+}
+
+.panel {
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  border-radius: 18px;
+  background: rgba(15, 23, 42, 0.9);
+  box-shadow: 0 20px 40px rgba(2, 6, 23, 0.35);
+  padding: 18px;
+}
+
+.panel-header h1 {
+  margin: 6px 0;
+  font-size: 24px;
+}
+
+.eyebrow {
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-size: 12px;
+  color: #93c5fd;
+}
+
+.subcopy {
+  margin: 0 0 18px;
+  color: #cbd5e1;
+  line-height: 1.5;
+}
+
+.auth-form {
+  display: grid;
+  gap: 14px;
+}
+
+.auth-form label {
+  display: grid;
+  gap: 6px;
+  font-size: 14px;
+  color: #dbeafe;
+}
+
+.auth-form input {
+  border: 1px solid rgba(148, 163, 184, 0.4);
+  border-radius: 12px;
+  padding: 12px 14px;
+  background: rgba(15, 23, 42, 0.75);
+  color: #f8fafc;
+}
+
+.primary-button,
+.secondary-button {
+  border: 0;
+  border-radius: 12px;
+  padding: 12px 14px;
+  cursor: pointer;
+}
+
+.primary-button {
+  background: linear-gradient(135deg, #38bdf8, #2563eb);
+  color: white;
+  font-weight: 700;
+}
+
+.primary-button:disabled {
+  opacity: 0.65;
+  cursor: wait;
+}
+
+.secondary-button {
+  background: rgba(148, 163, 184, 0.14);
+  color: #e2e8f0;
+}
+
+.status-stack {
+  display: grid;
+  gap: 12px;
+}
+
+.status-card {
+  border-radius: 14px;
+  padding: 14px;
+  background: rgba(15, 23, 42, 0.75);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+}
+
+.status-card.success {
+  border-color: rgba(56, 189, 248, 0.45);
+  background: rgba(8, 47, 73, 0.45);
+}
+
+.status-label {
+  display: block;
+  margin-bottom: 6px;
+  color: #93c5fd;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+
+.error-text {
+  margin: 14px 0 0;
+  color: #fca5a5;
+  font-size: 13px;
+}

@@ -4,15 +4,15 @@ Next.js 14 frontend with TypeScript, Tailwind CSS, and JWT authentication.
 
 ## Setup
 
-```bash
+```cmd
 cd frontend
 npm install
-cp .env.local.example .env.local
+copy .env.local.example .env.local
 ```
 
 ## Run
 
-```bash
+```cmd
 npm run dev
 ```
 

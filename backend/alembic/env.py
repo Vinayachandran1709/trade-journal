@@ -13,9 +13,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 # Import your app's config and models
 from app.config import settings
 from app.database import Base
-from app.models.user import User
-from app.models.trade import Trade
-from app.models.pattern_analysis import PatternAnalysis
+from app import models  # noqa: F401
 
 # this is the Alembic Config object
 config = context.config
