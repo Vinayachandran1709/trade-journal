@@ -8,12 +8,26 @@ export interface Trade {
   trade_date: string;
   broker: string | null;
   import_source: string | null;
+  emotion_tag?: string | null;
+  notes?: string | null;
+  screenshot_url?: string | null;
+  entry_method?: string | null;
+  trade_time?: string | null;
+  instrument_type?: string | null;
   created_at: string;
 }
 
 export interface TradeImportResponse {
   imported: number;
+  imported_count: number;
+  duplicate_count: number;
   trades: Trade[];
+  imported_trade_ids?: number[];
+  detected_broker?: string | null;
+  mode?: "imported" | "manual_mapping_required";
+  preview_headers: string[];
+  preview_rows: Record<string, string>[];
+  message?: string | null;
 }
 
 export interface TradesSummary {

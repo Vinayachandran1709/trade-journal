@@ -2,6 +2,7 @@ from datetime import date, datetime, time
 from decimal import Decimal
 
 from pydantic import BaseModel, Field
+from typing import Literal
 
 
 class TradeCreate(BaseModel):
@@ -45,9 +46,42 @@ class TradeImportRequest(BaseModel):
     email_content: str = Field(..., min_length=1)
 
 
+class AutoCapturedTradeInput(BaseModel):
+    stock_symbol: str
+    trade_type: Literal["BUY", "SELL"]
+    quantity: int = Field(..., gt=0)
+    price: Decimal = Field(..., gt=0)
+    trade_date: date
+    trade_time: time | None = None
+    instrument_type: str | None = None
+    entry_method: str | None = None
+    emotion_tag: str | None = None
+    notes: str | None = None
+    screenshot_url: str | None = None
+
+
+class AutoCaptureRequest(BaseModel):
+    broker: Literal["zerodha", "groww"]
+    capture_method: Literal["dom"]
+    trades: list[AutoCapturedTradeInput] = Field(default_factory=list)
+
+
+class TradeAnnotationUpdateRequest(BaseModel):
+    emotion_tag: str | None = None
+    note: str | None = None
+
+
 class TradeImportResponse(BaseModel):
     imported: int
-    trades: list[TradeResponse]
+    trades: list[TradeResponse] = Field(default_factory=list)
+    imported_count: int = 0
+    duplicate_count: int = 0
+    imported_trade_ids: list[int] = Field(default_factory=list)
+    detected_broker: str | None = None
+    mode: Literal["imported", "manual_mapping_required"] = "imported"
+    preview_headers: list[str] = Field(default_factory=list)
+    preview_rows: list[dict[str, str]] = Field(default_factory=list)
+    message: str | None = None
 
 
 class TradesSummary(BaseModel):

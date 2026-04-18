@@ -46,6 +46,34 @@ export async function importGrowwCSV(
   return res.json();
 }
 
+export async function importUniversalCSV(
+  file: File
+): Promise<TradeImportResponse> {
+  const token =
+    typeof window !== "undefined" ? localStorage.getItem("token") : null;
+
+  const formData = new FormData();
+  formData.append("file", file);
+
+  const headers: Record<string, string> = {};
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+
+  const res = await fetch(`${API_URL}/trades/import/universal-csv`, {
+    method: "POST",
+    headers,
+    body: formData,
+  });
+
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({ detail: "Request failed" }));
+    throw new Error(error.detail || `Error ${res.status}`);
+  }
+
+  return res.json();
+}
+
 export async function getTrades(filters?: {
   symbol?: string;
   start_date?: string;

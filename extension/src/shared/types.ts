@@ -1,3 +1,5 @@
+import type { CaptureState, CapturedTrade } from "./captures";
+
 export interface LoginRequest {
   email: string;
   password: string;
@@ -26,7 +28,10 @@ export interface ExtensionMessage {
     | "auth:get-me"
     | "auth:logout"
     | "health:ping"
-    | "broker:page-detected";
+    | "broker:page-detected"
+    | "capture:submit"
+    | "capture:get-state"
+    | "capture:update-trade";
   payload?: Record<string, unknown>;
 }
 
@@ -36,4 +41,7 @@ export interface BackgroundResponse {
   token?: string | null;
   user?: User;
   timestamp?: string;
+  captureState?: CaptureState;
+  importedCount?: number;
+  trades?: CapturedTrade[];
 }

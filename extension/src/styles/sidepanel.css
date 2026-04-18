@@ -97,3 +97,82 @@ body {
   margin: 0 0 8px;
   color: #0f172a;
 }
+
+.tabs-row {
+  display: flex;
+  gap: 10px;
+}
+
+.tab-button,
+.save-button {
+  border: 0;
+  border-radius: 999px;
+  padding: 10px 14px;
+  font: inherit;
+  cursor: pointer;
+}
+
+.tab-button {
+  background: rgba(15, 23, 42, 0.08);
+  color: #0f172a;
+}
+
+.tab-button.active,
+.save-button {
+  background: #0f172a;
+  color: #f8fafc;
+}
+
+.capture-card {
+  display: grid;
+  gap: 12px;
+}
+
+.capture-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.capture-header p {
+  margin: 0;
+}
+
+.broker-pill {
+  align-self: start;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(14, 165, 233, 0.12);
+  color: #0369a1;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.field-label {
+  display: grid;
+  gap: 6px;
+  color: #0f172a;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.field-input {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid rgba(148, 163, 184, 0.5);
+  border-radius: 14px;
+  padding: 10px 12px;
+  font: inherit;
+  color: #0f172a;
+  background: rgba(255, 255, 255, 0.9);
+}
+
+.field-textarea {
+  min-height: 88px;
+  resize: vertical;
+}
+
+.error-copy {
+  color: #b91c1c;
+}

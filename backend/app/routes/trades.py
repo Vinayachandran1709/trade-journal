@@ -9,16 +9,19 @@ from app.models.completed_trade import CompletedTrade
 from app.models.trade import Trade
 from app.models.user import User
 from app.schemas.trade import (
+    AutoCaptureRequest,
     CompletedTradeResponse,
-    TradeCreate,
     TradeImportRequest,
     TradeImportResponse,
+    TradeAnnotationUpdateRequest,
     TradeResponse,
     TradesSummary,
 )
 from app.services.csv_parser import parse_groww_csv
 from app.services.email_parser import parse_zerodha_contract_note
+from app.services.trade_import_service import import_trades
 from app.services.trade_processor import calculate_completed_trades, clean_stock_symbol
+from app.services.universal_csv_parser import parse_universal_csv
 from app.utils.dependencies import get_current_user
 
 router = APIRouter(prefix="/api/trades", tags=["trades"])
@@ -38,44 +41,21 @@ def import_zerodha_email(
             detail="No trades found in email",
         )
 
-    imported_trades: list[Trade] = []
+    result = import_trades(
+        db,
+        user_id=current_user.id,
+        trades=parsed_trades,
+        default_broker="zerodha",
+        import_source="email",
+    )
 
-    for trade in parsed_trades:
-        duplicate = (
-            db.query(Trade)
-            .filter(
-                Trade.user_id == current_user.id,
-                Trade.stock_symbol == trade["stock_symbol"],
-                Trade.trade_type == trade["trade_type"],
-                Trade.quantity == trade["quantity"],
-                Trade.price == Decimal(str(trade["price"])),
-                Trade.trade_date == trade["trade_date"],
-            )
-            .first()
-        )
-
-        if duplicate:
-            continue
-
-        new_trade = Trade(
-            user_id=current_user.id,
-            stock_symbol=trade["stock_symbol"],
-            trade_type=trade["trade_type"],
-            quantity=trade["quantity"],
-            price=Decimal(str(trade["price"])),
-            trade_date=trade["trade_date"],
-            broker="zerodha",
-            import_source="email",
-        )
-        db.add(new_trade)
-        imported_trades.append(new_trade)
-
-    db.commit()
-
-    for trade in imported_trades:
-        db.refresh(trade)
-
-    return TradeImportResponse(imported=len(imported_trades), trades=imported_trades)
+    return TradeImportResponse(
+        imported=len(result.imported_trades),
+        imported_count=len(result.imported_trades),
+        duplicate_count=result.duplicate_count,
+        imported_trade_ids=[trade.id for trade in result.imported_trades],
+        trades=result.imported_trades,
+    )
 
 
 @router.post("/import/groww-csv", response_model=TradeImportResponse)
@@ -99,44 +79,100 @@ async def import_groww_csv_endpoint(
             detail="No trades found in CSV",
         )
 
-    imported_trades: list[Trade] = []
+    result = import_trades(
+        db,
+        user_id=current_user.id,
+        trades=parsed_trades,
+        default_broker="groww",
+        import_source="csv",
+    )
 
-    for trade in parsed_trades:
-        duplicate = (
-            db.query(Trade)
-            .filter(
-                Trade.user_id == current_user.id,
-                Trade.stock_symbol == trade["stock_symbol"],
-                Trade.trade_type == trade["trade_type"],
-                Trade.quantity == trade["quantity"],
-                Trade.price == Decimal(str(trade["price"])),
-                Trade.trade_date == trade["trade_date"],
-            )
-            .first()
+    return TradeImportResponse(
+        imported=len(result.imported_trades),
+        imported_count=len(result.imported_trades),
+        duplicate_count=result.duplicate_count,
+        imported_trade_ids=[trade.id for trade in result.imported_trades],
+        trades=result.imported_trades,
+        detected_broker="groww",
+    )
+
+
+@router.post("/import/universal-csv", response_model=TradeImportResponse)
+async def import_universal_csv_endpoint(
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> TradeImportResponse:
+    if not file.filename or not file.filename.endswith(".csv"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Only CSV files are allowed",
         )
 
-        if duplicate:
-            continue
+    content = await file.read()
+    parsed = parse_universal_csv(content)
 
-        new_trade = Trade(
-            user_id=current_user.id,
-            stock_symbol=trade["stock_symbol"],
-            trade_type=trade["trade_type"],
-            quantity=trade["quantity"],
-            price=Decimal(str(trade["price"])),
-            trade_date=trade["trade_date"],
-            broker="groww",
-            import_source="csv",
+    if parsed.manual_mapping_required:
+        return TradeImportResponse(
+            imported=0,
+            imported_count=0,
+            duplicate_count=0,
+            trades=[],
+            imported_trade_ids=[],
+            detected_broker=parsed.detected_broker,
+            mode="manual_mapping_required",
+            preview_headers=parsed.preview_headers,
+            preview_rows=parsed.preview_rows,
+            message=parsed.message,
         )
-        db.add(new_trade)
-        imported_trades.append(new_trade)
 
-    db.commit()
+    result = import_trades(
+        db,
+        user_id=current_user.id,
+        trades=parsed.trades,
+        default_broker=parsed.detected_broker,
+        import_source="csv",
+    )
 
-    for trade in imported_trades:
-        db.refresh(trade)
+    return TradeImportResponse(
+        imported=len(result.imported_trades),
+        imported_count=len(result.imported_trades),
+        duplicate_count=result.duplicate_count,
+        imported_trade_ids=[trade.id for trade in result.imported_trades],
+        trades=result.imported_trades,
+        detected_broker=parsed.detected_broker,
+    )
 
-    return TradeImportResponse(imported=len(imported_trades), trades=imported_trades)
+
+@router.post("/auto-capture", response_model=TradeImportResponse)
+def auto_capture_trades(
+    request: AutoCaptureRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> TradeImportResponse:
+    if not request.trades:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No trades received for auto-capture",
+        )
+
+    result = import_trades(
+        db,
+        user_id=current_user.id,
+        trades=[trade.model_dump() for trade in request.trades],
+        default_broker=request.broker,
+        import_source="extension",
+        default_entry_method=request.capture_method,
+    )
+
+    return TradeImportResponse(
+        imported=len(result.imported_trades),
+        imported_count=len(result.imported_trades),
+        duplicate_count=result.duplicate_count,
+        imported_trade_ids=[trade.id for trade in result.imported_trades],
+        trades=result.imported_trades,
+        detected_broker=request.broker,
+    )
 
 
 @router.get("/summary", response_model=TradesSummary)
@@ -227,3 +263,28 @@ def get_completed_trades(
         .all()
     )
     return trades
+
+
+@router.patch("/{trade_id}", response_model=TradeResponse)
+def update_trade_annotations(
+    trade_id: int,
+    request: TradeAnnotationUpdateRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> TradeResponse:
+    trade = (
+        db.query(Trade)
+        .filter(Trade.id == trade_id, Trade.user_id == current_user.id)
+        .first()
+    )
+    if trade is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Trade not found",
+        )
+
+    trade.emotion_tag = request.emotion_tag
+    trade.notes = request.note
+    db.commit()
+    db.refresh(trade)
+    return trade
