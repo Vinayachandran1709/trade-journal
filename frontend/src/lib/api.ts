@@ -23,6 +23,12 @@ export async function apiFetch<T>(
 
   if (!res.ok) {
     const error = await res.json().catch(() => ({ detail: "Request failed" }));
+    if (res.status === 401) {
+      if (typeof window !== "undefined") {
+        localStorage.removeItem("token");
+        window.location.href = "/login";
+      }
+    }
     throw new Error(error.detail || `Error ${res.status}`);
   }
 

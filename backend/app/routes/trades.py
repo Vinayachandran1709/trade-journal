@@ -1,7 +1,7 @@
-from datetime import date
+from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 
-from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
+from fastapi import APIRouter, Depends, File, HTTPException, Query, Response, UploadFile, status
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -197,6 +197,20 @@ def get_trades_summary(
     )
 
 
+def _is_pro_active(user: User) -> bool:
+    status_ = user.subscription_status
+    if status_ not in ("pro", "pro_founding"):
+        return False
+    if status_ == "pro_founding":
+        return True
+    expires = user.subscription_expires_at
+    if expires is None:
+        return False
+    if expires.tzinfo is None:
+        expires = expires.replace(tzinfo=timezone.utc)
+    return expires > datetime.now(timezone.utc)
+
+
 @router.get("/", response_model=list[TradeResponse])
 def get_trades(
     symbol: str | None = Query(None),
@@ -206,6 +220,7 @@ def get_trades(
     offset: int = Query(0, ge=0),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
+    response: Response = None,
 ) -> list[TradeResponse]:
     query = db.query(Trade).filter(Trade.user_id == current_user.id)
 
@@ -215,6 +230,34 @@ def get_trades(
         query = query.filter(Trade.trade_date >= start_date)
     if end_date:
         query = query.filter(Trade.trade_date <= end_date)
+
+    if not _is_pro_active(current_user):
+        free_cutoff = (datetime.now(timezone.utc) - timedelta(days=30)).date()
+        effective_cutoff = max(start_date, free_cutoff) if start_date else free_cutoff
+
+        hidden_count = (
+            db.query(Trade)
+            .filter(
+                Trade.user_id == current_user.id,
+                Trade.trade_date < effective_cutoff,
+            )
+            .count()
+        )
+        if symbol:
+            hidden_count = (
+                db.query(Trade)
+                .filter(
+                    Trade.user_id == current_user.id,
+                    Trade.stock_symbol == symbol.upper(),
+                    Trade.trade_date < effective_cutoff,
+                )
+                .count()
+            )
+
+        query = query.filter(Trade.trade_date >= effective_cutoff)
+
+        if response is not None:
+            response.headers["X-Hidden-Trade-Count"] = str(hidden_count)
 
     query = query.order_by(Trade.trade_date.desc())
     trades = query.limit(limit).offset(offset).all()

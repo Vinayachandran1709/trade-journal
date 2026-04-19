@@ -88,6 +88,7 @@ class TradesSummary(BaseModel):
     total_trades: int
     total_invested: Decimal
     unique_symbols: int
+    hidden_trade_count: int = 0
 
 
 class CompletedTradeResponse(BaseModel):
