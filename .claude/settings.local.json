@@ -4,7 +4,8 @@
       "Bash(cd:*)",
       "Bash(python test_trade_processor.py)",
       "Bash(python generate_icons.py)",
-      "Bash(npm run *)"
+      "Bash(npm run *)",
+      "WebFetch(domain:docs.railway.com)"
     ]
   }
 }
