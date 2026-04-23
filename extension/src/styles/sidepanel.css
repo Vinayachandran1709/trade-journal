@@ -173,6 +173,50 @@ body {
   resize: vertical;
 }
 
+/* Emotion buttons */
+.emotion-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.emotion-pill {
+  border: 1.5px solid #e2e8f0;
+  border-radius: 999px;
+  padding: 5px 10px;
+  font: inherit;
+  font-size: 12px;
+  background: #f1f5f9;
+  color: #334155;
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
+  white-space: nowrap;
+}
+
+.emotion-pill:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.emotion-pill--selected {
+  background: #4f46e5;
+  color: #fff;
+  border-color: #4f46e5;
+}
+
+.add-note-link {
+  border: 0;
+  background: none;
+  padding: 0;
+  font: inherit;
+  font-size: 13px;
+  color: #4f46e5;
+  cursor: pointer;
+  text-align: left;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
 .error-copy {
   color: #b91c1c;
 }

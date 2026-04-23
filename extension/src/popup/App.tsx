@@ -57,15 +57,6 @@ export default function App() {
     };
   }, []);
 
-  async function openSidePanelForCurrentWindow(): Promise<void> {
-    const currentWindow = await chrome.windows.getCurrent();
-    if (!currentWindow.id) {
-      return;
-    }
-
-    await chrome.sidePanel.open({ windowId: currentWindow.id });
-  }
-
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setStatus("submitting");
@@ -75,16 +66,15 @@ export default function App() {
       const tokenResponse = await loginWithPassword({ email, password });
       await setAuthToken(tokenResponse.access_token);
 
-      const currentUser = await fetchCurrentUser(tokenResponse.access_token);
-      setUser(currentUser);
-      setPassword("");
-
-      try {
-        await openSidePanelForCurrentWindow();
-        window.close();
-      } catch {
-        // Keep the popup signed-in state as a fallback if Chrome blocks auto-open.
+      // Open the side panel directly from the popup. The popup was opened by
+      // clicking the extension icon, so the user-gesture context persists here
+      // and covers chrome.sidePanel.open() regardless of how many awaits came
+      // before. The background storage.onChanged also tries as a fallback.
+      const win = await chrome.windows.getCurrent();
+      if (win.id) {
+        await chrome.sidePanel.open({ windowId: win.id }).catch(() => undefined);
       }
+      window.close();
     } catch (submitError) {
       await clearAuthToken();
       setError(

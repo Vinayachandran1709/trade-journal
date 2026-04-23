@@ -226,6 +226,16 @@ export default function App() {
   );
 }
 
+const EMOTIONS = [
+  { emoji: "😎", label: "Confident", value: "confident" },
+  { emoji: "😰", label: "Fearful",   value: "fearful" },
+  { emoji: "🤑", label: "Greedy",    value: "greedy" },
+  { emoji: "😤", label: "Revenge",   value: "revenge" },
+  { emoji: "😱", label: "FOMO",      value: "fomo" },
+  { emoji: "😐", label: "Neutral",   value: "neutral" },
+  { emoji: "🥱", label: "Bored",     value: "bored" },
+] as const;
+
 function CaptureCard({
   trade,
   saving,
@@ -237,6 +247,13 @@ function CaptureCard({
 }) {
   const [emotionTag, setEmotionTag] = useState(trade.emotion_tag ?? "");
   const [note, setNote] = useState(trade.notes ?? "");
+  const [noteOpen, setNoteOpen] = useState(false);
+
+  function handleEmotionTap(value: string) {
+    const next = emotionTag === value ? "" : value;
+    setEmotionTag(next);
+    void onSave(trade.id, next, note);
+  }
 
   return (
     <article className="placeholder-card capture-card">
@@ -253,33 +270,42 @@ function CaptureCard({
         <span className="broker-pill">{trade.broker ?? "capture"}</span>
       </div>
 
-      <label className="field-label">
-        Emotion tag
-        <input
-          className="field-input"
-          value={emotionTag}
-          onChange={(event) => setEmotionTag(event.target.value)}
-          placeholder="calm, revenge, FOMO..."
-        />
-      </label>
+      <div className="emotion-row">
+        {EMOTIONS.map(({ emoji, label, value }) => (
+          <button
+            key={value}
+            className={`emotion-pill${emotionTag === value ? " emotion-pill--selected" : ""}`}
+            onClick={() => handleEmotionTap(value)}
+            disabled={saving}
+          >
+            {emoji} {label}
+          </button>
+        ))}
+      </div>
 
-      <label className="field-label">
-        Note
+      {noteOpen ? (
         <textarea
           className="field-input field-textarea"
           value={note}
+          autoFocus
           onChange={(event) => setNote(event.target.value)}
           placeholder="Why this trade was taken..."
         />
-      </label>
+      ) : (
+        <button className="add-note-link" onClick={() => setNoteOpen(true)}>
+          + Add note
+        </button>
+      )}
 
-      <button
-        className="save-button"
-        disabled={saving}
-        onClick={() => onSave(trade.id, emotionTag, note)}
-      >
-        {saving ? "Saving..." : "Save note"}
-      </button>
+      {noteOpen ? (
+        <button
+          className="save-button"
+          disabled={saving}
+          onClick={() => onSave(trade.id, emotionTag, note)}
+        >
+          {saving ? "Saving..." : "Save"}
+        </button>
+      ) : null}
     </article>
   );
 }

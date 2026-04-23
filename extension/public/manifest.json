@@ -10,6 +10,7 @@
     "https://indiacircle.in/*",
     "https://www.indiacircle.in/*",
     "https://kite.zerodha.com/*",
+    "https://groww.in/*",
     "https://web.groww.in/*"
   ],
   "action": {
@@ -33,6 +34,7 @@
     {
       "matches": [
         "https://kite.zerodha.com/*",
+        "https://groww.in/*",
         "https://web.groww.in/*"
       ],
       "js": ["content-scripts/broker-detector.js"],

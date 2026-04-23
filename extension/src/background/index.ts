@@ -30,7 +30,15 @@ chrome.storage.onChanged.addListener((changes, areaName) => {
   }
 
   const nextToken = (changes[AUTH_TOKEN_KEY].newValue as string | undefined) ?? null;
-  void configureActionSurface(nextToken);
+  // Fire whenever a token appears (new login or re-login after logout).
+  const tokenArrived = Boolean(nextToken);
+
+  void (async () => {
+    await configureActionSurface(nextToken);
+    if (tokenArrived) {
+      await openSidePanelForActiveWindow();
+    }
+  })();
 });
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
@@ -180,6 +188,13 @@ async function handleMessage(
       ok: false,
       error: error instanceof Error ? error.message : "Unexpected error.",
     });
+  }
+}
+
+async function openSidePanelForActiveWindow(): Promise<void> {
+  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  if (tab?.windowId) {
+    await chrome.sidePanel.open({ windowId: tab.windowId }).catch(() => undefined);
   }
 }
 

@@ -3,7 +3,8 @@
     "allow": [
       "Bash(cd:*)",
       "Bash(python test_trade_processor.py)",
-      "Bash(python generate_icons.py)"
+      "Bash(python generate_icons.py)",
+      "Bash(npm run *)"
     ]
   }
 }

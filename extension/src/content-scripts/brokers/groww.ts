@@ -4,7 +4,7 @@ import type { BrokerAdapter } from "./types";
 export const growwAdapter: BrokerAdapter = {
   broker: "groww",
   matches(hostname) {
-    return hostname === "web.groww.in";
+    return hostname === "groww.in" || hostname === "web.groww.in";
   },
   capture(documentRef) {
     return captureTradesFromVisibleTables(documentRef, {
