@@ -93,3 +93,25 @@ export async function updateTradeCaptureDetails(
     body: JSON.stringify(payload),
   });
 }
+
+// ---------------------------------------------------------------------------
+// Market data (public endpoints — no auth required)
+// ---------------------------------------------------------------------------
+
+export interface MarketDashboardData {
+  indices: Record<string, { value: number | null; change: number | null; change_pct: number | null }>;
+  vix: { value: number | null; change: number | null; context: string };
+  fii_dii: { fii_net: number | null; dii_net: number | null; date: string | null; source?: string };
+  top_gainers: Array<{ symbol: string; price: number; change_pct: number }>;
+  top_losers: Array<{ symbol: string; price: number; change_pct: number }>;
+  global_cues: Record<string, { value: number | null; change_pct: number | null }>;
+  market_status: string;
+  last_updated: string;
+  is_stale: boolean;
+}
+
+export async function fetchMarketDashboard(): Promise<MarketDashboardData> {
+  const res = await fetch(`${API_BASE_URL}/api/market/dashboard`);
+  if (!res.ok) throw new Error(`Market data unavailable (${res.status})`);
+  return res.json() as Promise<MarketDashboardData>;
+}

@@ -4,14 +4,18 @@ import { fetchCurrentUser } from "../shared/api";
 import { clearAuthToken, getAuthToken, onAuthTokenChange } from "../shared/auth";
 import { getCaptureState, type CaptureState } from "../shared/captures";
 import type { User } from "../shared/types";
+import MarketTab from "./MarketTab";
+import CalculatorsTab from "./CalculatorsTab";
 
 const WEB_APP_URL = (import.meta.env.VITE_WEB_APP_URL || "https://indiacircle.in").replace(/\/$/, "");
+
+type TabId = "market" | "captures" | "calculators" | "account";
 
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
   const [status, setStatus] = useState("Checking connection...");
   const [isLoggingOut, setIsLoggingOut] = useState(false);
-  const [activeTab, setActiveTab] = useState<"captures" | "account">("captures");
+  const [activeTab, setActiveTab] = useState<TabId>("market");
   const [captureState, setCaptureState] = useState<CaptureState | null>(null);
   const [savingTradeId, setSavingTradeId] = useState<number | null>(null);
 
@@ -142,22 +146,28 @@ export default function App() {
         {user ? <p className="signed-in-copy">Signed in as {user.email}</p> : null}
       </section>
 
-      <section className="tabs-row">
-        <button
-          className={`tab-button ${activeTab === "captures" ? "active" : ""}`}
-          onClick={() => setActiveTab("captures")}
-        >
-          Today's Captures
-        </button>
-        <button
-          className={`tab-button ${activeTab === "account" ? "active" : ""}`}
-          onClick={() => setActiveTab("account")}
-        >
-          Account
-        </button>
-      </section>
+      <nav className="tabs-row">
+        {(
+          [
+            ["market",      "Market"],
+            ["captures",    "Captures"],
+            ["calculators", "Calculators"],
+            ["account",     "Account"],
+          ] as Array<[TabId, string]>
+        ).map(([id, label]) => (
+          <button
+            key={id}
+            className={`tab-button${activeTab === id ? " active" : ""}`}
+            onClick={() => setActiveTab(id)}
+          >
+            {label}
+          </button>
+        ))}
+      </nav>
 
-      {activeTab === "captures" ? (
+      {activeTab === "market" && <MarketTab />}
+
+      {activeTab === "captures" && (
         <section className="placeholder-grid">
           <article className="placeholder-card">
             <h2>Today's Captures</h2>
@@ -180,7 +190,11 @@ export default function App() {
             />
           ))}
         </section>
-      ) : (
+      )}
+
+      {activeTab === "calculators" && <CalculatorsTab />}
+
+      {activeTab === "account" && (
         <section className="placeholder-grid">
           <article className="placeholder-card">
             <h2>Capture status</h2>
