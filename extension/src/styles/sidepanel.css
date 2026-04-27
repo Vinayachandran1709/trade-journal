@@ -139,6 +139,26 @@ body {
   gap: 12px;
 }
 
+.capture-empty-state {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.capture-empty-state p {
+  margin: 0;
+}
+
+.capture-empty-icon {
+  width: 12px;
+  height: 12px;
+  border-radius: 999px;
+  border: 2px solid rgba(14, 165, 233, 0.35);
+  background: rgba(14, 165, 233, 0.12);
+  box-shadow: 0 0 0 4px rgba(14, 165, 233, 0.06);
+  flex-shrink: 0;
+}
+
 .capture-header {
   display: flex;
   justify-content: space-between;
@@ -230,6 +250,36 @@ body {
 
 .error-copy {
   color: #b91c1c;
+}
+
+.recent-capture-list {
+  display: grid;
+  gap: 10px;
+}
+
+.recent-capture-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+}
+
+.recent-capture-row:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.recent-capture-row strong {
+  display: block;
+  color: #0f172a;
+  margin-bottom: 4px;
+}
+
+.recent-capture-row p {
+  margin: 0;
+  color: #475569;
+  font-size: 13px;
 }
 
 /* Upgrade to Pro banner */
@@ -347,8 +397,30 @@ body {
 }
 
 .mkt-updated {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   font-size: 11px;
   color: #64748b;
+}
+
+.mkt-refresh-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #38bdf8;
+  box-shadow: 0 0 0 6px rgba(56, 189, 248, 0.14);
+  animation: mkt-pulse 1.2s ease-in-out infinite;
+}
+
+.mkt-inline-note {
+  margin-bottom: 12px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: rgba(14, 165, 233, 0.1);
+  color: #0f172a;
+  font-size: 12px;
+  line-height: 1.4;
 }
 
 .mkt-section {
@@ -517,6 +589,66 @@ body {
   margin-top: 8px;
 }
 
+.mkt-skeleton-bar {
+  display: block;
+  width: 100%;
+  border-radius: 999px;
+  background: linear-gradient(
+    90deg,
+    rgba(226, 232, 240, 0.8) 0%,
+    rgba(241, 245, 249, 0.95) 50%,
+    rgba(226, 232, 240, 0.8) 100%
+  );
+  background-size: 200% 100%;
+  animation: mkt-shimmer 1.2s linear infinite;
+}
+
+.mkt-skeleton-pill {
+  width: 120px;
+  height: 28px;
+}
+
+.mkt-skeleton-updated {
+  width: 118px;
+  height: 14px;
+}
+
+.mkt-skeleton-label {
+  width: 52%;
+  height: 10px;
+  margin-bottom: 8px;
+}
+
+.mkt-skeleton-value {
+  width: 68%;
+  height: 18px;
+  margin-bottom: 7px;
+}
+
+.mkt-skeleton-change {
+  width: 78%;
+  height: 12px;
+}
+
+.mkt-skeleton-list {
+  display: grid;
+}
+
+.mkt-skeleton-row-label {
+  width: 34%;
+  height: 12px;
+}
+
+.mkt-skeleton-row-value {
+  width: 22%;
+  height: 12px;
+}
+
+.mkt-skeleton-row-change {
+  width: 18%;
+  height: 12px;
+}
+
 /* ============================================================
    Calculators Tab
    ============================================================ */
@@ -569,6 +701,27 @@ body {
   background: rgba(255, 255, 255, 0.9);
   -webkit-appearance: none;
   appearance: none;
+}
+
+.calc-select-wrap {
+  position: relative;
+}
+
+.calc-select {
+  padding-right: 34px;
+  cursor: pointer;
+  border-color: rgba(100, 116, 139, 0.55);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.96));
+}
+
+.calc-select-chevron {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #475569;
+  font-size: 11px;
+  pointer-events: none;
 }
 
 .calc-input:focus {
@@ -638,4 +791,114 @@ body {
   font-size: 12px;
   color: #dc2626;
   margin: 6px 0 0;
+}
+
+.account-card {
+  display: grid;
+  gap: 16px;
+}
+
+.account-card-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.account-email {
+  margin: 4px 0 0;
+}
+
+.account-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  padding: 7px 12px;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.account-badge--free {
+  background: #e2e8f0;
+  color: #334155;
+}
+
+.account-badge--pro {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.account-badge--founding {
+  background: #ede9fe;
+  color: #5b21b6;
+}
+
+.account-metrics {
+  display: grid;
+  gap: 12px;
+}
+
+.account-metric {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: baseline;
+  padding-bottom: 10px;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+}
+
+.account-metric:last-child {
+  padding-bottom: 0;
+  border-bottom: none;
+}
+
+.account-metric-label {
+  color: #64748b;
+  font-size: 12px;
+}
+
+.account-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.account-link-button {
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  border-radius: 999px;
+  padding: 9px 14px;
+  background: rgba(255, 255, 255, 0.9);
+  color: #0f172a;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+@keyframes mkt-pulse {
+  0% {
+    transform: scale(0.92);
+    opacity: 0.75;
+  }
+
+  70% {
+    transform: scale(1);
+    opacity: 1;
+  }
+
+  100% {
+    transform: scale(0.92);
+    opacity: 0.75;
+  }
+}
+
+@keyframes mkt-shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+
+  100% {
+    background-position: -200% 0;
+  }
 }

@@ -21,6 +21,7 @@ class Settings(BaseSettings):
     RAZORPAY_KEY_ID: str = ""
     RAZORPAY_KEY_SECRET: str = ""
     RAZORPAY_WEBHOOK_SECRET: str = ""
+    OPENAI_API_KEY: str = ""
 
     @field_validator("CORS_ALLOW_ORIGINS", mode="before")
     @classmethod

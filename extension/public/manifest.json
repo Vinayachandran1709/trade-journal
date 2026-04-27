@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "StrategyForge AI - Trading Copilot",
   "description": "Auto-journal every trade across Zerodha, Groww & 10+ Indian brokers. AI pattern analysis. No manual exports.",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "permissions": ["storage", "sidePanel", "tabs"],
   "host_permissions": [
     "http://localhost:8000/*",
@@ -38,6 +38,19 @@
         "https://web.groww.in/*"
       ],
       "js": ["content-scripts/broker-detector.js"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "https://twitter.com/*",
+        "https://x.com/*",
+        "https://www.moneycontrol.com/*",
+        "https://www.reddit.com/*",
+        "https://economictimes.indiatimes.com/*",
+        "https://www.livemint.com/*",
+        "https://tradingqna.com/*"
+      ],
+      "js": ["content-scripts/ticker-highlighter.js"],
       "run_at": "document_idle"
     }
   ]

@@ -1,22 +1,25 @@
 import { useState } from "react";
 
-// ---------------------------------------------------------------------------
-// Formatting helpers
-// ---------------------------------------------------------------------------
 const inrFmt = new Intl.NumberFormat("en-IN", { maximumFractionDigits: 2 });
 const fmtINR = (n: number) => `₹${inrFmt.format(n)}`;
 const fmtNum = (n: number, d = 2) =>
   new Intl.NumberFormat("en-IN", { maximumFractionDigits: d }).format(n);
 
-function n(s: string): number { return parseFloat(s) || 0; }
+function n(s: string): number {
+  return parseFloat(s) || 0;
+}
+
 function valid(...vals: string[]): boolean {
   return vals.every((v) => v !== "" && isFinite(parseFloat(v)) && parseFloat(v) > 0);
 }
 
-// ---------------------------------------------------------------------------
-// Section wrapper
-// ---------------------------------------------------------------------------
-function CalcSection({ title, children }: { title: string; children: React.ReactNode }) {
+function CalcSection({
+  title,
+  children,
+}: {
+  title: string;
+  children: React.ReactNode;
+}) {
   return (
     <div className="calc-section">
       <h3 className="calc-title">{title}</h3>
@@ -25,20 +28,40 @@ function CalcSection({ title, children }: { title: string; children: React.React
   );
 }
 
-function Row({ label, value, bold, color }: { label: string; value: string; bold?: boolean; color?: string }) {
+function Row({
+  label,
+  value,
+  bold,
+  color,
+}: {
+  label: string;
+  value: string;
+  bold?: boolean;
+  color?: string;
+}) {
   return (
     <div className="calc-result-row">
       <span className="calc-result-label">{label}</span>
-      <span className="calc-result-value" style={{ fontWeight: bold ? 700 : 500, color: color ?? "#0f172a" }}>
+      <span
+        className="calc-result-value"
+        style={{ fontWeight: bold ? 700 : 500, color: color ?? "#0f172a" }}
+      >
         {value}
       </span>
     </div>
   );
 }
 
-function Field({ label, value, onChange, placeholder }: {
-  label: string; value: string;
-  onChange: (v: string) => void; placeholder?: string;
+function Field({
+  label,
+  value,
+  onChange,
+  placeholder,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
 }) {
   return (
     <label className="calc-field">
@@ -55,9 +78,6 @@ function Field({ label, value, onChange, placeholder }: {
   );
 }
 
-// ---------------------------------------------------------------------------
-// 1. Position Size Calculator
-// ---------------------------------------------------------------------------
 function PositionSizeCalc() {
   const [capital, setCapital] = useState("");
   const [riskPct, setRiskPct] = useState("2");
@@ -95,8 +115,18 @@ function PositionSizeCalc() {
 
   return (
     <CalcSection title="Position Size">
-      <Field label="Total Capital (₹)" value={capital} onChange={setCapital} placeholder="e.g. 500000" />
-      <Field label="Risk per Trade (%)" value={riskPct} onChange={setRiskPct} placeholder="2" />
+      <Field
+        label="Total Capital (₹)"
+        value={capital}
+        onChange={setCapital}
+        placeholder="e.g. 500000"
+      />
+      <Field
+        label="Risk per Trade (%)"
+        value={riskPct}
+        onChange={setRiskPct}
+        placeholder="2"
+      />
       <Field label="Entry Price (₹)" value={entry} onChange={setEntry} />
       <Field label="Stop Loss Price (₹)" value={sl} onChange={setSl} />
       {result}
@@ -104,9 +134,6 @@ function PositionSizeCalc() {
   );
 }
 
-// ---------------------------------------------------------------------------
-// 2. Risk-to-Reward Calculator
-// ---------------------------------------------------------------------------
 function RRBar({ rr }: { rr: number }) {
   const capped = Math.min(rr, 10);
   const total = 1 + capped;
@@ -116,7 +143,9 @@ function RRBar({ rr }: { rr: number }) {
   return (
     <div className="calc-rr-bar-wrap">
       <div style={{ width: `${riskW}%`, background: "#dc2626", height: "100%" }} />
-      <div style={{ width: `${rewardW}%`, background: rewardColor, height: "100%" }} />
+      <div
+        style={{ width: `${rewardW}%`, background: rewardColor, height: "100%" }}
+      />
     </div>
   );
 }
@@ -161,7 +190,11 @@ function RRCalc() {
             return (
               <>
                 <div className="calc-divider" />
-                <Row label="Reward T2" value={`₹${fmtNum(rewardT2)}`} color="#16a34a" />
+                <Row
+                  label="Reward T2"
+                  value={`₹${fmtNum(rewardT2)}`}
+                  color="#16a34a"
+                />
                 <Row label="R:R Ratio T2" value={`1 : ${fmtNum(rrT2)}`} bold />
                 <RRBar rr={rrT2} />
                 <Row label="Min. Win Rate T2" value={`${fmtNum(winRateT2)}%`} />
@@ -178,65 +211,86 @@ function RRCalc() {
       <Field label="Entry Price (₹)" value={entry} onChange={setEntry} />
       <Field label="Stop Loss Price (₹)" value={sl} onChange={setSl} />
       <Field label="Target 1 (₹)" value={t1} onChange={setT1} />
-      <Field label="Target 2 (₹) — optional" value={t2} onChange={setT2} placeholder="optional" />
+      <Field
+        label="Target 2 (₹) — optional"
+        value={t2}
+        onChange={setT2}
+        placeholder="optional"
+      />
       {result}
     </CalcSection>
   );
 }
 
-// ---------------------------------------------------------------------------
-// 3. Brokerage Calculator
-// ---------------------------------------------------------------------------
-type BrokerKey = "zerodha" | "groww" | "angel_one" | "upstox" | "dhan" | "icici_direct" | "hdfc_securities";
+type BrokerKey =
+  | "zerodha"
+  | "groww"
+  | "angel_one"
+  | "upstox"
+  | "dhan"
+  | "icici_direct"
+  | "hdfc_securities";
 type SegKey = "intraday" | "delivery" | "fno_futures" | "fno_options";
+type BrokerSelection = BrokerKey | "";
+type SegmentSelection = SegKey | "";
 
 const BROKERS: Array<[BrokerKey, string]> = [
-  ["zerodha",        "Zerodha"],
-  ["groww",          "Groww"],
-  ["angel_one",      "Angel One"],
-  ["upstox",         "Upstox"],
-  ["dhan",           "Dhan"],
-  ["icici_direct",   "ICICI Direct"],
-  ["hdfc_securities","HDFC Securities"],
+  ["zerodha", "Zerodha"],
+  ["groww", "Groww"],
+  ["angel_one", "Angel One"],
+  ["upstox", "Upstox"],
+  ["dhan", "Dhan"],
+  ["icici_direct", "ICICI Direct"],
+  ["hdfc_securities", "HDFC Securities"],
 ];
 
 const SEGMENTS: Array<[SegKey, string]> = [
-  ["intraday",    "Intraday"],
-  ["delivery",    "Delivery"],
+  ["intraday", "Intraday"],
+  ["delivery", "Delivery"],
   ["fno_futures", "F&O Futures"],
   ["fno_options", "F&O Options"],
 ];
 
-function calcBrokerage(broker: BrokerKey, seg: SegKey, buyV: number, sellV: number): number {
+function calcBrokerage(
+  broker: BrokerKey,
+  seg: SegKey,
+  buyV: number,
+  sellV: number
+): number {
   const tv = buyV + sellV;
   switch (broker) {
     case "zerodha":
       if (seg === "delivery") return 0;
-      if (seg === "intraday")
+      if (seg === "intraday") {
         return Math.min(20, buyV * 0.0003) + Math.min(20, sellV * 0.0003);
-      return 40; // F&O ₹20 × 2
+      }
+      return 40;
     case "groww":
     case "angel_one":
       if (seg === "delivery") return 0;
       return 40;
     case "upstox":
       if (seg === "delivery") return 0;
-      if (seg === "intraday")
+      if (seg === "intraday") {
         return Math.min(20, buyV * 0.0005) + Math.min(20, sellV * 0.0005);
+      }
       return 40;
     case "dhan":
       if (seg === "delivery") return 0;
-      if (seg === "intraday")
+      if (seg === "intraday") {
         return Math.min(20, buyV * 0.0003) + Math.min(20, sellV * 0.0003);
+      }
       return 40;
     case "icici_direct":
-      if (seg === "intraday")
+      if (seg === "intraday") {
         return Math.min(20, buyV * 0.00275) + Math.min(20, sellV * 0.00275);
+      }
       if (seg === "delivery") return tv * 0.0055;
       return 40;
     case "hdfc_securities":
-      if (seg === "intraday")
+      if (seg === "intraday") {
         return Math.min(20, buyV * 0.0005) + Math.min(20, sellV * 0.0005);
+      }
       if (seg === "delivery") return tv * 0.005;
       return 40;
     default:
@@ -257,35 +311,33 @@ interface BrkResult {
   breakeven: number;
 }
 
-function compute(broker: BrokerKey, seg: SegKey, buyP: number, sellP: number, qty: number): BrkResult {
+function compute(
+  broker: BrokerKey,
+  seg: SegKey,
+  buyP: number,
+  sellP: number,
+  qty: number
+): BrkResult {
   const buyV = buyP * qty;
   const sellV = sellP * qty;
   const tv = buyV + sellV;
 
   const brokerage = calcBrokerage(broker, seg, buyV, sellV);
 
-  // STT
   let stt = 0;
-  if (seg === "intraday")    stt = sellV * 0.00025;
+  if (seg === "intraday") stt = sellV * 0.00025;
   else if (seg === "delivery") stt = tv * 0.001;
-  else if (seg === "fno_futures") stt = sellV * 0.0001250;
+  else if (seg === "fno_futures") stt = sellV * 0.000125;
   else if (seg === "fno_options") stt = sellV * 0.000625;
 
-  // Exchange transaction charges
   let exc = 0;
   if (seg === "intraday" || seg === "delivery") exc = tv * 0.0000297;
   else if (seg === "fno_futures") exc = tv * 0.0000173;
   else if (seg === "fno_options") exc = tv * 0.000495;
 
-  // SEBI charges: ₹10 per crore
   const sebi = tv * 0.000001;
-
-  // GST: 18% on brokerage + exchange charges
   const gst = (brokerage + exc) * 0.18;
-
-  // Stamp duty: buy side only, 0.003%
   const stamp = buyV * 0.00003;
-
   const total = brokerage + stt + exc + sebi + gst + stamp;
   const grossPnl = (sellP - buyP) * qty;
   const netPnl = grossPnl - total;
@@ -298,11 +350,18 @@ function BrokerageCalc() {
   const [buyP, setBuyP] = useState("");
   const [sellP, setSellP] = useState("");
   const [qty, setQty] = useState("");
-  const [broker, setBroker] = useState<BrokerKey>("zerodha");
-  const [seg, setSeg] = useState<SegKey>("intraday");
+  const [broker, setBroker] = useState<BrokerSelection>("");
+  const [seg, setSeg] = useState<SegmentSelection>("");
 
-  const canCalc = buyP !== "" && sellP !== "" && qty !== "" &&
-    parseFloat(buyP) > 0 && parseFloat(sellP) > 0 && parseFloat(qty) > 0;
+  const canCalc =
+    broker !== "" &&
+    seg !== "" &&
+    buyP !== "" &&
+    sellP !== "" &&
+    qty !== "" &&
+    parseFloat(buyP) > 0 &&
+    parseFloat(sellP) > 0 &&
+    parseFloat(qty) > 0;
 
   let result: React.ReactNode = null;
 
@@ -311,17 +370,17 @@ function BrokerageCalc() {
     const netColor = r.netPnl >= 0 ? "#16a34a" : "#dc2626";
     result = (
       <div className="calc-results">
-        <Row label="Brokerage"   value={fmtINR(r.brokerage)} />
-        <Row label="STT"         value={fmtINR(r.stt)} />
+        <Row label="Brokerage" value={fmtINR(r.brokerage)} />
+        <Row label="STT" value={fmtINR(r.stt)} />
         <Row label="Exch. Charges" value={fmtINR(r.exc)} />
         <Row label="SEBI Charges" value={fmtINR(r.sebi)} />
-        <Row label="GST (18%)"   value={fmtINR(r.gst)} />
-        <Row label="Stamp Duty"  value={fmtINR(r.stamp)} />
+        <Row label="GST (18%)" value={fmtINR(r.gst)} />
+        <Row label="Stamp Duty" value={fmtINR(r.stamp)} />
         <div className="calc-divider" />
         <Row label="Total Charges" value={fmtINR(r.total)} bold color="#dc2626" />
-        <Row label="Gross P&L"   value={fmtINR(r.grossPnl)} />
-        <Row label="Net P&L"     value={fmtINR(r.netPnl)} bold color={netColor} />
-        <Row label="Breakeven"   value={`₹${fmtNum(r.breakeven)}`} />
+        <Row label="Gross P&L" value={fmtINR(r.grossPnl)} />
+        <Row label="Net P&L" value={fmtINR(r.netPnl)} bold color={netColor} />
+        <Row label="Breakeven" value={`₹${fmtNum(r.breakeven)}`} />
       </div>
     );
   }
@@ -331,15 +390,43 @@ function BrokerageCalc() {
       <div className="calc-row-2">
         <label className="calc-field">
           <span className="calc-field-label">Broker</span>
-          <select className="calc-input" value={broker} onChange={(e) => setBroker(e.target.value as BrokerKey)}>
-            {BROKERS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-          </select>
+          <div className="calc-select-wrap">
+            <select
+              className="calc-input calc-select"
+              value={broker}
+              onChange={(e) => setBroker(e.target.value as BrokerSelection)}
+            >
+              <option value="">Select broker...</option>
+              {BROKERS.map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </select>
+            <span className="calc-select-chevron" aria-hidden="true">
+              ▼
+            </span>
+          </div>
         </label>
         <label className="calc-field">
           <span className="calc-field-label">Segment</span>
-          <select className="calc-input" value={seg} onChange={(e) => setSeg(e.target.value as SegKey)}>
-            {SEGMENTS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-          </select>
+          <div className="calc-select-wrap">
+            <select
+              className="calc-input calc-select"
+              value={seg}
+              onChange={(e) => setSeg(e.target.value as SegmentSelection)}
+            >
+              <option value="">Select segment...</option>
+              {SEGMENTS.map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </select>
+            <span className="calc-select-chevron" aria-hidden="true">
+              ▼
+            </span>
+          </div>
         </label>
       </div>
       <div className="calc-row-3">
@@ -352,9 +439,6 @@ function BrokerageCalc() {
   );
 }
 
-// ---------------------------------------------------------------------------
-// Main export
-// ---------------------------------------------------------------------------
 export default function CalculatorsTab() {
   return (
     <div className="calc-root">

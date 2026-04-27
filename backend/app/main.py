@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
 from app.routes.auth import router as auth_router
+from app.routes.ai_agents import router as ai_agents_router
 from app.routes.billing import billing_router, webhook_router
 from app.routes.health import router as health_router
 from app.routes.market_data import router as market_data_router
@@ -25,3 +26,4 @@ app.include_router(trades_router)
 app.include_router(billing_router)
 app.include_router(webhook_router)
 app.include_router(market_data_router)
+app.include_router(ai_agents_router)

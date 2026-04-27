@@ -1,0 +1,187 @@
+import { useEffect, useState } from "react";
+
+import { fetchTradesSummary, type TradesSummary } from "../shared/api";
+import { getAuthToken } from "../shared/auth";
+import type { User } from "../shared/types";
+
+const DATE_FORMATTER = new Intl.DateTimeFormat("en-IN", {
+  year: "numeric",
+  month: "long",
+  day: "numeric",
+});
+
+function formatDate(value?: string | null): string {
+  if (!value) {
+    return "—";
+  }
+
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return "—";
+  }
+
+  return DATE_FORMATTER.format(parsed);
+}
+
+function getSubscriptionLabel(user: User): "Free" | "Pro" | "Pro Founding" {
+  if (user.subscription_plan === "pro_founding") {
+    return "Pro Founding";
+  }
+
+  if (user.subscription_status?.startsWith("pro")) {
+    return "Pro";
+  }
+
+  return "Free";
+}
+
+function getBadgeClass(label: "Free" | "Pro" | "Pro Founding"): string {
+  switch (label) {
+    case "Pro Founding":
+      return "account-badge account-badge--founding";
+    case "Pro":
+      return "account-badge account-badge--pro";
+    default:
+      return "account-badge account-badge--free";
+  }
+}
+
+export default function AccountTab({
+  user,
+  webAppUrl,
+}: {
+  user: User | null;
+  webAppUrl: string;
+}) {
+  const [summary, setSummary] = useState<TradesSummary | null>(null);
+  const [summaryError, setSummaryError] = useState<string | null>(null);
+  const [loadingSummary, setLoadingSummary] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadSummary() {
+      if (!user) {
+        if (active) {
+          setSummary(null);
+          setSummaryError(null);
+          setLoadingSummary(false);
+        }
+        return;
+      }
+
+      setLoadingSummary(true);
+
+      try {
+        const token = await getAuthToken();
+        if (!token) {
+          throw new Error("Sign in to load account stats.");
+        }
+
+        const nextSummary = await fetchTradesSummary(token);
+        if (active) {
+          setSummary(nextSummary);
+          setSummaryError(null);
+        }
+      } catch (error) {
+        if (active) {
+          setSummary(null);
+          setSummaryError(
+            error instanceof Error ? error.message : "Unable to load account stats."
+          );
+        }
+      } finally {
+        if (active) {
+          setLoadingSummary(false);
+        }
+      }
+    }
+
+    void loadSummary();
+
+    return () => {
+      active = false;
+    };
+  }, [user]);
+
+  function openPath(path: string) {
+    void chrome.tabs.create({ url: `${webAppUrl}${path}` });
+  }
+
+  if (!user) {
+    return (
+      <section className="placeholder-grid">
+        <article className="placeholder-card">
+          <h2>Account</h2>
+          <p>Sign in from the popup to see your subscription details and trade stats.</p>
+        </article>
+      </section>
+    );
+  }
+
+  const badgeLabel = getSubscriptionLabel(user);
+  const isFreePlan = badgeLabel === "Free";
+  const tradeCount = loadingSummary
+    ? "Loading..."
+    : summary
+    ? summary.total_trades.toLocaleString("en-IN")
+    : "—";
+
+  return (
+    <section className="placeholder-grid">
+      <article className="placeholder-card account-card">
+        <div className="account-card-header">
+          <div>
+            <h2>Account</h2>
+            <p className="account-email">{user.email}</p>
+          </div>
+          <span className={getBadgeClass(badgeLabel)}>{badgeLabel}</span>
+        </div>
+
+        <div className="account-metrics">
+          <div className="account-metric">
+            <span className="account-metric-label">Member since</span>
+            <strong>{formatDate(user.created_at)}</strong>
+          </div>
+          <div className="account-metric">
+            <span className="account-metric-label">Total trades captured</span>
+            <strong>{tradeCount}</strong>
+          </div>
+          <div className="account-metric">
+            <span className="account-metric-label">
+              {isFreePlan ? "Subscription" : "Expiry date"}
+            </span>
+            <strong>
+              {isFreePlan ? "Free plan" : formatDate(user.subscription_expires_at)}
+            </strong>
+          </div>
+        </div>
+
+        {summaryError ? <p className="error-copy">{summaryError}</p> : null}
+
+        <div className="account-actions">
+          {isFreePlan ? (
+            <button
+              className="pro-banner-button"
+              onClick={() => openPath("/pricing")}
+            >
+              Upgrade to Pro
+            </button>
+          ) : null}
+          <button
+            className="account-link-button"
+            onClick={() => openPath("/account/billing")}
+          >
+            Manage Billing
+          </button>
+          <button
+            className="account-link-button"
+            onClick={() => openPath("/dashboard")}
+          >
+            View Full Dashboard
+          </button>
+        </div>
+      </article>
+    </section>
+  );
+}

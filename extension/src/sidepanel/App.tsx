@@ -4,8 +4,10 @@ import { fetchCurrentUser } from "../shared/api";
 import { clearAuthToken, getAuthToken, onAuthTokenChange } from "../shared/auth";
 import { getCaptureState, type CaptureState } from "../shared/captures";
 import type { User } from "../shared/types";
-import MarketTab from "./MarketTab";
+import AccountTab from "./AccountTab";
 import CalculatorsTab from "./CalculatorsTab";
+import CapturesTab from "./CapturesTab";
+import MarketTab from "./MarketTab";
 
 const WEB_APP_URL = (import.meta.env.VITE_WEB_APP_URL || "https://indiacircle.in").replace(/\/$/, "");
 
@@ -119,7 +121,7 @@ export default function App() {
     }
   }
 
-  const isPro = user?.subscription_status === "pro";
+  const hasPaidPlan = user?.subscription_status?.startsWith("pro") ?? false;
 
   return (
     <main className="sidepanel-shell">
@@ -149,10 +151,10 @@ export default function App() {
       <nav className="tabs-row">
         {(
           [
-            ["market",      "Market"],
-            ["captures",    "Captures"],
+            ["market", "Market"],
+            ["captures", "Captures"],
             ["calculators", "Calculators"],
-            ["account",     "Account"],
+            ["account", "Account"],
           ] as Array<[TabId, string]>
         ).map(([id, label]) => (
           <button
@@ -168,54 +170,21 @@ export default function App() {
       {activeTab === "market" && <MarketTab />}
 
       {activeTab === "captures" && (
-        <section className="placeholder-grid">
-          <article className="placeholder-card">
-            <h2>Today's Captures</h2>
-            <p>
-              {captureState?.trades.length
-                ? `Captured ${captureState.trades.length} new trade${captureState.trades.length === 1 ? "" : "s"} today.`
-                : "No new trades captured yet today."}
-            </p>
-            {captureState?.lastError ? (
-              <p className="error-copy">{captureState.lastError}</p>
-            ) : null}
-          </article>
-
-          {captureState?.trades.map((trade) => (
-            <CaptureCard
-              key={trade.id}
-              trade={trade}
-              saving={savingTradeId === trade.id}
-              onSave={handleSaveCapture}
-            />
-          ))}
-        </section>
+        <CapturesTab
+          captureState={captureState}
+          savingTradeId={savingTradeId}
+          onSave={handleSaveCapture}
+          isSignedIn={Boolean(user)}
+        />
       )}
 
       {activeTab === "calculators" && <CalculatorsTab />}
 
       {activeTab === "account" && (
-        <section className="placeholder-grid">
-          <article className="placeholder-card">
-            <h2>Capture status</h2>
-            <p>
-              Last broker: {captureState?.lastBroker ?? "None yet"}
-              <br />
-              Last sync: {captureState?.lastSyncAt ?? "No sync yet"}
-            </p>
-          </article>
-          <article className="placeholder-card">
-            <h2>Backend source of truth</h2>
-            <p>
-              Imports still feed the same backend trade table and FIFO processing
-              flow used by the web app.
-            </p>
-          </article>
-        </section>
+        <AccountTab user={user} webAppUrl={WEB_APP_URL} />
       )}
 
-      {/* Upgrade to Pro banner — shown only to free users */}
-      {user && !isPro ? (
+      {user && !hasPaidPlan ? (
         <div className="pro-banner">
           <div className="pro-banner-text">
             <span className="pro-banner-title">Unlock Pro</span>
@@ -227,99 +196,14 @@ export default function App() {
             className="pro-banner-button"
             onClick={() => void chrome.tabs.create({ url: `${WEB_APP_URL}/pricing` })}
           >
-            Upgrade ⚡
+            Upgrade
           </button>
         </div>
       ) : null}
 
-      {/* SEBI disclaimer */}
       <footer className="sebi-footer">
         This is analytics, not investment advice. Trading involves risk.
       </footer>
     </main>
-  );
-}
-
-const EMOTIONS = [
-  { emoji: "😎", label: "Confident", value: "confident" },
-  { emoji: "😰", label: "Fearful",   value: "fearful" },
-  { emoji: "🤑", label: "Greedy",    value: "greedy" },
-  { emoji: "😤", label: "Revenge",   value: "revenge" },
-  { emoji: "😱", label: "FOMO",      value: "fomo" },
-  { emoji: "😐", label: "Neutral",   value: "neutral" },
-  { emoji: "🥱", label: "Bored",     value: "bored" },
-] as const;
-
-function CaptureCard({
-  trade,
-  saving,
-  onSave,
-}: {
-  trade: NonNullable<CaptureState>["trades"][number];
-  saving: boolean;
-  onSave: (tradeId: number, emotionTag: string, note: string) => Promise<void>;
-}) {
-  const [emotionTag, setEmotionTag] = useState(trade.emotion_tag ?? "");
-  const [note, setNote] = useState(trade.notes ?? "");
-  const [noteOpen, setNoteOpen] = useState(false);
-
-  function handleEmotionTap(value: string) {
-    const next = emotionTag === value ? "" : value;
-    setEmotionTag(next);
-    void onSave(trade.id, next, note);
-  }
-
-  return (
-    <article className="placeholder-card capture-card">
-      <div className="capture-header">
-        <div>
-          <h2>
-            {trade.trade_type} {trade.stock_symbol}
-          </h2>
-          <p>
-            Qty {trade.quantity} at {trade.price} on {trade.trade_date}
-            {trade.trade_time ? ` ${trade.trade_time}` : ""}
-          </p>
-        </div>
-        <span className="broker-pill">{trade.broker ?? "capture"}</span>
-      </div>
-
-      <div className="emotion-row">
-        {EMOTIONS.map(({ emoji, label, value }) => (
-          <button
-            key={value}
-            className={`emotion-pill${emotionTag === value ? " emotion-pill--selected" : ""}`}
-            onClick={() => handleEmotionTap(value)}
-            disabled={saving}
-          >
-            {emoji} {label}
-          </button>
-        ))}
-      </div>
-
-      {noteOpen ? (
-        <textarea
-          className="field-input field-textarea"
-          value={note}
-          autoFocus
-          onChange={(event) => setNote(event.target.value)}
-          placeholder="Why this trade was taken..."
-        />
-      ) : (
-        <button className="add-note-link" onClick={() => setNoteOpen(true)}>
-          + Add note
-        </button>
-      )}
-
-      {noteOpen ? (
-        <button
-          className="save-button"
-          disabled={saving}
-          onClick={() => onSave(trade.id, emotionTag, note)}
-        >
-          {saving ? "Saving..." : "Save"}
-        </button>
-      ) : null}
-    </article>
   );
 }

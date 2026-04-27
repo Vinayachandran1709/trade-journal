@@ -1,4 +1,5 @@
 import { AUTH_TOKEN_KEY, clearAuthToken, getAuthToken } from "../shared/auth";
+import { storageGetAll, storageRemoveMany } from "../shared/chrome";
 import {
   createEmptyCaptureState,
   getCaptureState,
@@ -15,6 +16,7 @@ void syncActionSurface();
 
 chrome.runtime.onInstalled.addListener((details) => {
   void syncActionSurface();
+  void cleanupOldAiQueryCounts();
   if (details.reason === chrome.runtime.OnInstalledReason.INSTALL) {
     void chrome.tabs.create({ url: `${WEB_APP_URL}/welcome` });
   }
@@ -22,6 +24,7 @@ chrome.runtime.onInstalled.addListener((details) => {
 
 chrome.runtime.onStartup.addListener(() => {
   void syncActionSurface();
+  void cleanupOldAiQueryCounts();
 });
 
 chrome.storage.onChanged.addListener((changes, areaName) => {
@@ -30,15 +33,7 @@ chrome.storage.onChanged.addListener((changes, areaName) => {
   }
 
   const nextToken = (changes[AUTH_TOKEN_KEY].newValue as string | undefined) ?? null;
-  // Fire whenever a token appears (new login or re-login after logout).
-  const tokenArrived = Boolean(nextToken);
-
-  void (async () => {
-    await configureActionSurface(nextToken);
-    if (tokenArrived) {
-      await openSidePanelForActiveWindow();
-    }
-  })();
+  void configureActionSurface(nextToken);
 });
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
@@ -48,19 +43,20 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 
 async function syncActionSurface(): Promise<void> {
   const token = await getAuthToken();
+  await cleanupOldAiQueryCounts();
   await configureActionSurface(token);
 }
 
 async function configureActionSurface(token: string | null): Promise<void> {
   await chrome.action.setPopup({
-    popup: token ? "" : POPUP_PATH,
+    popup: POPUP_PATH,
   });
 
   await chrome.action.setBadgeBackgroundColor({ color: "#0f766e" });
 
   await chrome.sidePanel
     .setPanelBehavior({
-      openPanelOnActionClick: Boolean(token),
+      openPanelOnActionClick: false,
     })
     .catch(() => undefined);
 
@@ -191,15 +187,24 @@ async function handleMessage(
   }
 }
 
-async function openSidePanelForActiveWindow(): Promise<void> {
-  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-  if (tab?.windowId) {
-    await chrome.sidePanel.open({ windowId: tab.windowId }).catch(() => undefined);
-  }
-}
-
 async function updateBadge(count: number): Promise<void> {
   await chrome.action.setBadgeText({
     text: count > 0 ? String(Math.min(count, 99)) : "",
   });
+}
+
+function getLocalDateKey(date = new Date()): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+async function cleanupOldAiQueryCounts(): Promise<void> {
+  const allItems = await storageGetAll<Record<string, unknown>>();
+  const todayKey = `aiQueryCount_${getLocalDateKey()}`;
+  const staleKeys = Object.keys(allItems).filter(
+    (key) => key.startsWith("aiQueryCount_") && key !== todayKey
+  );
+  await storageRemoveMany(staleKeys);
 }

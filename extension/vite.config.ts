@@ -21,6 +21,10 @@ export default defineConfig({
           rootDir,
           "src/content-scripts/broker-detector.ts"
         ),
+        tickerHighlighter: resolve(
+          rootDir,
+          "src/content-scripts/ticker-highlighter.ts"
+        ),
       },
       output: {
         entryFileNames: (chunkInfo) => {
@@ -29,6 +33,9 @@ export default defineConfig({
           }
           if (chunkInfo.name === "brokerDetector") {
             return "content-scripts/broker-detector.js";
+          }
+          if (chunkInfo.name === "tickerHighlighter") {
+            return "content-scripts/ticker-highlighter.js";
           }
           return "assets/[name].js";
         },

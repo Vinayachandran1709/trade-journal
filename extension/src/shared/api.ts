@@ -4,6 +4,23 @@ import type { LoginRequest, TokenResponse, User } from "./types";
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "http://localhost:8000")
   .replace(/\/$/, "");
 
+export class APIError extends Error {
+  status: number;
+  code: string | null;
+  payload: unknown;
+
+  constructor(
+    message: string,
+    options: { status: number; code?: string | null; payload?: unknown }
+  ) {
+    super(message);
+    this.name = "APIError";
+    this.status = options.status;
+    this.code = options.code ?? null;
+    this.payload = options.payload;
+  }
+}
+
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const headers = new Headers(options.headers);
 
@@ -20,7 +37,16 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
     const error = await response
       .json()
       .catch(() => ({ detail: "Request failed" }));
-    throw new Error(error.detail || `Request failed with status ${response.status}`);
+    const message =
+      error.detail ||
+      error.message ||
+      error.error ||
+      `Request failed with status ${response.status}`;
+    throw new APIError(message, {
+      status: response.status,
+      code: error.error ?? null,
+      payload: error,
+    });
   }
 
   return response.json() as Promise<T>;
@@ -94,6 +120,61 @@ export async function updateTradeCaptureDetails(
   });
 }
 
+export interface TradesSummary {
+  total_trades: number;
+  total_invested: number;
+  unique_symbols: number;
+}
+
+export interface TradeListItem {
+  id: number;
+  stock_symbol: string;
+  trade_type: string;
+  quantity: number;
+  price: number;
+  trade_date: string;
+  trade_time?: string | null;
+  broker?: string | null;
+  instrument_type?: string | null;
+  emotion_tag?: string | null;
+  notes?: string | null;
+  created_at?: string;
+}
+
+export async function fetchTradesSummary(token: string): Promise<TradesSummary> {
+  return request<TradesSummary>("/api/trades/summary", {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+}
+
+export async function fetchTrades(
+  token: string,
+  filters?: {
+    limit?: number;
+    offset?: number;
+  }
+): Promise<TradeListItem[]> {
+  const params = new URLSearchParams();
+
+  if (filters?.limit !== undefined) {
+    params.set("limit", String(filters.limit));
+  }
+
+  if (filters?.offset !== undefined) {
+    params.set("offset", String(filters.offset));
+  }
+
+  const query = params.toString();
+
+  return request<TradeListItem[]>(`/api/trades${query ? `?${query}` : ""}`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+}
+
 // ---------------------------------------------------------------------------
 // Market data (public endpoints — no auth required)
 // ---------------------------------------------------------------------------
@@ -114,4 +195,52 @@ export async function fetchMarketDashboard(): Promise<MarketDashboardData> {
   const res = await fetch(`${API_BASE_URL}/api/market/dashboard`);
   if (!res.ok) throw new Error(`Market data unavailable (${res.status})`);
   return res.json() as Promise<MarketDashboardData>;
+}
+
+export interface WhyMovingResponse {
+  symbol: string;
+  explanation: string;
+  price: number;
+  change_pct: number;
+  sources: string[];
+  model_used: string;
+  queries_remaining: number;
+  queries_limit: number;
+  cached: boolean;
+  disclaimer: string;
+}
+
+export interface TickerIntelResponse {
+  symbol: string;
+  price: number;
+  change: number;
+  change_pct: number;
+  high_52w: number | null;
+  low_52w: number | null;
+  volume: number;
+  volume_vs_avg: string;
+  sector: string | null;
+  sentiment_line: string;
+  disclaimer: string;
+}
+
+export async function fetchWhyMoving(
+  token: string,
+  symbol: string
+): Promise<WhyMovingResponse> {
+  return request<WhyMovingResponse>("/api/ai/why-moving", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ symbol }),
+  });
+}
+
+export async function fetchTickerIntel(
+  symbol: string
+): Promise<TickerIntelResponse> {
+  return request<TickerIntelResponse>(
+    `/api/market/ticker-intel/${encodeURIComponent(symbol)}`
+  );
 }
