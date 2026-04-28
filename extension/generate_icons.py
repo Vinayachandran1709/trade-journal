@@ -14,7 +14,7 @@ import struct
 import zlib
 from pathlib import Path
 
-# StrategyForge indigo
+# IndiaCircle indigo
 BG_COLOR = (79, 70, 229)   # #4f46e5
 FG_COLOR = (255, 255, 255)  # white text
 

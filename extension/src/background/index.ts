@@ -5,12 +5,19 @@ import {
   getCaptureState,
   setCaptureState,
 } from "../shared/captures";
-import { postAutoCapture, updateTradeCaptureDetails } from "../shared/api";
+import {
+  postAutoCapture,
+  updateTradeCaptureDetails,
+  type TickerIntelResponse,
+} from "../shared/api";
 import { fetchCurrentUser } from "../shared/api";
 import type { BackgroundResponse, ExtensionMessage } from "../shared/types";
 
 const POPUP_PATH = "popup.html";
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "http://localhost:8000").replace(/\/$/, "");
 const WEB_APP_URL = (import.meta.env.VITE_WEB_APP_URL || "https://indiacircle.in").replace(/\/$/, "");
+const TICKER_INTEL_TIMEOUT_MS = 8_000;
+const TICKER_QUOTE_TIMEOUT_MS = 6_000;
 
 void syncActionSurface();
 
@@ -101,6 +108,18 @@ async function handleMessage(
         sendResponse({ ok: true });
         return;
       }
+      case "ticker:fetch-intel": {
+        const payload = message.payload as { symbol?: string };
+        const symbol = payload.symbol?.trim().toUpperCase();
+        if (!symbol) {
+          sendResponse({ ok: true, tickerIntel: createTickerFallback("UNKNOWN") });
+          return;
+        }
+
+        const tickerIntel = await fetchTickerIntelWithFallback(symbol);
+        sendResponse({ ok: true, tickerIntel });
+        return;
+      }
       case "capture:submit": {
         const token = await getAuthToken();
         if (!token) {
@@ -172,6 +191,15 @@ async function handleMessage(
       }
     }
   } catch (error) {
+    if (message.type === "ticker:fetch-intel") {
+      const payload = message.payload as { symbol?: string } | undefined;
+      sendResponse({
+        ok: true,
+        tickerIntel: createTickerFallback(payload?.symbol?.trim().toUpperCase() || "UNKNOWN"),
+      });
+      return;
+    }
+
     if (message.type.startsWith("capture:")) {
       const state = await getCaptureState();
       const nextState = {
@@ -191,6 +219,84 @@ async function updateBadge(count: number): Promise<void> {
   await chrome.action.setBadgeText({
     text: count > 0 ? String(Math.min(count, 99)) : "",
   });
+}
+
+async function fetchJsonWithTimeout<T>(
+  url: string,
+  timeoutMs: number
+): Promise<T> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    const response = await fetch(url, { signal: controller.signal });
+    if (!response.ok) {
+      throw new Error(`Request failed with ${response.status}`);
+    }
+
+    return (await response.json()) as T;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+async function fetchTickerIntelWithFallback(symbol: string): Promise<TickerIntelResponse> {
+  try {
+    return await fetchJsonWithTimeout(
+      `${API_BASE_URL}/api/market/ticker-intel/${encodeURIComponent(symbol)}`,
+      TICKER_INTEL_TIMEOUT_MS
+    );
+  } catch {
+    try {
+      const quote = await fetchJsonWithTimeout<Record<string, unknown>>(
+        `${API_BASE_URL}/api/market/quote/${encodeURIComponent(symbol)}`,
+        TICKER_QUOTE_TIMEOUT_MS
+      );
+
+      return {
+        symbol: String(quote.symbol || symbol),
+        price: typeof quote.price === "number" ? quote.price : null,
+        change: typeof quote.change === "number" ? quote.change : null,
+        change_pct: typeof quote.change_pct === "number" ? quote.change_pct : null,
+        high_52w: typeof quote.high_52w === "number" ? quote.high_52w : null,
+        low_52w: typeof quote.low_52w === "number" ? quote.low_52w : null,
+        volume: typeof quote.volume === "number" ? quote.volume : null,
+        avg_volume: null,
+        volume_vs_avg: "Live quote",
+        sector: null,
+        market_cap: null,
+        next_event: null,
+        sentiment_line:
+          typeof quote.change_pct === "number"
+            ? quote.change_pct >= 0
+              ? "Price is trading higher today"
+              : "Price is trading lower today"
+            : "Live quote loaded",
+        disclaimer: "Market data may be delayed. This is analytics, not investment advice.",
+      };
+    } catch {
+      return createTickerFallback(symbol);
+    }
+  }
+}
+
+function createTickerFallback(symbol: string): TickerIntelResponse {
+  return {
+    symbol,
+    price: null,
+    change: null,
+    change_pct: null,
+    high_52w: null,
+    low_52w: null,
+    volume: null,
+    avg_volume: null,
+    volume_vs_avg: "Live quote temporarily unavailable",
+    sector: null,
+    market_cap: null,
+    next_event: null,
+    sentiment_line: "Live market data is taking longer than expected",
+    disclaimer: "Market data may be delayed. This is analytics, not investment advice.",
+  };
 }
 
 function getLocalDateKey(date = new Date()): string {

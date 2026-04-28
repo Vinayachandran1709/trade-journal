@@ -212,12 +212,15 @@ export interface WhyMovingResponse {
 
 export interface TickerIntelResponse {
   symbol: string;
-  price: number;
-  change: number;
-  change_pct: number;
+  price: number | null;
+  change: number | null;
+  change_pct: number | null;
   high_52w: number | null;
   low_52w: number | null;
-  volume: number;
+  volume: number | null;
+  avg_volume?: number | null;
+  market_cap?: string | null;
+  next_event?: string | null;
   volume_vs_avg: string;
   sector: string | null;
   sentiment_line: string;

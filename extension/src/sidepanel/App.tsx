@@ -15,7 +15,7 @@ type TabId = "market" | "captures" | "calculators" | "account";
 
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
-  const [status, setStatus] = useState("Checking connection...");
+  const [bannerError, setBannerError] = useState<string | null>(null);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [activeTab, setActiveTab] = useState<TabId>("market");
   const [captureState, setCaptureState] = useState<CaptureState | null>(null);
@@ -34,7 +34,7 @@ export default function App() {
         if (!token) {
           if (active) {
             setUser(null);
-            setStatus("Not connected yet. Sign in from the popup.");
+            setBannerError(null);
             setCaptureState(await getCaptureState());
           }
           return;
@@ -43,13 +43,13 @@ export default function App() {
         const currentUser = await fetchCurrentUser(token);
         if (active) {
           setUser(currentUser);
-          setStatus("Connected to backend.");
+          setBannerError(null);
           setCaptureState(await getCaptureState());
         }
       } catch {
         if (active) {
           setUser(null);
-          setStatus("Unable to load the account right now.");
+          setBannerError("Unable to connect. Check your internet connection.");
         }
       }
     }
@@ -86,7 +86,7 @@ export default function App() {
     try {
       await clearAuthToken();
       setUser(null);
-      setStatus("Signed out. Click the extension action to log in again.");
+      setBannerError(null);
     } finally {
       setIsLoggingOut(false);
     }
@@ -115,7 +115,7 @@ export default function App() {
       const nextState = await getCaptureState();
       setCaptureState(nextState);
     } catch (error) {
-      setStatus(error instanceof Error ? error.message : "Unable to save capture.");
+      setBannerError(error instanceof Error ? error.message : "Unable to save capture.");
     } finally {
       setSavingTradeId(null);
     }
@@ -126,27 +126,24 @@ export default function App() {
   return (
     <main className="sidepanel-shell">
       <section className="hero-card">
-        <p className="eyebrow">StrategyForge AI</p>
-        <h1>Ghost auto-journal is live.</h1>
+        <p className="eyebrow">IndiaCircle</p>
+        <h1>Your AI Trading Copilot</h1>
         <p className="hero-copy">
-          Keep your broker tab open on Zerodha or Groww. The extension reads the
-          visible trades table and journals newly seen rows without clicking
-          anything.
+          Auto-capture trades from any Indian broker. Get AI-powered market
+          insights, behavioral pattern analysis, smart position sizing, and
+          real-time market data — all in one sidebar.
         </p>
-        <div className="hero-actions">
-          <div className="status-pill">{status}</div>
-          {user ? (
-            <button
-              className="logout-button"
-              disabled={isLoggingOut}
-              onClick={handleLogout}
-            >
-              {isLoggingOut ? "Logging out..." : "Log out"}
-            </button>
-          ) : null}
+        <div className="feature-pill-row">
+          <span className="feature-pill">📊 Market Data</span>
+          <span className="feature-pill">🤖 AI Insights</span>
+          <span className="feature-pill">📈 Pattern Analysis</span>
+          <span className="feature-pill">🧮 Calculators</span>
+          <span className="feature-pill">📝 Trade Journal</span>
         </div>
-        {user ? <p className="signed-in-copy">Signed in as {user.email}</p> : null}
+        {user ? <p className="signed-in-copy">{user.email}</p> : null}
       </section>
+
+      {bannerError ? <div className="connection-error-banner">{bannerError}</div> : null}
 
       <nav className="tabs-row">
         {(
@@ -181,7 +178,12 @@ export default function App() {
       {activeTab === "calculators" && <CalculatorsTab />}
 
       {activeTab === "account" && (
-        <AccountTab user={user} webAppUrl={WEB_APP_URL} />
+        <AccountTab
+          user={user}
+          webAppUrl={WEB_APP_URL}
+          isLoggingOut={isLoggingOut}
+          onLogout={handleLogout}
+        />
       )}
 
       {user && !hasPaidPlan ? (

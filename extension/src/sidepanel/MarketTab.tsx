@@ -60,13 +60,12 @@ function getRefreshIntervalMs(now = new Date()): number {
   return isMarketHours(now) ? FAST_REFRESH_MS : SLOW_REFRESH_MS;
 }
 
-function getRelativeUpdatedLabel(value: string, nowMs: number): string {
-  const updatedAt = new Date(value).getTime();
-  if (Number.isNaN(updatedAt)) {
+function getRelativeFetchedLabel(valueMs: number | null, nowMs: number): string {
+  if (!valueMs) {
     return "Updated just now";
   }
 
-  const seconds = Math.max(0, Math.floor((nowMs - updatedAt) / 1000));
+  const seconds = Math.max(0, Math.floor((nowMs - valueMs) / 1000));
   if (seconds <= 1) {
     return "Updated just now";
   }
@@ -285,6 +284,7 @@ export default function MarketTab() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [nowMs, setNowMs] = useState(() => Date.now());
+  const [lastFetchedAtMs, setLastFetchedAtMs] = useState<number | null>(null);
   const mountedRef = useRef(true);
   const hasDataRef = useRef(false);
   const timerRef = useRef<number | null>(null);
@@ -314,7 +314,9 @@ export default function MarketTab() {
       if (mountedRef.current) {
         setData(result);
         setError(null);
-        setNowMs(Date.now());
+        const fetchedAtMs = Date.now();
+        setNowMs(fetchedAtMs);
+        setLastFetchedAtMs(fetchedAtMs);
       }
       void storageSet(LAST_MARKET_DATA_KEY, result).catch(() => undefined);
     } catch (nextError) {
@@ -364,6 +366,7 @@ export default function MarketTab() {
 
       if (cached) {
         setData(cached);
+        setLastFetchedAtMs(new Date(cached.last_updated).getTime() || Date.now());
         setLoading(false);
       }
 
@@ -387,6 +390,10 @@ export default function MarketTab() {
 
   if (loading && !data) {
     return <MarketSkeleton />;
+  }
+
+  function handleManualRefresh() {
+    void load();
   }
 
   if (error && !data) {
@@ -421,12 +428,23 @@ export default function MarketTab() {
 
       <div className="mkt-header">
         <StatusDot status={data.market_status} />
-        <span className="mkt-updated">
-          {(refreshing || loading) && data ? (
-            <span className="mkt-refresh-dot" aria-hidden="true" />
-          ) : null}
-          {getRelativeUpdatedLabel(data.last_updated, nowMs)}
-        </span>
+        <div className="mkt-updated-wrap">
+          <span className="mkt-updated">
+            {(refreshing || loading) && data ? (
+              <span className="mkt-refresh-dot" aria-hidden="true" />
+            ) : null}
+            {getRelativeFetchedLabel(lastFetchedAtMs, nowMs)}
+          </span>
+          <button
+            aria-label="Refresh market data"
+            className={`mkt-refresh-button${refreshing || loading ? " is-spinning" : ""}`}
+            disabled={refreshing || loading}
+            onClick={handleManualRefresh}
+            title="Refresh market data"
+          >
+            ↻
+          </button>
+        </div>
       </div>
 
       <div className="mkt-section">

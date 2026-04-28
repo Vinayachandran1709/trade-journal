@@ -243,7 +243,7 @@ export default function App() {
     <main className="popup-shell">
       <section className="panel">
         <div className="panel-header">
-          <p className="eyebrow">StrategyForge AI</p>
+          <p className="eyebrow">IndiaCircle</p>
           <h1>Why Is It Moving?</h1>
           <p className="subcopy">
             Track fast AI explanations for Indian stock moves and jump into the side

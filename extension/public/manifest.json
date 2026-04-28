@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
-  "name": "StrategyForge AI - Trading Copilot",
-  "description": "Auto-journal every trade across Zerodha, Groww & 10+ Indian brokers. AI pattern analysis. No manual exports.",
+  "name": "IndiaCircle - AI Trading Copilot",
+  "description": "Auto-journal every trade across 10+ Indian brokers. AI-powered analysis, behavioral insights & smart calculators.",
   "version": "1.2.0",
   "permissions": ["storage", "sidePanel", "tabs"],
   "host_permissions": [
@@ -19,7 +19,7 @@
   ],
   "action": {
     "default_popup": "popup.html",
-    "default_title": "StrategyForge AI"
+    "default_title": "IndiaCircle"
   },
   "background": {
     "service_worker": "background.js",

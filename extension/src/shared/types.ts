@@ -1,4 +1,5 @@
 import type { CaptureState, CapturedTrade } from "./captures";
+import type { TickerIntelResponse } from "./api";
 
 export interface LoginRequest {
   email: string;
@@ -29,6 +30,7 @@ export interface ExtensionMessage {
     | "auth:logout"
     | "health:ping"
     | "broker:page-detected"
+    | "ticker:fetch-intel"
     | "capture:submit"
     | "capture:get-state"
     | "capture:update-trade";
@@ -44,4 +46,5 @@ export interface BackgroundResponse {
   captureState?: CaptureState;
   importedCount?: number;
   trades?: CapturedTrade[];
+  tickerIntel?: TickerIntelResponse;
 }

@@ -49,9 +49,13 @@ function getBadgeClass(label: "Free" | "Pro" | "Pro Founding"): string {
 export default function AccountTab({
   user,
   webAppUrl,
+  isLoggingOut,
+  onLogout,
 }: {
   user: User | null;
   webAppUrl: string;
+  isLoggingOut: boolean;
+  onLogout: () => void;
 }) {
   const [summary, setSummary] = useState<TradesSummary | null>(null);
   const [summaryError, setSummaryError] = useState<string | null>(null);
@@ -179,6 +183,13 @@ export default function AccountTab({
             onClick={() => openPath("/dashboard")}
           >
             View Full Dashboard
+          </button>
+          <button
+            className="account-link-button account-logout-button"
+            disabled={isLoggingOut}
+            onClick={onLogout}
+          >
+            {isLoggingOut ? "Logging out..." : "Log out"}
           </button>
         </div>
       </article>

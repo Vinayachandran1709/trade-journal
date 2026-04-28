@@ -1,12 +1,121 @@
-const API_BASE_URL = "http://localhost:8000";
-// TODO: Replace with production URL before Chrome Web Store submission.
-
 const INITIAL_SCAN_DELAY_MS = 500;
 const HIDE_DELAY_MS = 200;
 const MAX_HIGHLIGHTS = 30;
 const OBSERVER_LIFETIME_MS = 30_000;
 const POPUP_WIDTH = 300;
 const VIEWPORT_PADDING = 12;
+
+const COMPANY_NAME_MAP: Record<string, string> = {
+  "reliance": "RELIANCE",
+  "reliance industries": "RELIANCE",
+  "tcs": "TCS",
+  "tata consultancy": "TCS",
+  "tata consultancy services": "TCS",
+  "hdfc bank": "HDFCBANK",
+  "hdfcbank": "HDFCBANK",
+  "infosys": "INFY",
+  "infy": "INFY",
+  "icici bank": "ICICIBANK",
+  "icicibank": "ICICIBANK",
+  "hindustan unilever": "HINDUNILVR",
+  "hul": "HINDUNILVR",
+  "itc": "ITC",
+  "sbi": "SBIN",
+  "state bank": "SBIN",
+  "state bank of india": "SBIN",
+  "bharti airtel": "BHARTIARTL",
+  "airtel": "BHARTIARTL",
+  "kotak mahindra": "KOTAKBANK",
+  "kotak bank": "KOTAKBANK",
+  "larsen": "LT",
+  "larsen & toubro": "LT",
+  "l&t": "LT",
+  "hcl tech": "HCLTECH",
+  "hcltech": "HCLTECH",
+  "axis bank": "AXISBANK",
+  "asian paints": "ASIANPAINT",
+  "maruti": "MARUTI",
+  "maruti suzuki": "MARUTI",
+  "sun pharma": "SUNPHARMA",
+  "sun pharmaceutical": "SUNPHARMA",
+  "titan": "TITAN",
+  "bajaj finance": "BAJFINANCE",
+  "bajfinance": "BAJFINANCE",
+  "wipro": "WIPRO",
+  "tata motors": "TATAMOTORS",
+  "tata steel": "TATASTEEL",
+  "tata power": "TATAPOWER",
+  "bajaj finserv": "BAJAJFINSV",
+  "jsw steel": "JSWSTEEL",
+  "ongc": "ONGC",
+  "adani enterprises": "ADANIENT",
+  "adani ports": "ADANIPORTS",
+  "adani green": "ADANIGREEN",
+  "coal india": "COALINDIA",
+  "tech mahindra": "TECHM",
+  "indusind bank": "INDUSINDBK",
+  "hindalco": "HINDALCO",
+  "bpcl": "BPCL",
+  "dr reddy": "DRREDDY",
+  "dr. reddy": "DRREDDY",
+  "cipla": "CIPLA",
+  "apollo hospitals": "APOLLOHOSP",
+  "britannia": "BRITANNIA",
+  "dabur": "DABUR",
+  "vedanta": "VEDL",
+  "gail": "GAIL",
+  "ioc": "IOC",
+  "indian oil": "IOC",
+  "irctc": "IRCTC",
+  "zomato": "ZOMATO",
+  "nykaa": "NYKAA",
+  "delhivery": "DELHIVERY",
+  "policybazaar": "POLICYBZR",
+  "ntpc": "NTPC",
+  "power grid": "POWERGRID",
+  "bajaj auto": "BAJAJ-AUTO",
+  "havells": "HAVELLS",
+  "voltas": "VOLTAS",
+  "pnb": "PNB",
+  "bank of baroda": "BANKBARODA",
+  "canara bank": "CANBK",
+  "lic": "LICI",
+  "adani power": "ADANIPOWER",
+  "nestle": "NESTLEIND",
+  "nestle india": "NESTLEIND",
+  "ultratech": "ULTRACEMCO",
+  "ultratech cement": "ULTRACEMCO",
+  "hero motocorp": "HEROMOTOCO",
+  "eicher motors": "EICHERMOT",
+  "divis lab": "DIVISLAB",
+  "divis laboratories": "DIVISLAB",
+  "grasim": "GRASIM",
+  "persistent": "PERSISTENT",
+  "coforge": "COFORGE",
+  "mphasis": "MPHASIS",
+  "naukri": "NAUKRI",
+  "trent": "TRENT",
+  "polycab": "POLYCAB",
+  "crompton": "CROMPTON",
+  "au bank": "AUBANK",
+  "federal bank": "FEDERALBNK",
+  "bandhan bank": "BANDHANBNK",
+  "muthoot finance": "MUTHOOTFIN",
+  "hdfc life": "HDFCLIFE",
+  "sbi life": "SBILIFE",
+  "tata consumer": "TATACONSUM",
+  "pidilite": "PIDILITIND",
+  "page industries": "PAGEIND",
+  "jio financial": "JIOFIN",
+  "nhpc": "NHPC",
+  "sjvn": "SJVN",
+  "rec": "RECLTD",
+  "pfc": "PFC",
+};
+
+const COMPANY_NAMES_SORTED = Object.keys(COMPANY_NAME_MAP).sort(
+  (a, b) => b.length - a.length
+);
 
 const TICKER_SET = new Set([
   "RELIANCE", "TCS", "HDFCBANK", "INFY", "ICICIBANK", "HINDUNILVR", "ITC",
@@ -46,7 +155,6 @@ const SKIP_SELECTOR = [
   "pre",
   "noscript",
   "svg",
-  "a",
   "[contenteditable='true']",
   ".sf-ticker-highlight",
   ".sf-ticker-popup",
@@ -54,12 +162,15 @@ const SKIP_SELECTOR = [
 
 interface TickerIntelResponse {
   symbol: string;
-  price: number;
-  change: number;
-  change_pct: number;
+  price: number | null;
+  change: number | null;
+  change_pct: number | null;
   high_52w: number | null;
   low_52w: number | null;
-  volume: number;
+  volume: number | null;
+  avg_volume?: number | null;
+  market_cap?: string | null;
+  next_event?: string | null;
   volume_vs_avg: string;
   sector: string | null;
   sentiment_line: string;
@@ -188,6 +299,7 @@ function rangePosition(data: TickerIntelResponse): number {
   if (
     data.low_52w == null ||
     data.high_52w == null ||
+    data.price == null ||
     data.high_52w <= data.low_52w
   ) {
     return 50;
@@ -250,7 +362,8 @@ function renderError(symbol: string): void {
 }
 
 function renderData(data: TickerIntelResponse): void {
-  const isPositive = data.change >= 0 || data.change_pct >= 0;
+  const changeValue = data.change_pct ?? data.change ?? 0;
+  const isPositive = changeValue >= 0;
   const changeClass = isPositive ? "sf-change-positive" : "sf-change-negative";
   const arrow = isPositive ? "▲" : "▼";
   const sentimentClass = data.sentiment_line.toLowerCase().includes("negative")
@@ -299,14 +412,15 @@ function fetchTickerIntel(symbol: string): Promise<TickerIntelResponse> {
     return pending;
   }
 
-  const request = fetch(
-    `${API_BASE_URL}/api/market/ticker-intel/${encodeURIComponent(symbol)}`
-  ).then((response) => {
-    if (!response.ok) {
-      throw new Error(`Ticker intel request failed with ${response.status}`);
+  const request = chrome.runtime.sendMessage({
+    type: "ticker:fetch-intel",
+    payload: { symbol },
+  }).then((response) => {
+    if (!response?.ok || !response.tickerIntel) {
+      throw new Error(response?.error || "Data unavailable");
     }
 
-    return response.json() as Promise<TickerIntelResponse>;
+    return response.tickerIntel as TickerIntelResponse;
   }).then((data) => {
     tickerCache.set(symbol, data);
     pendingRequests.delete(symbol);
@@ -361,48 +475,137 @@ function isSkippableTextNode(node: Text): boolean {
   return !parent || Boolean(parent.closest(SKIP_SELECTOR));
 }
 
+function hasWordBoundary(
+  lowerText: string,
+  start: number,
+  end: number
+): boolean {
+  const charBefore = start > 0 ? lowerText[start - 1] : " ";
+  const charAfter = end < lowerText.length ? lowerText[end] : " ";
+  const boundaryPattern = /[\s,.;:!?()[\]{}|/\\]/;
+
+  return (
+    (start === 0 || boundaryPattern.test(charBefore)) &&
+    (end === lowerText.length || boundaryPattern.test(charAfter))
+  );
+}
+
+function overlapsUsedRange(used: Set<number>, start: number, end: number): boolean {
+  for (let position = start; position < end; position += 1) {
+    if (used.has(position)) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+function markUsedRange(used: Set<number>, start: number, end: number): void {
+  for (let position = start; position < end; position += 1) {
+    used.add(position);
+  }
+}
+
+function findTickerMatches(
+  text: string
+): Array<{ start: number; end: number; ticker: string }> {
+  const matches: Array<{ start: number; end: number; ticker: string }> = [];
+  const lowerText = text.toLowerCase();
+  const used = new Set<number>();
+
+  for (const companyName of COMPANY_NAMES_SORTED) {
+    let searchFrom = 0;
+
+    while (searchFrom < lowerText.length) {
+      const start = lowerText.indexOf(companyName, searchFrom);
+      if (start === -1) {
+        break;
+      }
+
+      const end = start + companyName.length;
+      if (
+        hasWordBoundary(lowerText, start, end) &&
+        !overlapsUsedRange(used, start, end)
+      ) {
+        matches.push({
+          start,
+          end,
+          ticker: COMPANY_NAME_MAP[companyName],
+        });
+        markUsedRange(used, start, end);
+      }
+
+      searchFrom = start + 1;
+    }
+  }
+
+  TICKER_REGEX.lastIndex = 0;
+  let regexMatch: RegExpExecArray | null;
+
+  while ((regexMatch = TICKER_REGEX.exec(text)) !== null) {
+    const symbol = regexMatch[1];
+    const start = regexMatch.index;
+    const end = start + symbol.length;
+
+    if (!TICKER_SET.has(symbol) || EXCLUDED_WORDS.has(symbol)) {
+      continue;
+    }
+
+    if (!overlapsUsedRange(used, start, end)) {
+      matches.push({ start, end, ticker: symbol });
+      markUsedRange(used, start, end);
+    }
+  }
+
+  return matches.sort((a, b) => a.start - b.start);
+}
+
 function highlightTextNode(textNode: Text): void {
   if (highlightedCount >= MAX_HIGHLIGHTS || isSkippableTextNode(textNode)) {
     return;
   }
 
   const text = textNode.nodeValue ?? "";
-  TICKER_REGEX.lastIndex = 0;
+  if (text.trim().length < 2) {
+    return;
+  }
+
+  const matches = findTickerMatches(text);
+  if (matches.length === 0) {
+    return;
+  }
 
   let cursor = 0;
-  let match: RegExpExecArray | null;
-  let replacementCount = 0;
   const fragment = document.createDocumentFragment();
 
-  while ((match = TICKER_REGEX.exec(text)) !== null) {
+  for (const match of matches) {
     if (highlightedCount >= MAX_HIGHLIGHTS) {
       break;
     }
 
-    const symbol = match[1];
-    if (!TICKER_SET.has(symbol) || EXCLUDED_WORDS.has(symbol)) {
-      continue;
+    if (match.start > cursor) {
+      fragment.append(text.slice(cursor, match.start));
     }
-
-    fragment.append(text.slice(cursor, match.index));
 
     const span = document.createElement("span");
     span.className = "sf-ticker-highlight";
-    span.dataset.ticker = symbol;
-    span.textContent = symbol;
+    span.dataset.ticker = match.ticker;
+    span.textContent = text.slice(match.start, match.end);
     attachTickerEvents(span);
 
     fragment.append(span);
     highlightedCount += 1;
-    replacementCount += 1;
-    cursor = match.index + symbol.length;
+    cursor = match.end;
   }
 
-  if (replacementCount === 0) {
+  if (cursor === 0) {
     return;
   }
 
-  fragment.append(text.slice(cursor));
+  if (cursor < text.length) {
+    fragment.append(text.slice(cursor));
+  }
+
   textNode.parentNode?.replaceChild(fragment, textNode);
 }
 
