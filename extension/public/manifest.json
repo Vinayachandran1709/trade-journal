@@ -11,7 +11,11 @@
     "https://www.indiacircle.in/*",
     "https://kite.zerodha.com/*",
     "https://groww.in/*",
-    "https://web.groww.in/*"
+    "https://web.groww.in/*",
+    "https://www.moneycontrol.com/*",
+    "https://moneycontrol.com/*",
+    "https://twitter.com/*",
+    "https://x.com/*"
   ],
   "action": {
     "default_popup": "popup.html",
@@ -42,13 +46,18 @@
     },
     {
       "matches": [
+        "https://www.moneycontrol.com/*",
+        "https://moneycontrol.com/*",
         "https://twitter.com/*",
         "https://x.com/*",
-        "https://www.moneycontrol.com/*",
         "https://www.reddit.com/*",
         "https://economictimes.indiatimes.com/*",
         "https://www.livemint.com/*",
-        "https://tradingqna.com/*"
+        "https://tradingqna.com/*",
+        "https://www.screener.in/*",
+        "https://www.tickertape.in/*",
+        "https://trendlyne.com/*",
+        "https://www.valueresearchonline.com/*"
       ],
       "js": ["content-scripts/ticker-highlighter.js"],
       "run_at": "document_idle"
