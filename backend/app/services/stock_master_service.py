@@ -64,6 +64,116 @@ class StockMasterSyncError(Exception):
     pass
 
 
+TOP_200_FALLBACK_STOCKS = [
+    {"nse_symbol": "RELIANCE", "company_name": "Reliance Industries Limited", "display_name": "Reliance", "isin": "INE002A01018"},
+    {"nse_symbol": "TCS", "company_name": "Tata Consultancy Services Limited", "display_name": "TCS", "isin": "INE467B01029"},
+    {"nse_symbol": "HDFCBANK", "company_name": "HDFC Bank Limited", "display_name": "HDFC Bank", "isin": "INE040A01034"},
+    {"nse_symbol": "INFY", "company_name": "Infosys Limited", "display_name": "Infosys", "isin": "INE009A01021"},
+    {"nse_symbol": "ICICIBANK", "company_name": "ICICI Bank Limited", "display_name": "ICICI Bank", "isin": "INE090A01021"},
+    {"nse_symbol": "HINDUNILVR", "company_name": "Hindustan Unilever Limited", "display_name": "HUL", "isin": "INE030A01027"},
+    {"nse_symbol": "ITC", "company_name": "ITC Limited", "display_name": "ITC", "isin": "INE154A01025"},
+    {"nse_symbol": "SBIN", "company_name": "State Bank of India", "display_name": "SBI", "isin": "INE062A01020"},
+    {"nse_symbol": "BHARTIARTL", "company_name": "Bharti Airtel Limited", "display_name": "Bharti Airtel", "isin": "INE397D01024"},
+    {"nse_symbol": "KOTAKBANK", "company_name": "Kotak Mahindra Bank Limited", "display_name": "Kotak Bank", "isin": "INE237A01028"},
+    {"nse_symbol": "LT", "company_name": "Larsen & Toubro Limited", "display_name": "L&T", "isin": "INE018A01030"},
+    {"nse_symbol": "HCLTECH", "company_name": "HCL Technologies Limited", "display_name": "HCL Tech", "isin": "INE860A01027"},
+    {"nse_symbol": "AXISBANK", "company_name": "Axis Bank Limited", "display_name": "Axis Bank", "isin": "INE238A01034"},
+    {"nse_symbol": "ASIANPAINT", "company_name": "Asian Paints Limited", "display_name": "Asian Paints", "isin": "INE021A01026"},
+    {"nse_symbol": "MARUTI", "company_name": "Maruti Suzuki India Limited", "display_name": "Maruti Suzuki", "isin": "INE585B01010"},
+    {"nse_symbol": "SUNPHARMA", "company_name": "Sun Pharmaceutical Industries Limited", "display_name": "Sun Pharma", "isin": "INE044A01036"},
+    {"nse_symbol": "TITAN", "company_name": "Titan Company Limited", "display_name": "Titan", "isin": "INE280A01028"},
+    {"nse_symbol": "BAJFINANCE", "company_name": "Bajaj Finance Limited", "display_name": "Bajaj Finance", "isin": "INE296A01024"},
+    {"nse_symbol": "WIPRO", "company_name": "Wipro Limited", "display_name": "Wipro", "isin": "INE075A01022"},
+    {"nse_symbol": "ULTRACEMCO", "company_name": "UltraTech Cement Limited", "display_name": "UltraTech Cement", "isin": "INE481G01011"},
+    {"nse_symbol": "TATAMOTORS", "company_name": "Tata Motors Limited", "display_name": "Tata Motors", "isin": "INE155A01022"},
+    {"nse_symbol": "TATASTEEL", "company_name": "Tata Steel Limited", "display_name": "Tata Steel", "isin": "INE081A01020"},
+    {"nse_symbol": "NTPC", "company_name": "NTPC Limited", "display_name": "NTPC", "isin": "INE733E01010"},
+    {"nse_symbol": "POWERGRID", "company_name": "Power Grid Corporation of India", "display_name": "Power Grid", "isin": "INE752E01010"},
+    {"nse_symbol": "BAJAJFINSV", "company_name": "Bajaj Finserv Limited", "display_name": "Bajaj Finserv", "isin": "INE918I01018"},
+    {"nse_symbol": "JSWSTEEL", "company_name": "JSW Steel Limited", "display_name": "JSW Steel", "isin": "INE019A01038"},
+    {"nse_symbol": "ONGC", "company_name": "Oil and Natural Gas Corporation", "display_name": "ONGC", "isin": "INE213A01029"},
+    {"nse_symbol": "ADANIENT", "company_name": "Adani Enterprises Limited", "display_name": "Adani Enterprises", "isin": "INE423A01024"},
+    {"nse_symbol": "ADANIPORTS", "company_name": "Adani Ports & Special Economic Zone", "display_name": "Adani Ports", "isin": "INE742F01042"},
+    {"nse_symbol": "COALINDIA", "company_name": "Coal India Limited", "display_name": "Coal India", "isin": "INE522F01014"},
+    {"nse_symbol": "TECHM", "company_name": "Tech Mahindra Limited", "display_name": "Tech Mahindra", "isin": "INE669C01036"},
+    {"nse_symbol": "INDUSINDBK", "company_name": "IndusInd Bank Limited", "display_name": "IndusInd Bank", "isin": "INE095A01012"},
+    {"nse_symbol": "HINDALCO", "company_name": "Hindalco Industries Limited", "display_name": "Hindalco", "isin": "INE038A01020"},
+    {"nse_symbol": "BPCL", "company_name": "Bharat Petroleum Corporation", "display_name": "BPCL", "isin": "INE029A01011"},
+    {"nse_symbol": "DRREDDY", "company_name": "Dr. Reddy's Laboratories", "display_name": "Dr Reddy", "isin": "INE089A01023"},
+    {"nse_symbol": "CIPLA", "company_name": "Cipla Limited", "display_name": "Cipla", "isin": "INE059A01026"},
+    {"nse_symbol": "GRASIM", "company_name": "Grasim Industries Limited", "display_name": "Grasim", "isin": "INE047A01021"},
+    {"nse_symbol": "EICHERMOT", "company_name": "Eicher Motors Limited", "display_name": "Eicher Motors", "isin": "INE066A01021"},
+    {"nse_symbol": "DIVISLAB", "company_name": "Divi's Laboratories Limited", "display_name": "Divis Lab", "isin": "INE361B01024"},
+    {"nse_symbol": "APOLLOHOSP", "company_name": "Apollo Hospitals Enterprise", "display_name": "Apollo Hospitals", "isin": "INE437A01024"},
+    {"nse_symbol": "HEROMOTOCO", "company_name": "Hero MotoCorp Limited", "display_name": "Hero MotoCorp", "isin": "INE158A01026"},
+    {"nse_symbol": "TATACONSUM", "company_name": "Tata Consumer Products Limited", "display_name": "Tata Consumer", "isin": "INE192A01025"},
+    {"nse_symbol": "SBILIFE", "company_name": "SBI Life Insurance Company", "display_name": "SBI Life", "isin": "INE123W01016"},
+    {"nse_symbol": "BRITANNIA", "company_name": "Britannia Industries Limited", "display_name": "Britannia", "isin": "INE216A01030"},
+    {"nse_symbol": "HDFCLIFE", "company_name": "HDFC Life Insurance Company", "display_name": "HDFC Life", "isin": "INE795G01014"},
+    {"nse_symbol": "DABUR", "company_name": "Dabur India Limited", "display_name": "Dabur", "isin": "INE016A01026"},
+    {"nse_symbol": "PIDILITIND", "company_name": "Pidilite Industries Limited", "display_name": "Pidilite", "isin": "INE318A01026"},
+    {"nse_symbol": "VEDL", "company_name": "Vedanta Limited", "display_name": "Vedanta", "isin": "INE205A01025"},
+    {"nse_symbol": "GAIL", "company_name": "GAIL (India) Limited", "display_name": "GAIL", "isin": "INE129A01019"},
+    {"nse_symbol": "IOC", "company_name": "Indian Oil Corporation", "display_name": "Indian Oil", "isin": "INE242A01010"},
+    {"nse_symbol": "IRCTC", "company_name": "Indian Railway Catering and Tourism Corporation", "display_name": "IRCTC", "isin": "INE335Y01020"},
+    {"nse_symbol": "ZOMATO", "company_name": "Zomato Limited", "display_name": "Zomato", "isin": "INE758T01015"},
+    {"nse_symbol": "ETERNAL", "company_name": "Eternal Limited", "display_name": "Eternal", "isin": "INE758T01015"},
+    {"nse_symbol": "PAYTM", "company_name": "One 97 Communications Limited", "display_name": "Paytm", "isin": "INE982J01020"},
+    {"nse_symbol": "NYKAA", "company_name": "FSN E-Commerce Ventures Limited", "display_name": "Nykaa", "isin": "INE388Y01029"},
+    {"nse_symbol": "DELHIVERY", "company_name": "Delhivery Limited", "display_name": "Delhivery", "isin": "INE148O01028"},
+    {"nse_symbol": "SWIGGY", "company_name": "Bundl Technologies Private Limited", "display_name": "Swiggy", "isin": None},
+    {"nse_symbol": "LICI", "company_name": "Life Insurance Corporation of India", "display_name": "LIC", "isin": "INE0J1Y01017"},
+    {"nse_symbol": "HAL", "company_name": "Hindustan Aeronautics Limited", "display_name": "HAL", "isin": "INE066F01020"},
+    {"nse_symbol": "BEL", "company_name": "Bharat Electronics Limited", "display_name": "BEL", "isin": "INE263A01024"},
+    {"nse_symbol": "M&M", "company_name": "Mahindra & Mahindra Limited", "display_name": "M&M", "isin": "INE101A01026"},
+    {"nse_symbol": "TATAPOWER", "company_name": "Tata Power Company Limited", "display_name": "Tata Power", "isin": "INE245A01021"},
+    {"nse_symbol": "INDIGO", "company_name": "InterGlobe Aviation Limited", "display_name": "IndiGo", "isin": "INE646L01027"},
+    {"nse_symbol": "DMART", "company_name": "Avenue Supermarts Limited", "display_name": "DMart", "isin": "INE192R01011"},
+    {"nse_symbol": "SIEMENS", "company_name": "Siemens Limited", "display_name": "Siemens", "isin": "INE003A01024"},
+    {"nse_symbol": "ABB", "company_name": "ABB India Limited", "display_name": "ABB", "isin": "INE117A01022"},
+    {"nse_symbol": "BIOCON", "company_name": "Biocon Limited", "display_name": "Biocon", "isin": "INE376G01013"},
+    {"nse_symbol": "LUPIN", "company_name": "Lupin Limited", "display_name": "Lupin", "isin": "INE326A01037"},
+    {"nse_symbol": "MARICO", "company_name": "Marico Limited", "display_name": "Marico", "isin": "INE196A01026"},
+    {"nse_symbol": "COLPAL", "company_name": "Colgate-Palmolive (India) Limited", "display_name": "Colgate", "isin": "INE259A01022"},
+    {"nse_symbol": "BANKBARODA", "company_name": "Bank of Baroda", "display_name": "Bank of Baroda", "isin": "INE028A01039"},
+    {"nse_symbol": "PNB", "company_name": "Punjab National Bank", "display_name": "PNB", "isin": "INE160A01022"},
+    {"nse_symbol": "CANBK", "company_name": "Canara Bank", "display_name": "Canara Bank", "isin": "INE476A01014"},
+    {"nse_symbol": "YESBANK", "company_name": "Yes Bank Limited", "display_name": "Yes Bank", "isin": "INE528G01035"},
+    {"nse_symbol": "FEDERALBNK", "company_name": "Federal Bank Limited", "display_name": "Federal Bank", "isin": "INE171A01029"},
+    {"nse_symbol": "BANDHANBNK", "company_name": "Bandhan Bank Limited", "display_name": "Bandhan Bank", "isin": "INE545U01014"},
+    {"nse_symbol": "IDFCFIRSTB", "company_name": "IDFC First Bank Limited", "display_name": "IDFC First Bank", "isin": "INE092T01019"},
+    {"nse_symbol": "IRFC", "company_name": "Indian Railway Finance Corporation", "display_name": "IRFC", "isin": "INE053F01010"},
+    {"nse_symbol": "RVNL", "company_name": "Rail Vikas Nigam Limited", "display_name": "RVNL", "isin": "INE415G01027"},
+    {"nse_symbol": "NHPC", "company_name": "NHPC Limited", "display_name": "NHPC", "isin": "INE848E01016"},
+    {"nse_symbol": "PFC", "company_name": "Power Finance Corporation", "display_name": "PFC", "isin": "INE134E01011"},
+    {"nse_symbol": "RECLTD", "company_name": "REC Limited", "display_name": "REC", "isin": "INE020B01018"},
+    {"nse_symbol": "SAIL", "company_name": "Steel Authority of India", "display_name": "SAIL", "isin": "INE114A01011"},
+    {"nse_symbol": "BHEL", "company_name": "Bharat Heavy Electricals", "display_name": "BHEL", "isin": "INE257A01026"},
+    {"nse_symbol": "NESTLEIND", "company_name": "Nestle India Limited", "display_name": "Nestle India", "isin": "INE239A01016"},
+    {"nse_symbol": "BAJAJ-AUTO", "company_name": "Bajaj Auto Limited", "display_name": "Bajaj Auto", "isin": "INE917I01010"},
+    {"nse_symbol": "HAVELLS", "company_name": "Havells India Limited", "display_name": "Havells", "isin": "INE176B01034"},
+    {"nse_symbol": "VOLTAS", "company_name": "Voltas Limited", "display_name": "Voltas", "isin": "INE226A01021"},
+    {"nse_symbol": "POLYCAB", "company_name": "Polycab India Limited", "display_name": "Polycab", "isin": "INE455K01017"},
+    {"nse_symbol": "TRENT", "company_name": "Trent Limited", "display_name": "Trent", "isin": "INE849A01020"},
+    {"nse_symbol": "PERSISTENT", "company_name": "Persistent Systems Limited", "display_name": "Persistent", "isin": "INE262H01013"},
+    {"nse_symbol": "COFORGE", "company_name": "Coforge Limited", "display_name": "Coforge", "isin": "INE591G01017"},
+    {"nse_symbol": "MPHASIS", "company_name": "Mphasis Limited", "display_name": "Mphasis", "isin": "INE356A01018"},
+    {"nse_symbol": "LTIM", "company_name": "LTIMindtree Limited", "display_name": "LTIMindtree", "isin": "INE214T01019"},
+    {"nse_symbol": "LTTS", "company_name": "L&T Technology Services", "display_name": "L&T Technology", "isin": "INE010V01017"},
+    {"nse_symbol": "NAUKRI", "company_name": "Info Edge (India) Limited", "display_name": "Naukri", "isin": "INE663F01024"},
+    {"nse_symbol": "JUBLFOOD", "company_name": "Jubilant FoodWorks Limited", "display_name": "Jubilant FoodWorks", "isin": "INE797F01020"},
+    {"nse_symbol": "MUTHOOTFIN", "company_name": "Muthoot Finance Limited", "display_name": "Muthoot Finance", "isin": "INE414G01012"},
+    {"nse_symbol": "CHOLAFIN", "company_name": "Cholamandalam Investment and Finance", "display_name": "Chola Finance", "isin": "INE121A01024"},
+    {"nse_symbol": "MOTHERSON", "company_name": "Samvardhana Motherson International", "display_name": "Motherson", "isin": "INE775A01035"},
+    {"nse_symbol": "DIXON", "company_name": "Dixon Technologies (India) Limited", "display_name": "Dixon", "isin": "INE935N01020"},
+    {"nse_symbol": "TATATECH", "company_name": "Tata Technologies Limited", "display_name": "Tata Technologies", "isin": "INE142M01025"},
+    {"nse_symbol": "JIOFIN", "company_name": "Jio Financial Services Limited", "display_name": "Jio Financial", "isin": "INE758E01017"},
+    {"nse_symbol": "ADANIGREEN", "company_name": "Adani Green Energy Limited", "display_name": "Adani Green", "isin": "INE364U01010"},
+    {"nse_symbol": "ADANIENSOL", "company_name": "Adani Energy Solutions Limited", "display_name": "Adani Energy", "isin": "INE931S01010"},
+    {"nse_symbol": "JSWENERGY", "company_name": "JSW Energy Limited", "display_name": "JSW Energy", "isin": "INE121E01018"},
+]
+
+
 @dataclass
 class NormalizedStockRecord:
     isin: str | None
@@ -570,6 +680,30 @@ def upsert_stock_master(db: Session, records: list[NormalizedStockRecord]) -> di
     return {"inserted": inserted, "updated": updated}
 
 
+def seed_top_200_stocks(db: Session) -> int:
+    """Seed the stocks table with a core NSE universe when live sources are unavailable."""
+    records = [
+        NormalizedStockRecord(
+            isin=stock.get("isin"),
+            company_name=stock["company_name"],
+            display_name=stock["display_name"],
+            normalized_company_name=normalize_lookup_text(stock["company_name"]),
+            nse_symbol=stock["nse_symbol"],
+            exchanges={"NSE"},
+            aliases=set(
+                generate_aliases(
+                    stock["company_name"],
+                    stock["display_name"],
+                    nse_symbol=stock["nse_symbol"],
+                )
+            ),
+            source_names={stock["company_name"]},
+        )
+        for stock in TOP_200_FALLBACK_STOCKS
+    ]
+    return upsert_stock_master(db, records)["inserted"]
+
+
 def sync_stock_master(db: Session) -> dict:
     source_failures: list[str] = []
 
@@ -587,18 +721,26 @@ def sync_stock_master(db: Session) -> dict:
         bse_records = []
         source_failures.append(f"BSE: {exc}")
 
-    if not nse_records and not bse_records:
-        raise StockMasterSyncError("Both NSE and BSE stock master downloads failed")
-
     merged_records = merge_stock_records([*nse_records, *bse_records])
-    write_counts = upsert_stock_master(db, merged_records)
+    if merged_records:
+        write_counts = upsert_stock_master(db, merged_records)
+    else:
+        write_counts = {"inserted": 0, "updated": 0}
 
     total_stocks = db.query(func.count(Stock.id)).scalar() or 0
+    fallback_seeded = 0
+    if total_stocks < 50:
+        fallback_seeded = seed_top_200_stocks(db)
+        total_stocks = db.query(func.count(Stock.id)).scalar() or 0
+
+    if not merged_records and fallback_seeded == 0:
+        raise StockMasterSyncError("Both NSE and BSE stock master downloads failed")
+
     total_unique_isins = db.query(func.count(Stock.isin)).filter(Stock.isin.isnot(None)).scalar() or 0
     total_aliases = sum(len(stock.aliases or []) for stock in db.query(Stock).all())
     last_sync_time = db.query(func.max(Stock.last_updated)).scalar()
 
-    return {
+    result = {
         "nse_records_seen": len(nse_records),
         "bse_records_seen": len(bse_records),
         "merged_records": len(merged_records),
@@ -610,6 +752,9 @@ def sync_stock_master(db: Session) -> dict:
         "last_sync_time": last_sync_time.isoformat() if last_sync_time else None,
         "source_failures": source_failures,
     }
+    if fallback_seeded:
+        result["fallback_seeded"] = fallback_seeded
+    return result
 
 
 def resolve_stock_lookup(query: str, db: Session) -> Stock | None:

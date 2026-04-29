@@ -29,6 +29,7 @@ from app.services.stock_master_service import (  # noqa: E402
     generate_aliases,
     merge_stock_records,
     resolve_stock_lookup,
+    seed_top_200_stocks,
     sync_stock_master,
     upsert_stock_master,
 )
@@ -294,7 +295,34 @@ def test_sync_failure_keeps_existing_dictionary(db_session, monkeypatch):
         lambda: (_ for _ in ()).throw(StockMasterSyncError("bse failed")),
     )
 
-    with pytest.raises(StockMasterSyncError):
-        sync_stock_master(db_session)
+    result = sync_stock_master(db_session)
 
-    assert db_session.query(Stock).count() == 1
+    assert db_session.query(Stock).count() > 1
+    assert db_session.query(Stock).filter(Stock.nse_symbol == "INFY").count() == 1
+    assert result["fallback_seeded"] > 0
+
+
+def test_sync_uses_fallback_seed_when_both_sources_fail(db_session, monkeypatch):
+    monkeypatch.setattr(
+        "app.services.stock_master_service.fetch_nse_stock_master",
+        lambda: (_ for _ in ()).throw(StockMasterSyncError("nse failed")),
+    )
+    monkeypatch.setattr(
+        "app.services.stock_master_service.fetch_bse_stock_master",
+        lambda: (_ for _ in ()).throw(StockMasterSyncError("bse failed")),
+    )
+
+    result = sync_stock_master(db_session)
+
+    assert result["nse_records_seen"] == 0
+    assert result["bse_records_seen"] == 0
+    assert result["fallback_seeded"] > 0
+    assert db_session.query(Stock).count() >= result["fallback_seeded"]
+
+
+def test_seed_top_200_stocks_is_idempotent(db_session):
+    first_seed = seed_top_200_stocks(db_session)
+    second_seed = seed_top_200_stocks(db_session)
+
+    assert first_seed > 0
+    assert second_seed == 0
