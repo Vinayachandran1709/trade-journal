@@ -20,6 +20,8 @@ class WhyMovingResponse(BaseModel):
 
 class TickerIntelligenceResponse(BaseModel):
     symbol: str
+    company_name: str | None = None
+    exchange: str | None = None
     price: float | None = None
     change: float | None = None
     change_pct: float | None = None

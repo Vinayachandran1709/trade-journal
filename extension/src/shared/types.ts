@@ -1,5 +1,6 @@
 import type { CaptureState, CapturedTrade } from "./captures";
 import type { TickerIntelResponse } from "./api";
+import type { StockDictionaryResponse } from "./stockDictionary";
 
 export interface LoginRequest {
   email: string;
@@ -30,6 +31,7 @@ export interface ExtensionMessage {
     | "auth:logout"
     | "health:ping"
     | "broker:page-detected"
+    | "stocks:get-dictionary"
     | "ticker:fetch-intel"
     | "capture:submit"
     | "capture:get-state"
@@ -47,4 +49,5 @@ export interface BackgroundResponse {
   importedCount?: number;
   trades?: CapturedTrade[];
   tickerIntel?: TickerIntelResponse;
+  stockDictionary?: StockDictionaryResponse;
 }

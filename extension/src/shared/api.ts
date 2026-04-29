@@ -212,6 +212,8 @@ export interface WhyMovingResponse {
 
 export interface TickerIntelResponse {
   symbol: string;
+  company_name?: string | null;
+  exchange?: string | null;
   price: number | null;
   change: number | null;
   change_pct: number | null;
@@ -236,7 +238,7 @@ export async function fetchWhyMoving(
     headers: {
       Authorization: `Bearer ${token}`,
     },
-    body: JSON.stringify({ symbol }),
+    body: JSON.stringify({ symbol: symbol.toUpperCase().trim() }),
   });
 }
 

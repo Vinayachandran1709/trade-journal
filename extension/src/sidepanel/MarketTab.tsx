@@ -60,17 +60,16 @@ function getRefreshIntervalMs(now = new Date()): number {
   return isMarketHours(now) ? FAST_REFRESH_MS : SLOW_REFRESH_MS;
 }
 
-function getRelativeFetchedLabel(valueMs: number | null, nowMs: number): string {
+function getFetchedTimeLabel(valueMs: number | null): string {
   if (!valueMs) {
-    return "Updated just now";
+    return "--:--";
   }
 
-  const seconds = Math.max(0, Math.floor((nowMs - valueMs) / 1000));
-  if (seconds <= 1) {
-    return "Updated just now";
-  }
-
-  return `Updated ${seconds.toLocaleString("en-IN")} seconds ago`;
+  return new Intl.DateTimeFormat("en-IN", {
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  }).format(new Date(valueMs));
 }
 
 function StatusDot({ status }: { status: string }) {
@@ -98,8 +97,8 @@ function IndexCard({
       <div className="mkt-index-name">{label}</div>
       <div className="mkt-index-value">{fmtN(data?.value)}</div>
       <div className="mkt-index-change" style={{ color: pctColor(data?.change_pct) }}>
-        {data?.change != null ? (data.change >= 0 ? "▲" : "▼") : ""}{" "}
-        {fmtN(data?.change)} ({fmtPct(data?.change_pct)})
+        {data?.change != null ? (data.change >= 0 ? "▲" : "▼") : ""} {fmtN(data?.change)} (
+        {fmtPct(data?.change_pct)})
       </div>
     </div>
   );
@@ -110,12 +109,12 @@ function VixCard({ vix }: { vix: MarketDashboardData["vix"] }) {
     vix.context === "Low"
       ? "#16a34a"
       : vix.context === "Moderate"
-      ? "#f59e0b"
-      : vix.context === "Elevated"
-      ? "#ea580c"
-      : vix.context === "High"
-      ? "#dc2626"
-      : "#64748b";
+        ? "#f59e0b"
+        : vix.context === "Elevated"
+          ? "#ea580c"
+          : vix.context === "High"
+            ? "#dc2626"
+            : "#64748b";
   return (
     <div className="mkt-index-card">
       <div className="mkt-index-name">India VIX</div>
@@ -169,7 +168,7 @@ function FiiDiiSection({ data }: { data: MarketDashboardData["fii_dii"] }) {
     return (
       <div className="mkt-section">
         <h3 className="mkt-section-title">FII / DII Activity</h3>
-        <p className="mkt-unavail">Live data unavailable — check NSE website for latest figures.</p>
+        <p className="mkt-unavail">Live data unavailable - check NSE website for latest figures.</p>
       </div>
     );
   }
@@ -283,7 +282,6 @@ export default function MarketTab() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [nowMs, setNowMs] = useState(() => Date.now());
   const [lastFetchedAtMs, setLastFetchedAtMs] = useState<number | null>(null);
   const mountedRef = useRef(true);
   const hasDataRef = useRef(false);
@@ -314,9 +312,7 @@ export default function MarketTab() {
       if (mountedRef.current) {
         setData(result);
         setError(null);
-        const fetchedAtMs = Date.now();
-        setNowMs(fetchedAtMs);
-        setLastFetchedAtMs(fetchedAtMs);
+        setLastFetchedAtMs(Date.now());
       }
       void storageSet(LAST_MARKET_DATA_KEY, result).catch(() => undefined);
     } catch (nextError) {
@@ -351,10 +347,6 @@ export default function MarketTab() {
   useEffect(() => {
     mountedRef.current = true;
 
-    const tickId = window.setInterval(() => {
-      setNowMs(Date.now());
-    }, 1000);
-
     async function hydrate() {
       const cached = await storageGet<MarketDashboardData>(LAST_MARKET_DATA_KEY).catch(
         () => null
@@ -381,19 +373,18 @@ export default function MarketTab() {
 
     return () => {
       mountedRef.current = false;
-      window.clearInterval(tickId);
       if (timerRef.current != null) {
         window.clearTimeout(timerRef.current);
       }
     };
   }, []);
 
-  if (loading && !data) {
-    return <MarketSkeleton />;
-  }
-
   function handleManualRefresh() {
     void load();
+  }
+
+  if (loading && !data) {
+    return <MarketSkeleton />;
   }
 
   if (error && !data) {
@@ -429,20 +420,15 @@ export default function MarketTab() {
       <div className="mkt-header">
         <StatusDot status={data.market_status} />
         <div className="mkt-updated-wrap">
-          <span className="mkt-updated">
-            {(refreshing || loading) && data ? (
-              <span className="mkt-refresh-dot" aria-hidden="true" />
-            ) : null}
-            {getRelativeFetchedLabel(lastFetchedAtMs, nowMs)}
-          </span>
+          <span className="mkt-updated">{getFetchedTimeLabel(lastFetchedAtMs)}</span>
           <button
             aria-label="Refresh market data"
-            className={`mkt-refresh-button${refreshing || loading ? " is-spinning" : ""}`}
+            className="mkt-refresh-button"
             disabled={refreshing || loading}
             onClick={handleManualRefresh}
             title="Refresh market data"
           >
-            ↻
+            {refreshing || loading ? "Refreshing..." : "\u27F3 Refresh"}
           </button>
         </div>
       </div>
@@ -467,7 +453,7 @@ export default function MarketTab() {
       </div>
 
       <div className="mkt-section">
-        <h3 className="mkt-section-title mkt-title-green">▲ Top Gainers</h3>
+        <h3 className="mkt-section-title mkt-title-green">{"\u25B2 Top Gainers"}</h3>
         {data.top_gainers.length === 0 ? (
           <p className="mkt-unavail">No data</p>
         ) : (
@@ -478,7 +464,7 @@ export default function MarketTab() {
       </div>
 
       <div className="mkt-section">
-        <h3 className="mkt-section-title mkt-title-red">▼ Top Losers</h3>
+        <h3 className="mkt-section-title mkt-title-red">{"\u25BC Top Losers"}</h3>
         {data.top_losers.length === 0 ? (
           <p className="mkt-unavail">No data</p>
         ) : (

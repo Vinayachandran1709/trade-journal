@@ -6,6 +6,7 @@ from app.models.behavioral_pattern import BehavioralPattern
 from app.models.trade_setup import TradeSetup
 from app.models.trade_checklist import TradeChecklist
 from app.models.market_data_cache import MarketDataCache
+from app.models.stock import Stock
 from app.models.ai_query_log import AIQueryLog
 from app.models.payment_event import PaymentEvent
 from app.models.coupon import Coupon
@@ -19,6 +20,7 @@ __all__ = [
     "TradeSetup",
     "TradeChecklist",
     "MarketDataCache",
+    "Stock",
     "AIQueryLog",
     "PaymentEvent",
     "Coupon",

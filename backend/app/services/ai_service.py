@@ -14,10 +14,11 @@ from app.models.ai_query_log import AIQueryLog
 from app.models.market_data_cache import MarketDataCache
 from app.models.user import User
 from app.services.market_data_service import get_ticker_quote
+from app.services.stock_master_service import get_quote_symbol_for_stock_input, resolve_stock_lookup
 
 DISCLAIMER_TEXT = (
     "This is data analysis, not investment advice. "
-    "StrategyForge AI is not a SEBI-registered advisor."
+    "IndiaCircle is not a SEBI-registered advisor."
 )
 IST = timezone(timedelta(hours=5, minutes=30))
 WHY_MOVING_CACHE_TTL = timedelta(minutes=15)
@@ -397,8 +398,9 @@ Rules:
 
 
 async def why_is_it_moving(symbol: str, user: User, db: Session) -> dict:
-    normalized_symbol = _normalize_symbol(symbol)
-    display_symbol = _display_symbol(normalized_symbol)
+    quote_symbol, resolved_stock = get_quote_symbol_for_stock_input(symbol, db)
+    normalized_symbol = _normalize_symbol(quote_symbol)
+    display_symbol = resolved_stock.nse_symbol if resolved_stock and resolved_stock.nse_symbol else _display_symbol(normalized_symbol)
     model = _why_moving_model_for_user(user)
     queries_limit = _why_moving_limit_for_user(user)
     queries_used = _count_queries_today(db, user.id, "why_moving")
@@ -495,8 +497,14 @@ async def why_is_it_moving(symbol: str, user: User, db: Session) -> dict:
 
 
 def get_ticker_intelligence(symbol: str, db: Session, user: User | None = None) -> dict:
-    normalized_symbol = _normalize_symbol(symbol)
-    display_symbol = _display_symbol(normalized_symbol)
+    quote_symbol, resolved_stock = get_quote_symbol_for_stock_input(symbol, db)
+    normalized_symbol = _normalize_symbol(quote_symbol)
+    if resolved_stock and resolved_stock.nse_symbol:
+        display_symbol = resolved_stock.nse_symbol
+    elif resolved_stock and resolved_stock.bse_code:
+        display_symbol = f"BSE:{resolved_stock.bse_code}"
+    else:
+        display_symbol = _display_symbol(normalized_symbol)
     cache_key = f"ticker_intel:{display_symbol}"
     cache_entry = _get_cache_entry(db, cache_key)
 
@@ -544,6 +552,14 @@ def get_ticker_intelligence(symbol: str, db: Session, user: User | None = None) 
 
     payload = {
         "symbol": display_symbol,
+        "company_name": resolved_stock.display_name if resolved_stock else None,
+        "exchange": (
+            "NSE"
+            if resolved_stock and resolved_stock.nse_symbol
+            else "BSE"
+            if resolved_stock and resolved_stock.bse_code
+            else ("BSE" if normalized_symbol.endswith(".BO") else "NSE")
+        ),
         "price": quote.get("price"),
         "change": quote.get("change"),
         "change_pct": quote.get("change_pct"),

@@ -5,13 +5,14 @@ import { clearAuthToken, getAuthToken, onAuthTokenChange } from "../shared/auth"
 import { getCaptureState, type CaptureState } from "../shared/captures";
 import type { User } from "../shared/types";
 import AccountTab from "./AccountTab";
+import AiTab from "./AiTab";
 import CalculatorsTab from "./CalculatorsTab";
 import CapturesTab from "./CapturesTab";
 import MarketTab from "./MarketTab";
 
 const WEB_APP_URL = (import.meta.env.VITE_WEB_APP_URL || "https://indiacircle.in").replace(/\/$/, "");
 
-type TabId = "market" | "captures" | "calculators" | "account";
+type TabId = "market" | "ai" | "captures" | "calculators" | "account";
 
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
@@ -149,6 +150,7 @@ export default function App() {
         {(
           [
             ["market", "Market"],
+            ["ai", "AI"],
             ["captures", "Captures"],
             ["calculators", "Calculators"],
             ["account", "Account"],
@@ -165,6 +167,8 @@ export default function App() {
       </nav>
 
       {activeTab === "market" && <MarketTab />}
+
+      {activeTab === "ai" && <AiTab isSignedIn={Boolean(user)} />}
 
       {activeTab === "captures" && (
         <CapturesTab

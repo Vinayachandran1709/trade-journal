@@ -410,47 +410,40 @@ body {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  font-size: 11px;
+  font-size: 12px;
+  font-weight: 600;
   color: #64748b;
 }
 
 .mkt-updated-wrap {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 10px;
 }
 
 .mkt-refresh-button {
-  width: 24px;
-  height: 24px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid rgba(148, 163, 184, 0.35);
+  border: 0;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.88);
-  color: #4f46e5;
+  padding: 6px 14px;
+  background: #4f46e5;
+  color: #ffffff;
   cursor: pointer;
   font-size: 13px;
+  font-weight: 600;
   line-height: 1;
+  transition: background 0.15s ease;
+}
+
+.mkt-refresh-button:hover:not(:disabled) {
+  background: #4338ca;
 }
 
 .mkt-refresh-button:disabled {
   opacity: 0.65;
   cursor: wait;
-}
-
-.mkt-refresh-button.is-spinning {
-  animation: spin 1s linear infinite;
-}
-
-.mkt-refresh-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: #38bdf8;
-  box-shadow: 0 0 0 6px rgba(56, 189, 248, 0.14);
-  animation: mkt-pulse 1.2s ease-in-out infinite;
 }
 
 .mkt-inline-note {
@@ -651,6 +644,161 @@ body {
 .mkt-skeleton-updated {
   width: 118px;
   height: 14px;
+}
+
+.ai-root {
+  display: grid;
+  gap: 12px;
+}
+
+.ai-card,
+.ai-result-card {
+  background: rgba(255, 255, 255, 0.86);
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  border-radius: 14px;
+  padding: 14px;
+}
+
+.ai-card {
+  display: grid;
+  gap: 12px;
+}
+
+.ai-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #475569;
+}
+
+.ai-input {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid rgba(148, 163, 184, 0.5);
+  border-radius: 14px;
+  padding: 11px 12px;
+  font: inherit;
+  color: #0f172a;
+  background: rgba(255, 255, 255, 0.96);
+}
+
+.ai-input:focus {
+  outline: none;
+  border-color: #4f46e5;
+  box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.15);
+}
+
+.ai-search-button {
+  border: 0;
+  border-radius: 14px;
+  padding: 12px 14px;
+  background: linear-gradient(135deg, #4f46e5, #2563eb);
+  color: #fff;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.ai-search-button:disabled,
+.ai-recent-pill:disabled {
+  opacity: 0.7;
+  cursor: wait;
+}
+
+.ai-recent-block {
+  display: grid;
+  gap: 8px;
+}
+
+.ai-recent-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: #334155;
+}
+
+.ai-recent-list,
+.ai-source-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.ai-recent-pill,
+.ai-source-link {
+  border: 1px solid rgba(79, 70, 229, 0.18);
+  border-radius: 999px;
+  background: rgba(79, 70, 229, 0.08);
+  color: #4338ca;
+  font: inherit;
+  font-size: 12px;
+  padding: 6px 10px;
+  text-decoration: none;
+}
+
+.ai-recent-pill {
+  cursor: pointer;
+}
+
+.ai-recent-empty {
+  margin: 0;
+  color: #64748b;
+  font-size: 12px;
+}
+
+.ai-result-card {
+  display: grid;
+  gap: 12px;
+}
+
+.ai-result-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.ai-result-header h2 {
+  margin: 0;
+  color: #0f172a;
+  font-size: 20px;
+}
+
+.ai-result-price {
+  margin: 6px 0 0;
+  color: #334155;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.ai-result-change {
+  border-radius: 999px;
+  padding: 7px 10px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.ai-result-change.positive {
+  background: rgba(22, 163, 74, 0.12);
+  color: #15803d;
+}
+
+.ai-result-change.negative {
+  background: rgba(220, 38, 38, 0.12);
+  color: #b91c1c;
+}
+
+.ai-result-explanation {
+  margin: 0;
+  color: #1f2937;
+  font-size: 13px;
+  line-height: 1.55;
+  white-space: pre-line;
+}
+
+.ai-quota-copy {
+  color: #6b7280;
+  font-size: 12px;
 }
 
 .mkt-skeleton-label {
@@ -924,29 +1072,6 @@ body {
 .account-logout-button {
   border-color: rgba(220, 38, 38, 0.22);
   color: #b91c1c;
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-@keyframes mkt-pulse {
-  0% {
-    transform: scale(0.92);
-    opacity: 0.75;
-  }
-
-  70% {
-    transform: scale(1);
-    opacity: 1;
-  }
-
-  100% {
-    transform: scale(0.92);
-    opacity: 0.75;
-  }
 }
 
 @keyframes mkt-shimmer {

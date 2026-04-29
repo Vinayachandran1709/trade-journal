@@ -13,6 +13,7 @@ import yfinance as yf
 from sqlalchemy.orm import Session
 
 from app.models.market_data_cache import MarketDataCache
+from app.services.stock_master_service import get_quote_symbol_for_stock_input
 
 logger = logging.getLogger(__name__)
 
@@ -406,10 +407,7 @@ def _fetch_quote_data(symbol: str) -> dict:
 
 
 def get_ticker_quote(symbol: str, db: Session) -> dict:
-    # Normalise: bare NSE symbols get .NS suffix
-    norm = symbol.upper()
-    if not any(norm.endswith(s) for s in (".NS", ".BO", "=F", "=X")) and not norm.startswith("^"):
-        norm = f"{norm}.NS"
+    norm, stock = get_quote_symbol_for_stock_input(symbol, db)
 
     cache_key = f"quote_{norm}"
 
@@ -420,13 +418,15 @@ def get_ticker_quote(symbol: str, db: Session) -> dict:
     try:
         future = _inner_pool.submit(_fetch_quote_data, norm)
         payload = future.result(timeout=_QUOTE_TIMEOUT)
+        if stock:
+            payload["symbol"] = stock.nse_symbol or (f"BSE:{stock.bse_code}" if stock.bse_code else payload["symbol"])
     except FuturesTimeoutError:
         logger.warning("Quote fetch timed out for %s", norm)
         stale = _cache_get_stale(db, cache_key)
         if stale is not None:
             return {**stale, "is_stale": True}
         return {
-            "symbol": symbol.upper(), "price": None, "change": None,
+            "symbol": (stock.nse_symbol if stock and stock.nse_symbol else symbol.upper()), "price": None, "change": None,
             "change_pct": None, "high_52w": None, "low_52w": None,
             "volume": None, "market_status": _market_status(),
             "last_updated": _now_ist_str(), "is_stale": True,
@@ -437,7 +437,7 @@ def get_ticker_quote(symbol: str, db: Session) -> dict:
         if stale is not None:
             return {**stale, "is_stale": True}
         return {
-            "symbol": symbol.upper(), "price": None, "change": None,
+            "symbol": (stock.nse_symbol if stock and stock.nse_symbol else symbol.upper()), "price": None, "change": None,
             "change_pct": None, "high_52w": None, "low_52w": None,
             "volume": None, "market_status": _market_status(),
             "last_updated": _now_ist_str(), "is_stale": True,
