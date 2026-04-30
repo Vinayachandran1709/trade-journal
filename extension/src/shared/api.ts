@@ -200,9 +200,23 @@ export async function fetchMarketDashboard(): Promise<MarketDashboardData> {
 export interface WhyMovingResponse {
   symbol: string;
   explanation: string;
-  price: number;
-  change_pct: number;
-  sources: string[];
+  price: number | null;
+  change_pct: number | null;
+  company_name?: string | null;
+  source_count: number;
+  confidence: "high" | "medium" | "low";
+  source_quality: "official_filing" | "trusted_news" | "social_chatter" | "fallback_web";
+  sources: Array<{
+    title: string;
+    url: string;
+    publisher: string;
+    published_at?: string | null;
+    source_type: string;
+    recency_bucket?: string | null;
+    trust_score: number;
+    relevance_score: number;
+    final_score: number;
+  }>;
   model_used: string;
   queries_remaining: number;
   queries_limit: number;
@@ -248,4 +262,70 @@ export async function fetchTickerIntel(
   return request<TickerIntelResponse>(
     `/api/market/ticker-intel/${encodeURIComponent(symbol)}`
   );
+}
+
+export interface PatternResponse {
+  pattern_type: string;
+  title: string;
+  description: string;
+  severity: "high" | "medium" | "low";
+  data: Record<string, unknown>;
+  locked: boolean;
+}
+
+export interface PatternsEnvelope {
+  patterns: PatternResponse[];
+  total_completed_trades: number;
+  threshold: number;
+  unlocked: boolean;
+}
+
+export interface AnalyticsSummaryResponse {
+  total_trades: number;
+  win_rate: number;
+  total_pnl: number;
+  avg_pnl_per_trade: number;
+  best_trade: {
+    symbol: string | null;
+    pnl: number | null;
+    exit_date: string | null;
+  };
+  worst_trade: {
+    symbol: string | null;
+    pnl: number | null;
+    exit_date: string | null;
+  };
+  avg_holding_days: number;
+  most_traded_symbol: string | null;
+  monthly_pnl: Array<{
+    month: string;
+    pnl: number;
+  }>;
+}
+
+export async function analyzePatterns(token: string): Promise<PatternsEnvelope> {
+  return request<PatternsEnvelope>("/api/analytics/analyze-patterns", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+}
+
+export async function getPatterns(token: string): Promise<PatternsEnvelope> {
+  return request<PatternsEnvelope>("/api/analytics/patterns", {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+}
+
+export async function getAnalyticsSummary(
+  token: string
+): Promise<AnalyticsSummaryResponse> {
+  return request<AnalyticsSummaryResponse>("/api/analytics/summary", {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
 }

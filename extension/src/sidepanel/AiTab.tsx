@@ -20,43 +20,63 @@ function formatSignedPercent(value: unknown): string {
   return `${numericValue >= 0 ? "+" : ""}${numericValue.toFixed(2)}%`;
 }
 
-function formatPrice(value: unknown): string {
-  const numericValue = toFiniteNumber(value);
-  if (numericValue == null) {
-    return "--";
-  }
+function formatIndianNumber(num: number | null): string {
+  if (num == null) return "--";
+  return new Intl.NumberFormat("en-IN", { maximumFractionDigits: 2 }).format(num);
+}
 
-  return numericValue.toFixed(2);
+function formatPrice(value: unknown): string {
+  return formatIndianNumber(toFiniteNumber(value));
 }
 
 function formatNullablePercent(value: unknown): string {
   return formatSignedPercent(value);
 }
 
-function getSourceHref(source: string): string {
-  const trimmed = source.trim();
-  if (/^https?:\/\//i.test(trimmed)) {
-    return trimmed;
+function formatPublishedAt(value?: string | null): string {
+  if (!value) {
+    return "Latest";
   }
 
-  if (/^[\w.-]+\.[a-z]{2,}(\/.*)?$/i.test(trimmed)) {
-    return `https://${trimmed}`;
+  const parts = value.split(" ");
+  if (parts.length >= 2) {
+    return `${parts[0]} • ${parts[1]} IST`;
   }
 
-  return `https://www.google.com/search?q=${encodeURIComponent(trimmed)}`;
+  return value;
 }
 
-function getSourceLabel(source: string): string {
-  const trimmed = source.trim();
-  if (/^https?:\/\//i.test(trimmed)) {
-    try {
-      return new URL(trimmed).hostname.replace(/^www\./, "");
-    } catch {
-      return trimmed;
-    }
+function formatRecencyBucket(value?: string | null): string {
+  if (value === "today") {
+    return "Today";
   }
+  if (value === "yesterday") {
+    return "Yesterday";
+  }
+  return "Recent";
+}
 
-  return trimmed;
+function formatConfidence(value?: string | null): string {
+  if (value === "high") {
+    return "High confidence";
+  }
+  if (value === "medium") {
+    return "Medium confidence";
+  }
+  return "Low confidence";
+}
+
+function formatSourceQuality(value?: string | null): string {
+  if (value === "official_filing") {
+    return "Official filing";
+  }
+  if (value === "trusted_news") {
+    return "Trusted news";
+  }
+  if (value === "social_chatter") {
+    return "Social chatter";
+  }
+  return "Fallback web";
 }
 
 function getExplanationBody(result: WhyMovingResponse): string {
@@ -190,7 +210,10 @@ export default function AiTab({ isSignedIn }: { isSignedIn: boolean }) {
           <div className="ai-result-header">
             <div>
               <h2>{result.symbol}</h2>
-              <p className="ai-result-price">\u20B9{formatPrice(result.price)}</p>
+              {result.company_name ? (
+                <p className="ai-result-company">{result.company_name}</p>
+              ) : null}
+              <p className="ai-result-price">₹{formatPrice(result.price)}</p>
             </div>
             <span
               className={`ai-result-change${
@@ -203,18 +226,52 @@ export default function AiTab({ isSignedIn }: { isSignedIn: boolean }) {
 
           <p className="ai-result-explanation">{getExplanationBody(result)}</p>
 
-          <div className="ai-source-list">
-            {(Array.isArray(result.sources) ? result.sources : []).map((source) => (
-              <a
-                key={source}
-                className="ai-source-link"
-                href={getSourceHref(source)}
-                target="_blank"
-                rel="noreferrer"
-              >
-                {getSourceLabel(source)}
-              </a>
-            ))}
+          <div className="ai-signal-row">
+            <span className={`ai-signal-pill confidence-${result.confidence ?? "low"}`}>
+              {formatConfidence(result.confidence)}
+            </span>
+            <span className="ai-signal-pill quality">
+              {formatSourceQuality(result.source_quality)}
+            </span>
+          </div>
+
+          <div className="ai-source-panel">
+            <div className="ai-source-panel-header">
+              <div>
+                <div className="ai-source-title">Latest coverage</div>
+                <p className="ai-source-subcopy">
+                  Showing up to {result.source_count || 0} relevant articles from today first,
+                  then yesterday only if needed.
+                </p>
+              </div>
+              {result.cached ? <span className="ai-source-state">Cached</span> : null}
+            </div>
+
+            <div className="ai-source-grid">
+              {(Array.isArray(result.sources) ? result.sources : []).map((source) => (
+                <a
+                  key={`${source.url}-${source.title}`}
+                  className="ai-source-card"
+                  href={source.url}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  <div className="ai-source-card-top">
+                    <span className="ai-source-publisher">{source.publisher}</span>
+                    <span className={`ai-source-badge ${source.recency_bucket ?? "recent"}`}>
+                      {formatRecencyBucket(source.recency_bucket)}
+                    </span>
+                  </div>
+                  <strong className="ai-source-card-title">{source.title}</strong>
+                  <div className="ai-source-card-footer">
+                    <span>{formatPublishedAt(source.published_at)}</span>
+                    <span>
+                      Score {Math.round(source.final_score || 0)} • Open article
+                    </span>
+                  </div>
+                </a>
+              ))}
+            </div>
           </div>
 
           <div className="ai-quota-copy">

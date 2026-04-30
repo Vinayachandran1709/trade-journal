@@ -5,12 +5,28 @@ class WhyMovingRequest(BaseModel):
     symbol: str
 
 
+class WhyMovingSource(BaseModel):
+    title: str
+    url: str
+    publisher: str
+    published_at: str | None = None
+    source_type: str = "trusted_news"
+    recency_bucket: str | None = None
+    trust_score: int = 0
+    relevance_score: int = 0
+    final_score: float = 0.0
+
+
 class WhyMovingResponse(BaseModel):
     symbol: str
     explanation: str
     price: float | None = None
     change_pct: float | None = None
-    sources: list[str]
+    company_name: str | None = None
+    source_count: int = 0
+    confidence: str = "low"
+    source_quality: str = "fallback_web"
+    sources: list[WhyMovingSource]
     model_used: str
     queries_remaining: int
     queries_limit: int

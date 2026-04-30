@@ -406,14 +406,15 @@ def _fetch_quote_data(symbol: str) -> dict:
     }
 
 
-def get_ticker_quote(symbol: str, db: Session) -> dict:
+def get_ticker_quote(symbol: str, db: Session, skip_cache: bool = False) -> dict:
     norm, stock = get_quote_symbol_for_stock_input(symbol, db)
 
     cache_key = f"quote_{norm}"
 
-    fresh = _cache_get(db, cache_key)
-    if fresh is not None:
-        return fresh
+    if not skip_cache:
+        fresh = _cache_get(db, cache_key)
+        if fresh is not None:
+            return fresh
 
     try:
         future = _inner_pool.submit(_fetch_quote_data, norm)
