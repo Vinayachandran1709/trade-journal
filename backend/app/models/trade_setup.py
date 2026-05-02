@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, JSON, String, Text
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, JSON, Numeric, String, Text
 from sqlalchemy.orm import relationship
 
 from app.database import Base
@@ -15,8 +15,23 @@ class TradeSetup(Base):
     description = Column(Text)
     setup_config = Column(JSON)
     is_active = Column(Boolean, default=True, nullable=False)
+    symbol = Column(String(50), index=True)
+    thesis = Column(Text)
+    entry_price = Column(Numeric(12, 2))
+    stop_loss_price = Column(Numeric(12, 2))
+    target_price = Column(Numeric(12, 2))
+    target2_price = Column(Numeric(12, 2))
+    conviction_score = Column(Integer)
+    checklist_responses = Column(JSON)
+    position_size = Column(Integer)
+    risk_amount = Column(Numeric(12, 2))
+    risk_score = Column(Integer)
+    risk_level = Column(String(20))
+    linked_trade_id = Column(Integer, ForeignKey("completed_trades.id"), nullable=True, index=True)
+    linked_at = Column(DateTime)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     user = relationship("User", back_populates="trade_setups")
     trade_checklists = relationship("TradeChecklist", back_populates="trade_setup")
+    linked_trade = relationship("CompletedTrade")

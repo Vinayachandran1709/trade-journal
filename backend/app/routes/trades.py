@@ -21,6 +21,7 @@ from app.services.csv_parser import parse_groww_csv
 from app.services.email_parser import parse_zerodha_contract_note
 from app.services.trade_import_service import import_trades
 from app.services.trade_processor import calculate_completed_trades, clean_stock_symbol
+from app.services.checklist_service import link_setup_to_trade
 from app.services.universal_csv_parser import parse_universal_csv
 from app.utils.dependencies import get_current_user
 
@@ -164,6 +165,8 @@ def auto_capture_trades(
         import_source="extension",
         default_entry_method=request.capture_method,
     )
+    for trade in result.imported_trades:
+        link_setup_to_trade(current_user.id, trade.id, db)
 
     return TradeImportResponse(
         imported=len(result.imported_trades),
@@ -282,6 +285,8 @@ def process_trades(
         db.add(trade)
 
     db.commit()
+    for trade in completed:
+        link_setup_to_trade(current_user.id, trade.id, db)
 
     return {
         "processed": len(completed),

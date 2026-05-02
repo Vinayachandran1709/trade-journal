@@ -16,6 +16,10 @@ const contentScripts = [
     entry: "src/content-scripts/ticker-highlighter.ts",
     output: "content-scripts/ticker-highlighter.js",
   },
+  {
+    entry: "src/content-scripts/checklist-overlay.ts",
+    output: "content-scripts/checklist-overlay.js",
+  },
 ];
 
 function buildContentScripts(): Plugin {

@@ -1,6 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 
-import { fetchMarketDashboard, type MarketDashboardData } from "../shared/api";
+import {
+  fetchMarketDashboard,
+  fetchRiskAlerts,
+  type MarketDashboardData,
+  type RiskAlert,
+} from "../shared/api";
+import { getAuthToken } from "../shared/auth";
 import { storageGet, storageSet } from "../shared/chrome";
 
 const FAST_REFRESH_MS = 15_000;
@@ -285,6 +291,7 @@ export default function MarketTab() {
   const [error, setError] = useState<string | null>(null);
   const [nowMs, setNowMs] = useState(() => Date.now());
   const [lastFetchedAtMs, setLastFetchedAtMs] = useState<number | null>(null);
+  const [riskAlerts, setRiskAlerts] = useState<RiskAlert[]>([]);
   const mountedRef = useRef(true);
   const hasDataRef = useRef(false);
   const timerRef = useRef<number | null>(null);
@@ -388,6 +395,29 @@ export default function MarketTab() {
     };
   }, []);
 
+  useEffect(() => {
+    let active = true;
+    let timer: number | null = null;
+
+    async function loadAlerts() {
+      const token = await getAuthToken();
+      if (!token) {
+        if (active) setRiskAlerts([]);
+        return;
+      }
+      const alerts = await fetchRiskAlerts(token).catch(() => []);
+      if (active) setRiskAlerts(alerts);
+    }
+
+    void loadAlerts();
+    timer = window.setInterval(() => void loadAlerts(), 60_000);
+
+    return () => {
+      active = false;
+      if (timer != null) window.clearInterval(timer);
+    };
+  }, []);
+
   if (loading && !data) {
     return <MarketSkeleton />;
   }
@@ -414,6 +444,20 @@ export default function MarketTab() {
 
   return (
     <div className="mkt-root">
+      {riskAlerts.length ? (
+        <div className="risk-alert-list">
+          {riskAlerts.map((alert) => (
+            <div
+              key={`${alert.alert_type}-${alert.timestamp}`}
+              className={`risk-alert risk-alert--${alert.severity}`}
+            >
+              <strong>{alert.title}</strong>
+              <p>{alert.message}</p>
+            </div>
+          ))}
+        </div>
+      ) : null}
+
       {data.is_stale && (
         <div className="mkt-stale-banner">
           Data may be delayed. Source temporarily unavailable.

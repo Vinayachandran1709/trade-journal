@@ -1,6 +1,12 @@
 import { useEffect, useState } from "react";
 
-import { fetchTrades, type TradeListItem } from "../shared/api";
+import {
+  fetchSetupReportCard,
+  fetchSetups,
+  fetchTrades,
+  type TradeListItem,
+  type TradeSetupItem,
+} from "../shared/api";
 import { getAuthToken } from "../shared/auth";
 import type { CaptureState } from "../shared/captures";
 
@@ -70,6 +76,8 @@ export default function CapturesTab({
   const [recentTrades, setRecentTrades] = useState<TradeListItem[]>([]);
   const [recentLoading, setRecentLoading] = useState(false);
   const [recentError, setRecentError] = useState<string | null>(null);
+  const [setups, setSetups] = useState<TradeSetupItem[]>([]);
+  const [reportCard, setReportCard] = useState<Record<string, unknown> | null>(null);
 
   const todaysTrades = captureState?.trades ?? [];
   const showRecentCaptures = todaysTrades.length === 0;
@@ -121,6 +129,33 @@ export default function CapturesTab({
     };
   }, [isSignedIn, showRecentCaptures]);
 
+  useEffect(() => {
+    let active = true;
+
+    async function loadSetups() {
+      if (!isSignedIn) {
+        if (active) setSetups([]);
+        return;
+      }
+      const token = await getAuthToken();
+      if (!token) return;
+      const result = await fetchSetups(token, { limit: 5 }).catch(() => []);
+      if (active) setSetups(result);
+    }
+
+    void loadSetups();
+    return () => {
+      active = false;
+    };
+  }, [isSignedIn, captureState?.lastSyncAt]);
+
+  async function openReportCard(setupId: number) {
+    const token = await getAuthToken();
+    if (!token) return;
+    const result = await fetchSetupReportCard(token, setupId);
+    setReportCard(result);
+  }
+
   return (
     <section className="placeholder-grid">
       <article className="placeholder-card">
@@ -169,6 +204,43 @@ export default function CapturesTab({
           )}
         </article>
       ) : null}
+
+      <article className="placeholder-card">
+        <h2>Pre-trade setups</h2>
+        {setups.length ? (
+          <div className="setup-list">
+            {setups.map((setup) => (
+              <button
+                key={setup.id}
+                className="setup-row"
+                onClick={() => setup.linked_trade_id && void openReportCard(setup.id)}
+              >
+                <span>
+                  <strong>{setup.symbol}</strong>
+                  <small>
+                    Conviction {setup.conviction_score ?? "—"} ·{" "}
+                    {setup.risk_score ? `Risk ${setup.risk_score}` : "Risk pending"}
+                  </small>
+                </span>
+                <em>
+                  {setup.linked_trade_id
+                    ? "Linked"
+                    : "Pending"}
+                </em>
+              </button>
+            ))}
+          </div>
+        ) : (
+          <p>No pre-trade setups logged yet.</p>
+        )}
+        {reportCard ? (
+          <div className="setup-report">
+            <strong>Report card</strong>
+            <p>{String(reportCard.plan_deviation ?? "")}</p>
+            <p>{String(reportCard.lesson ?? "")}</p>
+          </div>
+        ) : null}
+      </article>
     </section>
   );
 }

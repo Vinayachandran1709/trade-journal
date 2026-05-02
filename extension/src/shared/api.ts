@@ -175,6 +175,61 @@ export async function fetchTrades(
   });
 }
 
+export interface RiskAlert {
+  alert_type: string;
+  severity: "high" | "medium" | "info";
+  title: string;
+  message: string;
+  timestamp: string;
+  locked?: boolean;
+}
+
+export interface TradeSetupItem {
+  id: number;
+  symbol: string | null;
+  thesis?: string | null;
+  conviction_score?: number | null;
+  risk_score?: number | null;
+  risk_level?: string | null;
+  linked_trade_id?: number | null;
+  linked_at?: string | null;
+  created_at: string;
+}
+
+export async function fetchRiskAlerts(token: string): Promise<RiskAlert[]> {
+  return request<RiskAlert[]>("/api/risk-alerts", {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+}
+
+export async function fetchSetups(
+  token: string,
+  filters?: { limit?: number; offset?: number }
+): Promise<TradeSetupItem[]> {
+  const params = new URLSearchParams();
+  if (filters?.limit !== undefined) params.set("limit", String(filters.limit));
+  if (filters?.offset !== undefined) params.set("offset", String(filters.offset));
+  const query = params.toString();
+  return request<TradeSetupItem[]>(`/api/setups/my-setups${query ? `?${query}` : ""}`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+}
+
+export async function fetchSetupReportCard(
+  token: string,
+  setupId: number
+): Promise<Record<string, unknown>> {
+  return request<Record<string, unknown>>(`/api/setups/${setupId}/report-card`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+}
+
 // ---------------------------------------------------------------------------
 // Market data (public endpoints — no auth required)
 // ---------------------------------------------------------------------------
