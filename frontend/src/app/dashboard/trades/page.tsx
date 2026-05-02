@@ -3,8 +3,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import AuthGuard from "@/components/AuthGuard";
-import Card from "@/components/ui/Card";
-import Button from "@/components/ui/Button";
 import { getTrades, getTradesSummary } from "@/lib/trades";
 import type { Trade, TradesSummary } from "@/types/trade";
 
@@ -24,13 +22,17 @@ function formatDate(dateStr: string): string {
 
 function Spinner() {
   return (
-    <div className="flex min-h-[calc(100vh-57px)] items-center justify-center">
-      <svg className="h-8 w-8 animate-spin text-indigo-600" viewBox="0 0 24 24" fill="none">
-        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-      </svg>
+    <div className="flex min-h-screen items-center justify-center bg-gray-50">
+      <div className="h-10 w-10 animate-spin rounded-full border-4 border-indigo-100 border-t-indigo-600" />
     </div>
   );
+}
+
+function emotionClass(emotion?: string | null) {
+  const value = (emotion || "").toLowerCase();
+  if (value.includes("calm") || value.includes("confident")) return "badge-emerald";
+  if (value.includes("fear") || value.includes("revenge") || value.includes("fomo")) return "badge-rose";
+  return "badge-indigo";
 }
 
 function TradesContent() {
@@ -97,228 +99,153 @@ function TradesContent() {
   if (loading && trades.length === 0) return <Spinner />;
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-10">
-      {/* Header */}
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Your Trades</h1>
-          <p className="mt-1 text-gray-500">View and filter your imported trades</p>
-        </div>
-        <Button onClick={() => router.push("/import")}>
-          + Import Trades
-        </Button>
-      </div>
-
-      {/* Summary cards */}
-      {summary && (
-        <div className="mt-8 grid gap-4 sm:grid-cols-3">
-          <Card>
-            <p className="text-sm font-medium text-gray-500">Total Trades</p>
-            <p className="mt-1 text-2xl font-bold text-gray-900">
-              {summary.total_trades.toLocaleString("en-IN")}
-            </p>
-          </Card>
-          <Card>
-            <p className="text-sm font-medium text-gray-500">Total Invested</p>
-            <p className="mt-1 text-2xl font-bold text-gray-900">
-              {formatCurrency(summary.total_invested)}
-            </p>
-          </Card>
-          <Card>
-            <p className="text-sm font-medium text-gray-500">Unique Symbols</p>
-            <p className="mt-1 text-2xl font-bold text-gray-900">
-              {summary.unique_symbols}
-            </p>
-          </Card>
-        </div>
-      )}
-
-      {/* Filters */}
-      <Card className="mt-6">
-        <h2 className="mb-4 text-sm font-semibold text-gray-700">Filters</h2>
-        <div className="grid gap-3 sm:grid-cols-3">
+    <div className="min-h-screen bg-gray-50 px-4 pb-16 pt-28 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-7xl">
+        <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
-            <label className="mb-1 block text-xs font-medium text-gray-600">
-              Symbol
-            </label>
-            <input
-              type="text"
-              placeholder="e.g. INFY"
-              value={filters.symbol}
-              onChange={(e) =>
-                setFilters((f) => ({ ...f, symbol: e.target.value.toUpperCase() }))
-              }
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            />
+            <span className="badge badge-indigo">Journal</span>
+            <h1 className="mt-4 text-4xl font-black tracking-tight text-slate-950">Your Trades</h1>
+            <p className="mt-2 text-gray-600">View, filter, and tag the raw material of your trading edge.</p>
           </div>
-          <div>
-            <label className="mb-1 block text-xs font-medium text-gray-600">
-              Start Date
-            </label>
-            <input
-              type="date"
-              value={filters.start_date}
-              onChange={(e) =>
-                setFilters((f) => ({ ...f, start_date: e.target.value }))
-              }
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            />
-          </div>
-          <div>
-            <label className="mb-1 block text-xs font-medium text-gray-600">
-              End Date
-            </label>
-            <input
-              type="date"
-              value={filters.end_date}
-              onChange={(e) =>
-                setFilters((f) => ({ ...f, end_date: e.target.value }))
-              }
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            />
-          </div>
+          <button onClick={() => router.push("/import")} className="btn-primary">
+            + Import Trades
+          </button>
         </div>
-        <div className="mt-4 flex gap-3">
-          <Button onClick={applyFilters} loading={loading}>
-            Apply Filters
-          </Button>
-          <Button variant="outline" onClick={clearFilters}>
-            Clear Filters
-          </Button>
-        </div>
-      </Card>
 
-      {/* Error */}
-      {error && (
-        <div className="mt-6 rounded-lg bg-red-50 p-4 text-sm text-red-700">
-          {error}
-        </div>
-      )}
-
-      {/* Trades table */}
-      <div className="mt-6">
-        {trades.length === 0 && !loading ? (
-          <Card>
-            <div className="flex flex-col items-center py-16 text-center">
-              <div className="rounded-full bg-gray-100 p-4">
-                <svg
-                  className="h-8 w-8 text-gray-400"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                  strokeWidth={1.5}
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z"
-                  />
-                </svg>
-              </div>
-              <h3 className="mt-4 text-lg font-semibold text-gray-900">
-                No trades yet
-              </h3>
-              <p className="mt-1 text-sm text-gray-500">
-                Import your first trades to get started.
-              </p>
-              <Button className="mt-6" onClick={() => router.push("/import")}>
-                Import Trades
-              </Button>
+        {summary && (
+          <div className="mt-8 grid gap-4 sm:grid-cols-3">
+            <div className="stat-card">
+              <p className="text-sm font-bold text-gray-500">Total Trades</p>
+              <p className="mt-2 text-3xl font-black text-slate-950">{summary.total_trades.toLocaleString("en-IN")}</p>
             </div>
-          </Card>
-        ) : (
-          <>
-            <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-sm">
-              <table className="min-w-full divide-y divide-gray-200 text-sm">
-                <thead className="bg-gray-50">
-                  <tr>
-                    {["Date", "Symbol", "Type", "Quantity", "Price", "Total", "Broker", "Source"].map(
-                      (col) => (
-                        <th
-                          key={col}
-                          className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500"
-                        >
+            <div className="stat-card">
+              <p className="text-sm font-bold text-gray-500">Total Invested</p>
+              <p className="mt-2 text-3xl font-black text-slate-950">{formatCurrency(summary.total_invested)}</p>
+            </div>
+            <div className="stat-card">
+              <p className="text-sm font-bold text-gray-500">Unique Symbols</p>
+              <p className="mt-2 text-3xl font-black text-slate-950">{summary.unique_symbols}</p>
+            </div>
+          </div>
+        )}
+
+        <div className="mt-6 rounded-3xl border border-gray-100 bg-white p-6 shadow-sm">
+          <div className="flex flex-wrap items-end gap-3">
+            <div className="min-w-[180px] flex-1">
+              <label className="text-xs font-black uppercase tracking-wide text-gray-500">Symbol</label>
+              <input
+                type="text"
+                placeholder="INFY"
+                value={filters.symbol}
+                onChange={(e) => setFilters((f) => ({ ...f, symbol: e.target.value.toUpperCase() }))}
+                className="mt-2 w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm font-semibold outline-none transition focus:border-indigo-500 focus:bg-white focus:ring-4 focus:ring-indigo-100"
+              />
+            </div>
+            <div className="min-w-[180px] flex-1">
+              <label className="text-xs font-black uppercase tracking-wide text-gray-500">Start Date</label>
+              <input
+                type="date"
+                value={filters.start_date}
+                onChange={(e) => setFilters((f) => ({ ...f, start_date: e.target.value }))}
+                className="mt-2 w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm font-semibold outline-none transition focus:border-indigo-500 focus:bg-white focus:ring-4 focus:ring-indigo-100"
+              />
+            </div>
+            <div className="min-w-[180px] flex-1">
+              <label className="text-xs font-black uppercase tracking-wide text-gray-500">End Date</label>
+              <input
+                type="date"
+                value={filters.end_date}
+                onChange={(e) => setFilters((f) => ({ ...f, end_date: e.target.value }))}
+                className="mt-2 w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm font-semibold outline-none transition focus:border-indigo-500 focus:bg-white focus:ring-4 focus:ring-indigo-100"
+              />
+            </div>
+            <button onClick={applyFilters} disabled={loading} className="btn-primary disabled:opacity-60">
+              Apply
+            </button>
+            <button onClick={clearFilters} className="btn-secondary">
+              Clear
+            </button>
+          </div>
+        </div>
+
+        {error && (
+          <div className="mt-6 rounded-2xl bg-rose-50 p-4 text-sm font-semibold text-rose-700">
+            {error}
+          </div>
+        )}
+
+        <div className="mt-6">
+          {trades.length === 0 && !loading ? (
+            <div className="rounded-3xl border border-gray-100 bg-white p-12 text-center shadow-sm">
+              <p className="text-xl font-black text-slate-950">No trades yet</p>
+              <p className="mt-2 text-sm text-gray-500">Import your first trades to get started.</p>
+              <button className="btn-primary mt-6" onClick={() => router.push("/import")}>
+                Import Trades
+              </button>
+            </div>
+          ) : (
+            <>
+              <div className="overflow-x-auto rounded-3xl border border-gray-100 bg-white shadow-sm">
+                <table className="min-w-full divide-y divide-gray-100 text-sm">
+                  <thead className="bg-slate-950 text-white">
+                    <tr>
+                      {["Date", "Symbol", "Type", "Qty", "Price", "Total", "Emotion", "Broker", "Source"].map((col) => (
+                        <th key={col} className="px-5 py-4 text-left text-xs font-black uppercase tracking-wide text-slate-300">
                           {col}
                         </th>
-                      )
-                    )}
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100">
-                  {trades.map((trade) => {
-                    const total = trade.quantity * trade.price;
-                    return (
-                      <tr key={trade.id} className="hover:bg-gray-50">
-                        <td className="whitespace-nowrap px-4 py-3 text-gray-600">
-                          {formatDate(trade.trade_date)}
-                        </td>
-                        <td className="px-4 py-3 font-semibold text-gray-900">
-                          {trade.stock_symbol}
-                        </td>
-                        <td className="px-4 py-3">
-                          <span
-                            className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-semibold ${
-                              trade.trade_type === "BUY"
-                                ? "bg-green-100 text-green-700"
-                                : "bg-red-100 text-red-700"
-                            }`}
-                          >
-                            {trade.trade_type}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3 text-gray-700">
-                          {trade.quantity.toLocaleString("en-IN")}
-                        </td>
-                        <td className="px-4 py-3 text-gray-700">
-                          {formatCurrency(trade.price)}
-                        </td>
-                        <td className="px-4 py-3 font-medium text-gray-900">
-                          {formatCurrency(total)}
-                        </td>
-                        <td className="px-4 py-3">
-                          {trade.broker ? (
-                            <span className="inline-block rounded-full bg-indigo-50 px-2.5 py-0.5 text-xs font-medium text-indigo-700">
-                              {trade.broker}
-                            </span>
-                          ) : (
-                            <span className="text-gray-400">—</span>
-                          )}
-                        </td>
-                        <td className="px-4 py-3 text-gray-500">
-                          {trade.import_source || "—"}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-
-            {/* Pagination */}
-            <div className="mt-4 flex items-center justify-between">
-              <p className="text-sm text-gray-500">
-                Showing {page * PAGE_SIZE + 1}–
-                {page * PAGE_SIZE + trades.length} trades
-              </p>
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  disabled={page === 0 || loading}
-                  onClick={() => setPage((p) => Math.max(0, p - 1))}
-                >
-                  ← Previous
-                </Button>
-                <Button
-                  variant="outline"
-                  disabled={trades.length < PAGE_SIZE || loading}
-                  onClick={() => setPage((p) => p + 1)}
-                >
-                  Next →
-                </Button>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {trades.map((trade) => {
+                      const total = trade.quantity * trade.price;
+                      const isBuy = trade.trade_type === "BUY";
+                      return (
+                        <tr key={trade.id} className="transition hover:bg-gray-50">
+                          <td className="whitespace-nowrap px-5 py-4 font-medium text-gray-600">{formatDate(trade.trade_date)}</td>
+                          <td className="px-5 py-4 font-black text-slate-950">{trade.stock_symbol}</td>
+                          <td className="px-5 py-4">
+                            <span className={`badge ${isBuy ? "badge-emerald" : "badge-rose"}`}>{trade.trade_type}</span>
+                          </td>
+                          <td className="px-5 py-4 font-semibold text-gray-700">{trade.quantity.toLocaleString("en-IN")}</td>
+                          <td className="px-5 py-4 font-semibold text-gray-700">{formatCurrency(trade.price)}</td>
+                          <td className={`px-5 py-4 font-black ${isBuy ? "text-emerald-600" : "text-rose-600"}`}>{formatCurrency(total)}</td>
+                          <td className="px-5 py-4">
+                            <span className={`badge ${emotionClass(trade.emotion_tag)}`}>{trade.emotion_tag || "untagged"}</span>
+                          </td>
+                          <td className="px-5 py-4 text-gray-600">{trade.broker || "—"}</td>
+                          <td className="px-5 py-4 text-gray-500">{trade.import_source || "—"}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
               </div>
-            </div>
-          </>
-        )}
+
+              <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <p className="text-sm font-semibold text-gray-500">
+                  Showing {page * PAGE_SIZE + 1}–{page * PAGE_SIZE + trades.length} trades
+                </p>
+                <div className="flex gap-2">
+                  <button
+                    className="btn-secondary disabled:opacity-50"
+                    disabled={page === 0 || loading}
+                    onClick={() => setPage((p) => Math.max(0, p - 1))}
+                  >
+                    ← Previous
+                  </button>
+                  <button
+                    className="btn-secondary disabled:opacity-50"
+                    disabled={trades.length < PAGE_SIZE || loading}
+                    onClick={() => setPage((p) => p + 1)}
+                  >
+                    Next →
+                  </button>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
       </div>
     </div>
   );

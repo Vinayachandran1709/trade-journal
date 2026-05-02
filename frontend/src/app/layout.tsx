@@ -6,8 +6,9 @@ import Navbar from "@/components/Navbar";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "TradeIntel - Trading Intelligence Platform",
-  description: "Analyze your trading patterns and improve your strategy",
+  title: "IndiaCircle - AI Trading Copilot for Indian Stock Market",
+  description:
+    "Auto-capture trades from 10+ Indian brokers. AI-powered insights, behavioral patterns, and smart risk assessment — all in one Chrome extension.",
 };
 
 export default function RootLayout({
@@ -17,7 +18,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className={`${inter.className} bg-gray-50 text-gray-900 antialiased`}>
+      <body className={`${inter.className} bg-white text-gray-900 antialiased`}>
         <Navbar />
         <main>{children}</main>
       </body>

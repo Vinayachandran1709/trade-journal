@@ -4,15 +4,23 @@ import { FormEvent, Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { login } from "@/lib/auth";
-import Button from "@/components/ui/Button";
-import Input from "@/components/ui/Input";
-import Card from "@/components/ui/Card";
 
 export default function LoginPage() {
   return (
     <Suspense fallback={null}>
       <LoginContent />
     </Suspense>
+  );
+}
+
+function LogoMark() {
+  return (
+    <div className="mx-auto flex w-fit items-center gap-3">
+      <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-slate-950">
+        <span className="h-4 w-4 rotate-45 rounded-[5px] bg-gradient-to-br from-indigo-500 to-emerald-400" />
+      </span>
+      <span className="text-2xl font-black text-slate-950">IndiaCircle</span>
+    </div>
   );
 }
 
@@ -51,56 +59,83 @@ function LoginContent() {
   };
 
   return (
-    <div className="flex min-h-[calc(100vh-57px)] items-center justify-center px-4">
-      <Card className="w-full max-w-md">
-        <h1 className="text-2xl font-bold">Welcome back</h1>
-        <p className="mt-1 text-sm text-gray-500">
-          Login to access your trading dashboard.
-        </p>
-
-        {justRegistered && (
-          <div className="mt-4 rounded-lg bg-green-50 p-3 text-sm text-green-700">
-            Account created successfully! Please login.
+    <div className="flex min-h-screen items-center justify-center bg-gradient-to-b from-slate-50 via-white to-indigo-50/40 px-4 pb-16 pt-28">
+      <div className="w-full max-w-md">
+        <div className="glass-card p-8">
+          <LogoMark />
+          <div className="mt-8 text-center">
+            <h1 className="text-3xl font-black tracking-tight text-slate-950">
+              Welcome back
+            </h1>
+            <p className="mt-2 text-sm leading-6 text-gray-500">
+              Login to review your trades, patterns, and risk context.
+            </p>
           </div>
-        )}
 
-        {apiError && (
-          <div className="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">
-            {apiError}
-          </div>
-        )}
+          {justRegistered && (
+            <div className="mt-6 rounded-xl bg-emerald-50 p-3 text-sm font-medium text-emerald-700">
+              Account created successfully. Please login.
+            </div>
+          )}
 
-        <form onSubmit={handleSubmit} className="mt-6 space-y-4">
-          <Input
-            id="email"
-            label="Email"
-            type="email"
-            placeholder="you@example.com"
-            value={form.email}
-            onChange={(e) => setForm({ ...form, email: e.target.value })}
-            error={errors.email}
-          />
-          <Input
-            id="password"
-            label="Password"
-            type="password"
-            placeholder="Your password"
-            value={form.password}
-            onChange={(e) => setForm({ ...form, password: e.target.value })}
-            error={errors.password}
-          />
-          <Button type="submit" loading={loading} className="w-full">
-            Login
-          </Button>
-        </form>
+          {apiError && (
+            <div className="mt-6 rounded-xl bg-rose-50 p-3 text-sm font-medium text-rose-700">
+              {apiError}
+            </div>
+          )}
 
-        <p className="mt-6 text-center text-sm text-gray-500">
-          Don&apos;t have an account?{" "}
-          <Link href="/signup" className="font-medium text-indigo-600 hover:text-indigo-500">
-            Sign Up
-          </Link>
+          <form onSubmit={handleSubmit} className="mt-8 space-y-5">
+            <div>
+              <label htmlFor="email" className="text-sm font-bold text-gray-700">
+                Email
+              </label>
+              <input
+                id="email"
+                type="email"
+                placeholder="you@example.com"
+                value={form.email}
+                onChange={(e) => setForm({ ...form, email: e.target.value })}
+                className={`mt-2 w-full rounded-xl border bg-white px-4 py-3 text-sm outline-none transition focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 ${
+                  errors.email ? "border-rose-300" : "border-gray-200"
+                }`}
+              />
+              {errors.email && <p className="mt-1 text-xs font-medium text-rose-600">{errors.email}</p>}
+            </div>
+
+            <div>
+              <label htmlFor="password" className="text-sm font-bold text-gray-700">
+                Password
+              </label>
+              <input
+                id="password"
+                type="password"
+                placeholder="Your password"
+                value={form.password}
+                onChange={(e) => setForm({ ...form, password: e.target.value })}
+                className={`mt-2 w-full rounded-xl border bg-white px-4 py-3 text-sm outline-none transition focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 ${
+                  errors.password ? "border-rose-300" : "border-gray-200"
+                }`}
+              />
+              {errors.password && <p className="mt-1 text-xs font-medium text-rose-600">{errors.password}</p>}
+            </div>
+
+            <button type="submit" disabled={loading} className="btn-primary w-full disabled:opacity-60">
+              {loading ? "Logging in..." : "Login"}
+            </button>
+          </form>
+
+          <p className="mt-6 text-center text-sm text-gray-500">
+            Don&apos;t have an account?{" "}
+            <Link href="/signup" className="font-bold text-indigo-600 hover:text-indigo-500">
+              Sign up
+            </Link>
+          </p>
+        </div>
+
+        <p className="mt-6 text-center text-sm font-semibold text-gray-500">
+          Join 100+ Indian traders
         </p>
-      </Card>
+      </div>
     </div>
   );
 }

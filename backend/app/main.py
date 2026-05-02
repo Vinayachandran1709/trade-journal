@@ -8,11 +8,8 @@ from app.routes.analytics import router as analytics_router
 from app.routes.billing import billing_router, webhook_router
 from app.routes.health import router as health_router
 from app.routes.market_data import router as market_data_router
-<<<<<<< HEAD
 from app.routes.setups import risk_router, router as setups_router
-=======
 from app.routes.stocks import router as stocks_router
->>>>>>> 19e3032fb58895711665e981021444767eb564f9
 from app.routes.trades import router as trades_router
 
 app = FastAPI(title="Trade Intelligence Platform", version="1.0.0")
@@ -34,9 +31,6 @@ app.include_router(webhook_router)
 app.include_router(market_data_router)
 app.include_router(stocks_router)
 app.include_router(ai_agents_router)
-<<<<<<< HEAD
 app.include_router(setups_router)
 app.include_router(risk_router)
-=======
 app.include_router(analytics_router)
->>>>>>> 19e3032fb58895711665e981021444767eb564f9

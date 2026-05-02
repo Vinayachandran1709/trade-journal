@@ -386,7 +386,6 @@ export default function MarketTab() {
     };
   }, []);
 
-<<<<<<< HEAD
   useEffect(() => {
     let active = true;
     let timer: number | null = null;
@@ -414,8 +413,6 @@ export default function MarketTab() {
     return <MarketSkeleton />;
   }
 
-=======
->>>>>>> 19e3032fb58895711665e981021444767eb564f9
   function handleManualRefresh() {
     void load();
   }

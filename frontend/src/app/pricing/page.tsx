@@ -1,4 +1,7 @@
+"use client";
+
 import Link from "next/link";
+import { useState } from "react";
 
 const FREE_FEATURES = [
   "Import up to 100 trades",
@@ -28,189 +31,146 @@ const COMPARISON_ROWS = [
   { label: "Priority support", free: false, pro: true },
 ];
 
+const FAQS = [
+  ["Can I start without a card?", "Yes. The free plan does not require a credit card."],
+  ["Can I use the FOUNDING coupon?", "Yes. Apply FOUNDING during checkout to unlock the founding offer."],
+  ["Can I cancel Pro?", "Yes. Your journal stays available and your plan can be changed from billing."],
+];
+
 function Check() {
-  return (
-    <svg
-      className="mx-auto h-5 w-5 text-indigo-600"
-      fill="none"
-      viewBox="0 0 24 24"
-      stroke="currentColor"
-      strokeWidth={2.5}
-    >
-      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-    </svg>
-  );
+  return <span className="font-black text-emerald-500">✓</span>;
 }
 
 function Cross() {
-  return (
-    <svg
-      className="mx-auto h-5 w-5 text-gray-300"
-      fill="none"
-      viewBox="0 0 24 24"
-      stroke="currentColor"
-      strokeWidth={2}
-    >
-      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-    </svg>
-  );
+  return <span className="font-black text-gray-300">×</span>;
 }
 
 export default function PricingPage() {
+  const [annual, setAnnual] = useState(true);
+  const proPrice = annual ? "₹4,999" : "₹599";
+  const proSuffix = annual ? "/year" : "/month";
+  const checkoutPlan = annual ? "pro_annual" : "pro_monthly";
+
   return (
-    <div className="mx-auto max-w-5xl px-4 py-16">
-      {/* Founding member banner */}
-      <div className="mb-10 rounded-xl bg-indigo-600 px-6 py-4 text-center text-white">
-        <p className="text-sm font-semibold tracking-wide uppercase opacity-80">
-          Limited offer
-        </p>
-        <p className="mt-1 text-xl font-bold">
-          First 100 users get 3 months Pro free
-        </p>
-        <p className="mt-1 text-sm opacity-80">
-          Use code <span className="font-mono font-bold">FOUNDING</span> at checkout — no credit card required
-        </p>
-      </div>
-
-      <h1 className="text-center text-4xl font-extrabold tracking-tight">
-        Simple, transparent pricing
-      </h1>
-      <p className="mt-3 text-center text-lg text-gray-500">
-        Start free. Upgrade when you need more power.
-      </p>
-
-      {/* Plan cards */}
-      <div className="mt-12 grid gap-8 sm:grid-cols-2">
-        {/* Free */}
-        <div className="rounded-2xl border border-gray-200 bg-white p-8 shadow-sm">
-          <h2 className="text-lg font-semibold text-gray-700">Free</h2>
-          <p className="mt-2 text-4xl font-extrabold">₹0</p>
-          <p className="mt-1 text-sm text-gray-400">forever</p>
-          <ul className="mt-8 space-y-3">
-            {FREE_FEATURES.map((f) => (
-              <li key={f} className="flex items-center gap-3 text-sm text-gray-600">
-                <Check />
-                {f}
-              </li>
-            ))}
-          </ul>
-          <Link
-            href="/signup"
-            className="mt-8 block rounded-lg border border-gray-300 py-2.5 text-center text-sm font-semibold text-gray-700 hover:bg-gray-50"
-          >
-            Start Free
-          </Link>
-        </div>
-
-        {/* Pro */}
-        <div className="relative rounded-2xl border-2 border-indigo-600 bg-white p-8 shadow-lg">
-          <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-indigo-600 px-4 py-1 text-xs font-semibold text-white">
-            Most popular
-          </span>
-          <h2 className="text-lg font-semibold text-indigo-600">Pro</h2>
-          <div className="mt-2 flex items-end gap-2">
-            <p className="text-4xl font-extrabold">₹599</p>
-            <p className="mb-1 text-sm text-gray-400">/month</p>
-          </div>
-          <p className="mt-1 text-sm text-gray-400">
-            or{" "}
-            <span className="font-semibold text-gray-700">₹4,999/year</span>{" "}
-            <span className="text-green-600">(save ₹2,189)</span>
+    <div className="min-h-screen bg-gradient-to-b from-slate-50 via-white to-indigo-50/40 px-4 pb-20 pt-28 sm:px-6 lg:px-8">
+      <div className="section-container">
+        <div className="rounded-3xl bg-slate-950 p-6 text-center text-white shadow-xl shadow-slate-200">
+          <p className="text-xs font-bold uppercase tracking-[0.25em] text-indigo-200">
+            Founding member offer
           </p>
-          <ul className="mt-8 space-y-3">
-            {PRO_FEATURES.map((f) => (
-              <li key={f} className="flex items-center gap-3 text-sm text-gray-600">
-                <Check />
-                {f}
-              </li>
-            ))}
-          </ul>
-          <div className="mt-8 space-y-3">
-            <Link
-              href="/checkout?plan=pro_annual"
-              className="block rounded-lg bg-indigo-600 py-2.5 text-center text-sm font-semibold text-white hover:bg-indigo-700"
+          <p className="mt-2 text-2xl font-black">First 100 users get 3 months Pro free</p>
+          <p className="mt-2 text-sm text-slate-300">
+            Use code <span className="font-mono font-black text-white">FOUNDING</span> at checkout.
+          </p>
+        </div>
+
+        <div className="mt-14 text-center">
+          <span className="badge badge-indigo">Pricing</span>
+          <h1 className="mx-auto mt-5 max-w-3xl text-5xl font-black tracking-tight text-slate-950">
+            Simple plans for serious trading review
+          </h1>
+          <p className="mx-auto mt-4 max-w-2xl text-lg leading-8 text-gray-600">
+            Start with a journal. Upgrade when you want AI pattern analysis,
+            auto-capture, and risk context.
+          </p>
+
+          <div className="mt-8 inline-flex rounded-full border border-gray-200 bg-white p-1 shadow-sm">
+            <button
+              onClick={() => setAnnual(false)}
+              className={`rounded-full px-5 py-2 text-sm font-bold transition ${
+                !annual ? "bg-slate-950 text-white" : "text-gray-500 hover:text-gray-900"
+              }`}
             >
-              Upgrade to Pro Annual
-            </Link>
-            <Link
-              href="/checkout?plan=pro_monthly"
-              className="block rounded-lg border border-indigo-200 py-2.5 text-center text-sm font-semibold text-indigo-600 hover:bg-indigo-50"
+              Monthly
+            </button>
+            <button
+              onClick={() => setAnnual(true)}
+              className={`rounded-full px-5 py-2 text-sm font-bold transition ${
+                annual ? "bg-slate-950 text-white" : "text-gray-500 hover:text-gray-900"
+              }`}
             >
-              Monthly — ₹599/month
-            </Link>
+              Annual · save 30%
+            </button>
           </div>
         </div>
-      </div>
 
-      {/* Comparison table */}
-      <div className="mt-20">
-        <h2 className="mb-6 text-center text-2xl font-bold">
-          Feature comparison
-        </h2>
-        <div className="overflow-hidden rounded-xl border border-gray-200">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="bg-gray-50">
-                <th className="px-6 py-3 text-left font-medium text-gray-500">
-                  Feature
-                </th>
-                <th className="px-6 py-3 text-center font-medium text-gray-500">
-                  Free
-                </th>
-                <th className="px-6 py-3 text-center font-medium text-indigo-600">
-                  Pro
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100 bg-white">
-              {COMPARISON_ROWS.map((row) => (
-                <tr key={row.label}>
-                  <td className="px-6 py-4 font-medium text-gray-700">
-                    {row.label}
-                  </td>
-                  <td className="px-6 py-4 text-center">
-                    {typeof row.free === "boolean" ? (
-                      row.free ? (
-                        <Check />
-                      ) : (
-                        <Cross />
-                      )
-                    ) : (
-                      <span className="text-gray-600">{row.free}</span>
-                    )}
-                  </td>
-                  <td className="px-6 py-4 text-center">
-                    {typeof row.pro === "boolean" ? (
-                      row.pro ? (
-                        <Check />
-                      ) : (
-                        <Cross />
-                      )
-                    ) : (
-                      <span className="font-semibold text-indigo-600">
-                        {row.pro}
-                      </span>
-                    )}
-                  </td>
-                </tr>
+        <div className="mt-12 grid gap-8 lg:grid-cols-2">
+          <div className="rounded-3xl border border-gray-200 bg-white p-8 shadow-sm">
+            <h2 className="text-xl font-black text-slate-950">Free</h2>
+            <div className="mt-5 flex items-end gap-2">
+              <span className="text-5xl font-black">₹0</span>
+              <span className="pb-2 text-sm font-semibold text-gray-500">/forever</span>
+            </div>
+            <p className="mt-4 text-sm leading-6 text-gray-500">
+              The basics for importing trades and reviewing your activity.
+            </p>
+            <ul className="mt-8 space-y-4">
+              {FREE_FEATURES.map((feature) => (
+                <li key={feature} className="flex items-center gap-3 text-sm font-medium text-gray-700">
+                  <Check /> {feature}
+                </li>
               ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
+            </ul>
+            <Link href="/signup" className="btn-secondary mt-10 w-full">
+              Start Free
+            </Link>
+          </div>
 
-      {/* Founding coupon CTA */}
-      <div className="mt-16 rounded-xl bg-gray-50 px-8 py-10 text-center">
-        <h3 className="text-xl font-bold">Already have a coupon?</h3>
-        <p className="mt-2 text-sm text-gray-500">
-          Apply your <span className="font-mono font-semibold">FOUNDING</span> code on the checkout page.
-        </p>
-        <Link
-          href="/checkout?plan=pro_monthly"
-          className="mt-6 inline-block rounded-lg bg-indigo-600 px-6 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700"
-        >
-          Redeem Coupon
-        </Link>
+          <div className="gradient-border">
+            <div className="relative p-8 shadow-xl">
+              <span className="badge badge-indigo absolute right-6 top-6">Popular</span>
+              <h2 className="text-xl font-black text-indigo-600">Pro</h2>
+              <div className="mt-5 flex items-end gap-2">
+                <span className="text-5xl font-black">{proPrice}</span>
+                <span className="pb-2 text-sm font-semibold text-gray-500">{proSuffix}</span>
+              </div>
+              <p className="mt-4 text-sm leading-6 text-gray-500">
+                Everything needed for auto-capture, pattern detection, and richer analytics.
+              </p>
+              <ul className="mt-8 space-y-4">
+                {PRO_FEATURES.map((feature) => (
+                  <li key={feature} className="flex items-center gap-3 text-sm font-medium text-gray-700">
+                    <Check /> {feature}
+                  </li>
+                ))}
+              </ul>
+              <Link href={`/checkout?plan=${checkoutPlan}`} className="btn-primary mt-10 w-full">
+                Upgrade to Pro
+              </Link>
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-16 overflow-hidden rounded-3xl border border-gray-200 bg-white shadow-sm">
+          <div className="grid grid-cols-[1.5fr_0.75fr_0.75fr] bg-gray-50 px-5 py-4 text-sm font-black text-gray-500">
+            <span>Feature</span>
+            <span className="text-center">Free</span>
+            <span className="text-center text-indigo-600">Pro</span>
+          </div>
+          {COMPARISON_ROWS.map((row) => (
+            <div
+              key={row.label}
+              className="grid grid-cols-[1.5fr_0.75fr_0.75fr] border-t border-gray-100 px-5 py-4 text-sm"
+            >
+              <span className="font-semibold text-gray-800">{row.label}</span>
+              <span className="text-center text-gray-600">
+                {typeof row.free === "boolean" ? row.free ? <Check /> : <Cross /> : row.free}
+              </span>
+              <span className="text-center font-bold text-indigo-600">
+                {typeof row.pro === "boolean" ? row.pro ? <Check /> : <Cross /> : row.pro}
+              </span>
+            </div>
+          ))}
+        </div>
+
+        <div className="mt-16 grid gap-4 md:grid-cols-3">
+          {FAQS.map(([q, a]) => (
+            <div key={q} className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
+              <h3 className="font-black text-slate-950">{q}</h3>
+              <p className="mt-3 text-sm leading-6 text-gray-600">{a}</p>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );

@@ -72,7 +72,7 @@ function CheckoutContent() {
         order_id: order.order_id,
         amount: order.amount,
         currency: order.currency,
-        name: "TradeIntel",
+        name: "IndiaCircle",
         description: PLAN_LABELS[plan] || plan,
         prefill: {},
         theme: { color: "#4f46e5" },
@@ -90,9 +90,7 @@ function CheckoutContent() {
             setStep("success");
           } catch (err) {
             setStep("error");
-            setErrorMsg(
-              err instanceof Error ? err.message : "Payment verification failed"
-            );
+            setErrorMsg(err instanceof Error ? err.message : "Payment verification failed");
           }
         },
         modal: {
@@ -132,49 +130,53 @@ function CheckoutContent() {
 
   if (step === "success") {
     return (
-      <div className="flex min-h-[calc(100vh-57px)] flex-col items-center justify-center px-4 text-center">
-        <div className="rounded-full bg-green-100 p-5">
-          <svg
-            className="h-10 w-10 text-green-600"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            strokeWidth={2}
-          >
-            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-          </svg>
+      <div className="flex min-h-screen items-center justify-center bg-gradient-to-b from-slate-50 to-white px-4 pt-20 text-center">
+        <div className="glass-card max-w-md p-8">
+          <div className="mx-auto grid h-16 w-16 place-items-center rounded-2xl bg-emerald-50 text-3xl font-black text-emerald-600">
+            ✓
+          </div>
+          <h1 className="mt-6 text-3xl font-black text-slate-950">You&apos;re on Pro</h1>
+          <p className="mt-2 text-sm leading-6 text-gray-500">
+            Your subscription is active. Unlimited capture and analytics are ready.
+          </p>
+          <button onClick={() => router.push("/dashboard")} className="btn-primary mt-8 w-full">
+            Go to Dashboard
+          </button>
         </div>
-        <h1 className="mt-6 text-2xl font-bold">You're on Pro!</h1>
-        <p className="mt-2 text-gray-500">
-          Your subscription is now active. Enjoy unlimited access.
-        </p>
-        <button
-          onClick={() => router.push("/dashboard")}
-          className="mt-8 rounded-lg bg-indigo-600 px-6 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700"
-        >
-          Go to Dashboard
-        </button>
       </div>
     );
   }
 
   return (
-    <div className="flex min-h-[calc(100vh-57px)] items-center justify-center px-4 py-16">
-      <div className="w-full max-w-md">
-        <h1 className="text-2xl font-bold">Upgrade to Pro</h1>
-        <p className="mt-1 text-gray-500">
-          {PLAN_LABELS[plan] || plan}
-        </p>
-
-        <div className="mt-8 rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-          <div className="flex items-center justify-between border-b border-gray-100 pb-4">
-            <span className="font-medium">{PLAN_LABELS[plan] || plan}</span>
-            <span className="text-lg font-bold">
-              {PLAN_AMOUNTS[plan] || ""}
+    <div className="min-h-screen bg-gradient-to-b from-slate-50 via-white to-indigo-50/40 px-4 pb-16 pt-28 sm:px-6 lg:px-8">
+      <div className="section-container grid max-w-5xl gap-8 lg:grid-cols-[1fr_0.85fr]">
+        <div>
+          <span className="badge badge-indigo">Secure checkout</span>
+          <h1 className="mt-5 text-5xl font-black tracking-tight text-slate-950">
+            Upgrade to Pro
+          </h1>
+          <p className="mt-4 max-w-xl text-lg leading-8 text-gray-600">
+            Unlock auto-capture, AI pattern analysis, risk context, and the full
+            IndiaCircle trading dashboard.
+          </p>
+          <div className="mt-8 grid gap-3 sm:grid-cols-2">
+            <span className="rounded-2xl border border-gray-100 bg-white p-4 text-sm font-bold text-gray-700 shadow-sm">
+              256-bit SSL
+            </span>
+            <span className="rounded-2xl border border-gray-100 bg-white p-4 text-sm font-bold text-gray-700 shadow-sm">
+              Razorpay Secure Payments
             </span>
           </div>
+        </div>
 
-          <ul className="mt-4 space-y-2 text-sm text-gray-500">
+        <div className="rounded-3xl border border-gray-100 bg-white p-6 shadow-xl shadow-slate-200/70">
+          <h2 className="text-xl font-black text-slate-950">Order summary</h2>
+          <div className="mt-6 rounded-2xl bg-slate-950 p-5 text-white">
+            <p className="text-sm font-semibold text-indigo-200">{PLAN_LABELS[plan] || plan}</p>
+            <p className="mt-3 text-4xl font-black">{PLAN_AMOUNTS[plan] || ""}</p>
+          </div>
+
+          <ul className="mt-6 space-y-3 text-sm font-medium text-gray-600">
             <li>✓ Unlimited trade imports</li>
             <li>✓ Auto-capture from 10+ brokers</li>
             <li>✓ AI pattern analysis</li>
@@ -182,52 +184,33 @@ function CheckoutContent() {
           </ul>
 
           {step === "error" && (
-            <div className="mt-4 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">
+            <div className="mt-5 rounded-xl bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700">
               {errorMsg}
             </div>
           )}
 
-          <button
-            onClick={handlePayment}
-            disabled={step === "loading"}
-            className="mt-6 w-full rounded-lg bg-indigo-600 py-3 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-60"
-          >
-            {step === "loading" ? "Opening payment..." : "Pay with Razorpay"}
+          <button onClick={handlePayment} disabled={step === "loading"} className="btn-primary mt-6 w-full disabled:opacity-60">
+            {step === "loading" ? "Opening Razorpay..." : "Pay with Razorpay"}
           </button>
-        </div>
 
-        {/* Coupon section */}
-        <div className="mt-6 rounded-xl border border-gray-200 bg-white p-6">
-          <h2 className="text-sm font-semibold text-gray-700">
-            Have a coupon? (e.g. FOUNDING)
-          </h2>
-          <div className="mt-3 flex gap-2">
-            <input
-              type="text"
-              placeholder="Enter code"
-              value={couponCode}
-              onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
-              className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
-            />
-            <button
-              onClick={handleApplyCoupon}
-              disabled={couponLoading}
-              className="rounded-lg bg-gray-800 px-4 py-2 text-sm font-semibold text-white hover:bg-gray-700 disabled:opacity-60"
-            >
-              {couponLoading ? "..." : "Apply"}
-            </button>
+          <div className="mt-6 rounded-2xl border border-gray-100 bg-gray-50 p-4">
+            <h3 className="text-sm font-black text-gray-700">Have a coupon?</h3>
+            <div className="mt-3 flex gap-2">
+              <input
+                type="text"
+                placeholder="FOUNDING"
+                value={couponCode}
+                onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                className="min-w-0 flex-1 rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-semibold outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100"
+              />
+              <button onClick={handleApplyCoupon} disabled={couponLoading} className="btn-secondary px-4 disabled:opacity-60">
+                {couponLoading ? "..." : "Apply"}
+              </button>
+            </div>
+            {couponMsg && <p className="mt-2 text-sm font-semibold text-emerald-600">{couponMsg}</p>}
+            {couponError && <p className="mt-2 text-sm font-semibold text-rose-600">{couponError}</p>}
           </div>
-          {couponMsg && (
-            <p className="mt-2 text-sm text-green-600">{couponMsg}</p>
-          )}
-          {couponError && (
-            <p className="mt-2 text-sm text-red-600">{couponError}</p>
-          )}
         </div>
-
-        <p className="mt-4 text-center text-xs text-gray-400">
-          Secured by Razorpay · Cancel anytime
-        </p>
       </div>
     </div>
   );

@@ -1,122 +1,132 @@
-export default function DownloadPage() {
+import Link from "next/link";
+
+function ChromeIcon() {
   return (
-    <div className="mx-auto max-w-3xl px-4 py-16">
-      <h1 className="text-center text-4xl font-extrabold tracking-tight">
-        Download the Extension
-      </h1>
-      <p className="mt-4 text-center text-lg text-gray-500">
-        Auto-capture your trades directly from Zerodha, Groww, and 10+ other
-        broker platforms — no manual CSV exports needed.
-      </p>
+    <svg className="h-12 w-12" viewBox="0 0 48 48" fill="none" aria-hidden="true">
+      <circle cx="24" cy="24" r="22" fill="#4285F4" />
+      <path d="M24 24L5 24A22 22 0 0124 2h19L24 24z" fill="#EA4335" />
+      <path d="M24 24l9.5 16.45A22 22 0 015 24h19z" fill="#34A853" />
+      <path d="M24 24L43 2a22 22 0 01-9.5 38.45L24 24z" fill="#FBBC05" />
+      <circle cx="24" cy="24" r="8" fill="white" />
+      <circle cx="24" cy="24" r="5" fill="#4285F4" />
+    </svg>
+  );
+}
 
-      {/* CTA buttons */}
-      <div className="mt-12 flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
-        <a
-          href="https://chrome.google.com/webstore"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex w-full items-center justify-center gap-3 rounded-xl border-2 border-gray-200 bg-white px-6 py-4 shadow-sm transition hover:border-indigo-400 hover:shadow-md sm:w-auto"
-        >
-          <svg className="h-7 w-7" viewBox="0 0 24 24" fill="none">
-            <circle cx="12" cy="12" r="10" fill="#4285F4" />
-            <circle cx="12" cy="12" r="4" fill="white" />
-            <path d="M12 8h8.5" stroke="#EA4335" strokeWidth="2" />
-            <path d="M16.24 16.24l-4.24-4.24-4.24 4.24" stroke="#FBBC05" strokeWidth="2" />
-            <path d="M7.76 16.24L4 10" stroke="#34A853" strokeWidth="2" />
-          </svg>
-          <div className="text-left">
-            <p className="text-xs text-gray-400">Available on</p>
-            <p className="font-semibold text-gray-800">Chrome Web Store</p>
-          </div>
-        </a>
+function EdgeIcon() {
+  return (
+    <svg className="h-12 w-12" viewBox="0 0 48 48" fill="none" aria-hidden="true">
+      <circle cx="24" cy="24" r="22" fill="#0078D4" />
+      <path d="M10 28c0-9 7-16 16-16 7 0 12 4 14 10-4-4-10-5-15-2-5 3-7 8-5 14-6 0-10-2-10-6z" fill="#2BC7B4" />
+      <path d="M18 33c2 6 12 7 18 2-4 7-14 11-22 5-5-4-6-9-4-14 1 5 4 7 8 7z" fill="white" opacity=".9" />
+    </svg>
+  );
+}
 
-        <a
-          href="https://microsoftedge.microsoft.com/addons"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex w-full items-center justify-center gap-3 rounded-xl border-2 border-gray-200 bg-white px-6 py-4 shadow-sm transition hover:border-indigo-400 hover:shadow-md sm:w-auto"
-        >
-          <svg className="h-7 w-7" viewBox="0 0 24 24" fill="none">
-            <circle cx="12" cy="12" r="10" fill="#0078D4" />
-            <path d="M5 14c0-3.866 3.134-7 7-7s7 3.134 7 7" stroke="white" strokeWidth="2" strokeLinecap="round" />
-            <circle cx="12" cy="14" r="3" fill="white" />
-          </svg>
-          <div className="text-left">
-            <p className="text-xs text-gray-400">Available on</p>
-            <p className="font-semibold text-gray-800">Microsoft Edge Add-ons</p>
-          </div>
-        </a>
-      </div>
-
-      {/* Installation steps */}
-      <div className="mt-16">
-        <h2 className="text-xl font-bold">How to install</h2>
-        <ol className="mt-6 space-y-6">
+function ExtensionMock() {
+  return (
+    <div className="rounded-3xl border border-slate-800 bg-slate-950 p-4 shadow-2xl">
+      <div className="rounded-2xl bg-slate-900 p-5">
+        <div className="flex items-center justify-between">
+          <p className="font-black text-white">IndiaCircle</p>
+          <span className="badge bg-emerald-500/10 text-emerald-300">Capturing</span>
+        </div>
+        <div className="mt-5 space-y-3">
           {[
-            {
-              step: "1",
-              title: "Add to your browser",
-              desc: 'Click the Chrome or Edge button above and press "Add to Chrome" / "Get" on the store page.',
-            },
-            {
-              step: "2",
-              title: "Pin the extension",
-              desc: 'Click the puzzle-piece icon in your browser toolbar and pin "TradeIntel" so it\'s always visible.',
-            },
-            {
-              step: "3",
-              title: "Log in with your account",
-              desc: "Click the TradeIntel icon and sign in with the same email you use on the web app.",
-            },
-            {
-              step: "4",
-              title: "Visit your broker platform",
-              desc: "Open your Zerodha or Groww order book page. The extension will automatically detect and offer to capture your trades.",
-            },
-            {
-              step: "5",
-              title: "Review & save",
-              desc: "Open the side panel, review the captured trades, and click Save. They'll appear in your dashboard instantly.",
-            },
-          ].map((item) => (
-            <li key={item.step} className="flex gap-4">
-              <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-indigo-600 text-sm font-bold text-white">
-                {item.step}
-              </div>
+            ["RELIANCE", "BUY", "+₹1,240"],
+            ["TCS", "SELL", "-₹420"],
+            ["HDFCBANK", "BUY", "+₹860"],
+          ].map(([symbol, side, pnl]) => (
+            <div key={symbol} className="flex items-center justify-between rounded-xl bg-slate-800 p-3">
               <div>
-                <p className="font-semibold">{item.title}</p>
-                <p className="mt-0.5 text-sm text-gray-500">{item.desc}</p>
+                <p className="text-sm font-black text-white">{symbol}</p>
+                <p className="text-xs text-slate-400">{side} · auto-captured</p>
               </div>
-            </li>
-          ))}
-        </ol>
-      </div>
-
-      {/* Supported brokers */}
-      <div className="mt-16 rounded-xl border border-gray-200 bg-white p-6">
-        <h2 className="font-semibold">Supported brokers</h2>
-        <div className="mt-4 flex flex-wrap gap-2">
-          {[
-            "Zerodha",
-            "Groww",
-            "Angel One",
-            "Upstox",
-            "Dhan",
-            "5Paisa",
-            "ICICI Direct",
-            "HDFC Sec",
-            "Kotak Sec",
-            "Motilal Oswal",
-          ].map((broker) => (
-            <span
-              key={broker}
-              className="rounded-full bg-gray-100 px-3 py-1 text-sm font-medium text-gray-700"
-            >
-              {broker}
-            </span>
+              <p className={`text-sm font-black ${pnl.startsWith("+") ? "text-emerald-400" : "text-rose-400"}`}>{pnl}</p>
+            </div>
           ))}
         </div>
       </div>
+    </div>
+  );
+}
+
+export default function DownloadPage() {
+  return (
+    <div className="min-h-screen bg-white">
+      <section className="bg-slate-950 px-4 pb-20 pt-32 text-white sm:px-6 lg:px-8">
+        <div className="section-container grid gap-10 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
+          <div>
+            <span className="badge bg-white/10 text-indigo-100 ring-1 ring-white/10">Browser extension</span>
+            <h1 className="mt-6 text-5xl font-black tracking-tight">
+              Get IndiaCircle for your browser
+            </h1>
+            <p className="mt-5 text-lg leading-8 text-slate-300">
+              Auto-capture trades directly from Zerodha, Groww, and 10+ broker
+              platforms. No manual CSV exports needed.
+            </p>
+            <p className="mt-4 text-sm font-semibold text-slate-400">
+              Also works on Brave and Opera
+            </p>
+          </div>
+          <ExtensionMock />
+        </div>
+      </section>
+
+      <section className="section-padding bg-gray-50">
+        <div className="section-container">
+          <div className="grid gap-6 md:grid-cols-2">
+            <a
+              href="https://chrome.google.com/webstore"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="rounded-3xl border border-gray-100 bg-white p-8 shadow-sm transition hover:-translate-y-1 hover:shadow-lg"
+            >
+              <ChromeIcon />
+              <h2 className="mt-5 text-2xl font-black text-slate-950">Download for Chrome</h2>
+              <p className="mt-2 text-sm text-gray-500">Chrome 88+ supported.</p>
+              <span className="btn-primary mt-6">Open Chrome Web Store</span>
+            </a>
+            <a
+              href="https://microsoftedge.microsoft.com/addons"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="rounded-3xl border border-gray-100 bg-white p-8 shadow-sm transition hover:-translate-y-1 hover:shadow-lg"
+            >
+              <EdgeIcon />
+              <h2 className="mt-5 text-2xl font-black text-slate-950">Download for Edge</h2>
+              <p className="mt-2 text-sm text-gray-500">Edge 88+ supported.</p>
+              <span className="btn-primary mt-6">Open Edge Add-ons</span>
+            </a>
+          </div>
+
+          <div className="mt-14 grid gap-6 lg:grid-cols-[0.85fr_1.15fr]">
+            <div>
+              <h2 className="text-3xl font-black text-slate-950">Install in three steps</h2>
+              <p className="mt-3 text-gray-600">A clean setup path for Chrome, Edge, Brave, and Opera.</p>
+            </div>
+            <div className="grid gap-4">
+              {[
+                ["1", "Add to your browser", "Click the store button and approve the extension install."],
+                ["2", "Pin IndiaCircle", "Use the puzzle-piece menu and pin IndiaCircle to your toolbar."],
+                ["3", "Sign in and trade", "Open the side panel, login, and visit your broker platform."],
+              ].map(([step, title, desc]) => (
+                <div key={step} className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
+                  <span className="gradient-text text-4xl font-black">{step}</span>
+                  <h3 className="mt-3 font-black text-slate-950">{title}</h3>
+                  <p className="mt-1 text-sm leading-6 text-gray-600">{desc}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="mt-14 rounded-3xl border border-gray-100 bg-white p-8 shadow-sm">
+            <h2 className="text-xl font-black text-slate-950">System requirements</h2>
+            <p className="mt-3 text-sm text-gray-600">Chrome 88+, Edge 88+, Brave, Opera</p>
+            <Link href="/welcome" className="btn-secondary mt-6">View onboarding guide</Link>
+          </div>
+        </div>
+      </section>
     </div>
   );
 }
