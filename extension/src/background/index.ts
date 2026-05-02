@@ -1,5 +1,10 @@
 import { AUTH_TOKEN_KEY, clearAuthToken, getAuthToken } from "../shared/auth";
-import { storageGetAll, storageRemoveMany } from "../shared/chrome";
+import {
+  storageGet,
+  storageGetAll,
+  storageRemoveMany,
+  storageSet,
+} from "../shared/chrome";
 import {
   createEmptyCaptureState,
   getCaptureState,
@@ -11,6 +16,11 @@ import {
   type TickerIntelResponse,
 } from "../shared/api";
 import { fetchCurrentUser } from "../shared/api";
+import {
+  shouldRefreshStockDictionaryCache,
+  type StockDictionaryCacheEntry,
+  type StockDictionaryResponse,
+} from "../shared/stockDictionary";
 import type { BackgroundResponse, ExtensionMessage } from "../shared/types";
 
 const POPUP_PATH = "popup.html";
@@ -18,12 +28,49 @@ const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "http://localhost:800
 const WEB_APP_URL = (import.meta.env.VITE_WEB_APP_URL || "https://indiacircle.in").replace(/\/$/, "");
 const TICKER_INTEL_TIMEOUT_MS = 8_000;
 const TICKER_QUOTE_TIMEOUT_MS = 6_000;
+const TICKER_CACHE_TTL_MS = 5 * 60 * 1_000;
+const STOCK_DICTIONARY_CACHE_KEY = "stockDictionaryCache";
+const PREWARM_DELAY_MS = 500;
+const PREWARM_TICKERS = [
+  "RELIANCE",
+  "TCS",
+  "HDFCBANK",
+  "INFY",
+  "ICICIBANK",
+  "SBIN",
+  "BHARTIARTL",
+  "ITC",
+  "KOTAKBANK",
+  "LT",
+  "HCLTECH",
+  "AXISBANK",
+  "BAJFINANCE",
+  "WIPRO",
+  "SUNPHARMA",
+  "TITAN",
+  "TATAMOTORS",
+  "MARUTI",
+  "HINDUNILVR",
+  "NTPC",
+] as const;
+const TICKER_HIGHLIGHTER_MATCH_PATTERNS = ["https://*/*", "http://*/*"] as const;
+
+interface TickerCacheEntry {
+  data: TickerIntelResponse;
+  cachedAt: number;
+}
 
 void syncActionSurface();
+void prewarmTickerCache();
+void fetchStockDictionaryWithCache().catch(() => undefined);
+void reinjectTickerHighlighterIntoOpenTabs().catch(() => undefined);
 
 chrome.runtime.onInstalled.addListener((details) => {
   void syncActionSurface();
   void cleanupOldAiQueryCounts();
+  void prewarmTickerCache();
+  void fetchStockDictionaryWithCache(true).catch(() => undefined);
+  void reinjectTickerHighlighterIntoOpenTabs().catch(() => undefined);
   if (details.reason === chrome.runtime.OnInstalledReason.INSTALL) {
     void chrome.tabs.create({ url: `${WEB_APP_URL}/welcome` });
   }
@@ -32,6 +79,9 @@ chrome.runtime.onInstalled.addListener((details) => {
 chrome.runtime.onStartup.addListener(() => {
   void syncActionSurface();
   void cleanupOldAiQueryCounts();
+  void prewarmTickerCache();
+  void fetchStockDictionaryWithCache().catch(() => undefined);
+  void reinjectTickerHighlighterIntoOpenTabs().catch(() => undefined);
 });
 
 chrome.storage.onChanged.addListener((changes, areaName) => {
@@ -108,6 +158,11 @@ async function handleMessage(
         sendResponse({ ok: true });
         return;
       }
+      case "stocks:get-dictionary": {
+        const stockDictionary = await fetchStockDictionaryWithCache();
+        sendResponse({ ok: true, stockDictionary });
+        return;
+      }
       case "ticker:fetch-intel": {
         const payload = message.payload as { symbol?: string };
         const symbol = payload.symbol?.trim().toUpperCase();
@@ -116,7 +171,7 @@ async function handleMessage(
           return;
         }
 
-        const tickerIntel = await fetchTickerIntelWithFallback(symbol);
+        const tickerIntel = await fetchTickerIntelWithCache(symbol);
         sendResponse({ ok: true, tickerIntel });
         return;
       }
@@ -240,6 +295,50 @@ async function fetchJsonWithTimeout<T>(
   }
 }
 
+async function fetchStockDictionaryWithCache(
+  forceRefresh = false
+): Promise<StockDictionaryResponse> {
+  const cached = await storageGet<StockDictionaryCacheEntry>(STOCK_DICTIONARY_CACHE_KEY);
+  if (!forceRefresh && cached && !shouldRefreshStockDictionaryCache(cached)) {
+    return cached.data;
+  }
+
+  const headers: HeadersInit = {};
+  if (cached?.etag) {
+    headers["If-None-Match"] = cached.etag;
+  }
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/stocks/dictionary`, { headers });
+    if (response.status === 304 && cached) {
+      const nextCached = {
+        ...cached,
+        fetchedAt: Date.now(),
+      };
+      await storageSet(STOCK_DICTIONARY_CACHE_KEY, nextCached);
+      return cached.data;
+    }
+
+    if (!response.ok) {
+      throw new Error(`Dictionary request failed with ${response.status}`);
+    }
+
+    const data = (await response.json()) as StockDictionaryResponse;
+    const nextCached = {
+      data,
+      etag: response.headers.get("ETag"),
+      fetchedAt: Date.now(),
+    } satisfies StockDictionaryCacheEntry;
+    await storageSet(STOCK_DICTIONARY_CACHE_KEY, nextCached);
+    return data;
+  } catch (error) {
+    if (cached?.data) {
+      return cached.data;
+    }
+    throw error;
+  }
+}
+
 async function fetchTickerIntelWithFallback(symbol: string): Promise<TickerIntelResponse> {
   try {
     return await fetchJsonWithTimeout(
@@ -255,6 +354,8 @@ async function fetchTickerIntelWithFallback(symbol: string): Promise<TickerIntel
 
       return {
         symbol: String(quote.symbol || symbol),
+        company_name: null,
+        exchange: symbol.startsWith("BSE:") || symbol.endsWith(".BO") ? "BSE" : "NSE",
         price: typeof quote.price === "number" ? quote.price : null,
         change: typeof quote.change === "number" ? quote.change : null,
         change_pct: typeof quote.change_pct === "number" ? quote.change_pct : null,
@@ -280,9 +381,61 @@ async function fetchTickerIntelWithFallback(symbol: string): Promise<TickerIntel
   }
 }
 
+function getTickerCacheKey(symbol: string): string {
+  return `tickerCache_${symbol}`;
+}
+
+function isFreshTickerCache(entry: TickerCacheEntry | null): entry is TickerCacheEntry {
+  return Boolean(entry && Date.now() - entry.cachedAt < TICKER_CACHE_TTL_MS);
+}
+
+async function readTickerCache(symbol: string): Promise<TickerCacheEntry | null> {
+  return storageGet<TickerCacheEntry>(getTickerCacheKey(symbol));
+}
+
+async function writeTickerCache(symbol: string, data: TickerIntelResponse): Promise<void> {
+  await storageSet(getTickerCacheKey(symbol), {
+    data,
+    cachedAt: Date.now(),
+  } satisfies TickerCacheEntry);
+}
+
+async function fetchTickerIntelWithCache(symbol: string): Promise<TickerIntelResponse> {
+  const cached = await readTickerCache(symbol);
+  if (isFreshTickerCache(cached)) {
+    return cached.data;
+  }
+
+  const tickerIntel = await fetchTickerIntelWithFallback(symbol);
+  await writeTickerCache(symbol, tickerIntel);
+  return tickerIntel;
+}
+
+async function prewarmTickerCache(): Promise<void> {
+  for (const [index, symbol] of PREWARM_TICKERS.entries()) {
+    if (index > 0) {
+      await delay(PREWARM_DELAY_MS);
+    }
+
+    try {
+      const cached = await readTickerCache(symbol);
+      if (isFreshTickerCache(cached)) {
+        continue;
+      }
+
+      const tickerIntel = await fetchTickerIntelWithFallback(symbol);
+      await writeTickerCache(symbol, tickerIntel);
+    } catch {
+      // Ignore individual prewarm failures so startup keeps moving.
+    }
+  }
+}
+
 function createTickerFallback(symbol: string): TickerIntelResponse {
   return {
     symbol,
+    company_name: null,
+    exchange: symbol.startsWith("BSE:") ? "BSE" : "NSE",
     price: null,
     change: null,
     change_pct: null,
@@ -299,6 +452,10 @@ function createTickerFallback(symbol: string): TickerIntelResponse {
   };
 }
 
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 function getLocalDateKey(date = new Date()): string {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");
@@ -313,4 +470,23 @@ async function cleanupOldAiQueryCounts(): Promise<void> {
     (key) => key.startsWith("aiQueryCount_") && key !== todayKey
   );
   await storageRemoveMany(staleKeys);
+}
+
+async function reinjectTickerHighlighterIntoOpenTabs(): Promise<void> {
+  const tabs = await chrome.tabs.query({ url: [...TICKER_HIGHLIGHTER_MATCH_PATTERNS] });
+
+  for (const tab of tabs) {
+    if (!tab.id) {
+      continue;
+    }
+
+    try {
+      await chrome.scripting.executeScript({
+        target: { tabId: tab.id },
+        files: ["content-scripts/ticker-highlighter.js"],
+      });
+    } catch {
+      // Ignore restricted pages or tabs that changed during iteration.
+    }
+  }
 }

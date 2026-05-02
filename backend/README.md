@@ -53,3 +53,43 @@ API docs available at `http://localhost:8000/docs`
 | POST | /api/auth/signup | Register new user |
 | POST | /api/auth/login | Login, returns JWT |
 | GET | /api/auth/me | Get current user (auth required) |
+
+## Stock Master Sync
+
+The stock master powers the extension ticker dictionary and company-name resolution for
+market lookups. Heavy normalization and NSE/BSE dedupe happen on the backend so the
+browser extension stays lightweight.
+
+### Run manually
+
+```cmd
+cd backend
+python -m app.jobs.sync_stock_master
+```
+
+The sync job:
+
+- downloads the NSE equity security list from official NSE-hosted CSV sources
+- downloads the latest available BSE equity bhavcopy ZIP from BSE
+- normalizes and merges both sources into the `stocks` table
+- deduplicates primarily by ISIN
+- upserts idempotently without creating duplicates
+
+### Daily scheduling
+
+This repo does not currently run an always-on internal scheduler, so the recommended
+production setup is an external daily trigger.
+
+Examples:
+
+- Railway cron job running `python -m app.jobs.sync_stock_master`
+- GitHub Actions scheduled workflow
+- server cron / Windows Task Scheduler for self-hosted environments
+
+If one or both exchange downloads fail, the job does not wipe the existing stock master.
+The next scheduled run retries automatically.
+
+### Extension endpoints
+
+- `GET /api/stocks/dictionary`
+- `GET /api/stocks/debug`

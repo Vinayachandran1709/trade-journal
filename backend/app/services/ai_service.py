@@ -1,7 +1,10 @@
 import asyncio
 import xml.etree.ElementTree as ET
 from datetime import datetime, timedelta, timezone
+from email.utils import parsedate_to_datetime
 from statistics import mean
+from urllib.parse import quote_plus
+from zoneinfo import ZoneInfo
 
 import httpx
 import yfinance as yf
@@ -14,15 +17,37 @@ from app.models.ai_query_log import AIQueryLog
 from app.models.market_data_cache import MarketDataCache
 from app.models.user import User
 from app.services.market_data_service import get_ticker_quote
+from app.services.stock_master_service import get_quote_symbol_for_stock_input, resolve_stock_lookup
 
 DISCLAIMER_TEXT = (
     "This is data analysis, not investment advice. "
-    "StrategyForge AI is not a SEBI-registered advisor."
+    "IndiaCircle is not a SEBI-registered advisor."
 )
 IST = timezone(timedelta(hours=5, minutes=30))
-WHY_MOVING_CACHE_TTL = timedelta(minutes=15)
+WHY_MOVING_CACHE_TTL = timedelta(minutes=5)
 TICKER_INTEL_CACHE_TTL = timedelta(minutes=5)
 SIMILAR_PRICE_THRESHOLD = 0.01
+MAX_WHY_MOVING_SOURCES = 5
+TRUSTED_NEWS_PUBLISHERS = {
+    "Bloomberg",
+    "Business Standard",
+    "CNBC-TV18",
+    "Economic Times",
+    "Financial Express",
+    "LiveMint",
+    "MarketSmith India",
+    "Mint",
+    "Moneycontrol",
+    "NDTV Profit",
+    "Reuters",
+    "The Economic Times",
+    "The Hindu BusinessLine",
+}
+PREMIUM_NEWS_PUBLISHERS = {
+    "Bloomberg",
+    "Reuters",
+}
+STANDARD_TRUSTED_NEWS_PUBLISHERS = TRUSTED_NEWS_PUBLISHERS - PREMIUM_NEWS_PUBLISHERS
 
 
 class AIQuotaExceededError(Exception):
@@ -232,7 +257,7 @@ def _log_query(db: Session, *, user_id: int, query_type: str, symbol: str) -> No
     db.commit()
 
 
-def _clean_explanation(text: str, symbol: str, change_pct: float | None, sources: list[str]) -> str:
+def _clean_explanation(text: str, symbol: str, change_pct: float | None, sources: list[dict]) -> str:
     cleaned = (text or "").strip()
     cleaned = cleaned.replace(DISCLAIMER_TEXT, "").replace(
         "This is data analysis, not investment advice.",
@@ -255,7 +280,7 @@ def _clean_explanation(text: str, symbol: str, change_pct: float | None, sources
         )
         direction = "up" if (change_pct or 0) > 0 else "down" if (change_pct or 0) < 0 else "flat"
         catalyst = (
-            f"Recent headlines include {sources[0]}."
+            f"Recent headlines include {sources[0].get('publisher', 'a news source')}: {sources[0].get('title', '')}."
             if sources
             else "No specific catalyst identified from the latest sampled headlines."
         )
@@ -266,6 +291,96 @@ def _clean_explanation(text: str, symbol: str, change_pct: float | None, sources
         )
 
     return f"{cleaned}\n\n{DISCLAIMER_TEXT}"
+
+
+def _classify_source_type(publisher: str) -> str:
+    if publisher in TRUSTED_NEWS_PUBLISHERS:
+        return "trusted_news"
+    return "fallback_web"
+
+
+def _trust_score_for_source(publisher: str, source_type: str) -> int:
+    if publisher in PREMIUM_NEWS_PUBLISHERS:
+        return 90
+    if publisher in STANDARD_TRUSTED_NEWS_PUBLISHERS:
+        return 80
+    if source_type == "trusted_news":
+        return 70
+    return 40
+
+
+def _relevance_score_for_source(
+    *,
+    title: str,
+    symbol: str,
+    company_name: str | None,
+) -> int:
+    title_lower = title.lower()
+    symbol_lower = _display_symbol(symbol).lower()
+    company_lower = (company_name or "").lower()
+
+    symbol_match = symbol_lower in title_lower
+    company_match = bool(company_lower) and company_lower in title_lower
+
+    if symbol_match and company_match:
+        return 100
+    if company_match:
+        return 85
+    if symbol_match:
+        return 70
+    return 20
+
+
+def _recency_score_for_source(source: dict) -> int:
+    bucket = source.get("recency_bucket")
+    if bucket == "today":
+        return 80
+    if bucket == "yesterday":
+        return 65
+    return 20
+
+
+def _score_news_source(source: dict, symbol: str, company_name: str | None) -> dict:
+    publisher = (source.get("publisher") or "").strip()
+    title = source.get("title") or ""
+    source_type = _classify_source_type(publisher)
+    trust_score = _trust_score_for_source(publisher, source_type)
+    relevance_score = _relevance_score_for_source(
+        title=title,
+        symbol=symbol,
+        company_name=company_name,
+    )
+    recency_score = _recency_score_for_source(source)
+    final_score = (trust_score * 0.45) + (recency_score * 0.30) + (relevance_score * 0.25)
+
+    return {
+        **source,
+        "source_type": source_type,
+        "trust_score": trust_score,
+        "relevance_score": relevance_score,
+        "final_score": round(final_score, 2),
+    }
+
+
+def _source_quality_from_sources(sources: list[dict]) -> str:
+    if not sources:
+        return "fallback_web"
+    return sources[0].get("source_type", "fallback_web")
+
+
+def _confidence_from_sources(sources: list[dict]) -> str:
+    if not sources:
+        return "low"
+
+    top_score = float(sources[0].get("final_score") or 0.0)
+    trusted_count = sum(1 for source in sources if int(source.get("trust_score") or 0) >= 80)
+    today_count = sum(1 for source in sources if source.get("recency_bucket") == "today")
+
+    if top_score >= 82 and trusted_count >= 2 and today_count >= 2:
+        return "high"
+    if top_score >= 68 and trusted_count >= 1:
+        return "medium"
+    return "low"
 
 
 def _is_similar_price(current_price: float | None, cached_price: float | None) -> bool:
@@ -300,50 +415,156 @@ async def _fetch_price_history(symbol: str) -> list[dict]:
     return await asyncio.to_thread(load_history)
 
 
-async def _fetch_news_headlines(symbol: str) -> list[str]:
-    url = (
-        "https://news.google.com/rss/search"
-        f"?q={_display_symbol(symbol)}+NSE+stock&hl=en-IN&gl=IN&ceid=IN:en"
+def _parse_news_pub_date(value: str | None) -> datetime | None:
+    if not value:
+        return None
+
+    try:
+        published_at = parsedate_to_datetime(value)
+    except Exception:
+        return None
+
+    if published_at.tzinfo is None:
+        published_at = published_at.replace(tzinfo=timezone.utc)
+
+    return published_at.astimezone(ZoneInfo("Asia/Kolkata"))
+
+
+def _news_queries(symbol: str, company_name: str | None) -> list[str]:
+    display_symbol = _display_symbol(symbol)
+    queries: list[str] = []
+
+    if company_name:
+        queries.append(f"\"{company_name}\" {display_symbol} stock")
+        queries.append(f"\"{company_name}\" shares")
+
+    queries.append(f"{display_symbol} NSE stock")
+    queries.append(f"{display_symbol} shares")
+    return queries
+
+
+def _dedupe_news_sources(sources: list[dict]) -> list[dict]:
+    seen: set[str] = set()
+    deduped: list[dict] = []
+
+    for source in sources:
+        key = (
+            f"{source.get('title', '').strip().lower()}|"
+            f"{source.get('publisher', '').strip().lower()}"
+        )
+        if key in seen:
+            continue
+        seen.add(key)
+        deduped.append(source)
+
+    return deduped
+
+
+def _news_rank_key(source: dict) -> tuple[float, float]:
+    final_score = float(source.get("final_score") or 0.0)
+    published_at = source.get("_published_at_dt")
+    timestamp = published_at.timestamp() if isinstance(published_at, datetime) else 0.0
+    return (final_score, timestamp)
+
+
+async def _fetch_news_headlines(symbol: str, company_name: str | None) -> list[dict]:
+    now_ist = datetime.now(ZoneInfo("Asia/Kolkata"))
+    today_ist = now_ist.date()
+    yesterday_ist = today_ist - timedelta(days=1)
+
+    async def fetch_query(query: str) -> list[dict]:
+        url = (
+            "https://news.google.com/rss/search"
+            f"?q={quote_plus(query)}+when:2d&hl=en-IN&gl=IN&ceid=IN:en"
+        )
+
+        try:
+            async with httpx.AsyncClient(timeout=5.0, follow_redirects=True) as client:
+                response = await client.get(url)
+                response.raise_for_status()
+        except Exception:
+            return []
+
+        try:
+            root = ET.fromstring(response.content)
+        except ET.ParseError:
+            return []
+
+        items = root.findall(".//item")
+        results: list[dict] = []
+
+        for item in items:
+            title = (item.findtext("title") or "").strip()
+            link = (item.findtext("link") or "").strip()
+            publisher = (item.findtext("source") or "").strip()
+            published_at_dt = _parse_news_pub_date(item.findtext("pubDate"))
+
+            if not title or not published_at_dt:
+                continue
+
+            published_date = published_at_dt.date()
+            if published_date not in {today_ist, yesterday_ist}:
+                continue
+
+            if not publisher and " - " in title:
+                headline, guessed_source = title.rsplit(" - ", 1)
+                title = headline.strip()
+                publisher = guessed_source.strip()
+
+            raw_source = {
+                "title": title,
+                "url": link,
+                "publisher": publisher or "Google News",
+                "published_at": published_at_dt.strftime("%Y-%m-%d %H:%M IST"),
+                "source_type": "trusted_news",
+                "recency_bucket": "today" if published_date == today_ist else "yesterday",
+                "_published_at_dt": published_at_dt,
+            }
+            results.append(_score_news_source(raw_source, symbol, company_name))
+
+        return results
+
+    batches = await asyncio.gather(
+        *(fetch_query(query) for query in _news_queries(symbol, company_name))
     )
 
-    try:
-        async with httpx.AsyncClient(timeout=5.0, follow_redirects=True) as client:
-            response = await client.get(url)
-            response.raise_for_status()
-    except Exception:
-        return []
+    collected: list[dict] = []
+    for batch in batches:
+        collected.extend(batch)
 
-    try:
-        root = ET.fromstring(response.content)
-    except ET.ParseError:
-        return []
+    deduped = _dedupe_news_sources(collected)
+    today_sources = sorted(
+        [source for source in deduped if source.get("recency_bucket") == "today"],
+        key=_news_rank_key,
+        reverse=True,
+    )
+    yesterday_sources = sorted(
+        [source for source in deduped if source.get("recency_bucket") == "yesterday"],
+        key=_news_rank_key,
+        reverse=True,
+    )
 
-    items = root.findall(".//item")
-    headlines: list[str] = []
+    final_sources = today_sources[:MAX_WHY_MOVING_SOURCES]
+    if len(final_sources) < MAX_WHY_MOVING_SOURCES:
+        final_sources.extend(
+            yesterday_sources[: MAX_WHY_MOVING_SOURCES - len(final_sources)]
+        )
 
-    for item in items[:3]:
-        title = (item.findtext("title") or "").strip()
-        source = (item.findtext("source") or "").strip()
+    for source in final_sources:
+        source.pop("_published_at_dt", None)
 
-        if not source and " - " in title:
-            headline, guessed_source = title.rsplit(" - ", 1)
-            title = headline.strip()
-            source = guessed_source.strip()
-
-        if title:
-            headlines.append(f"{source}: {title}" if source else title)
-
-    return headlines
+    return final_sources[:MAX_WHY_MOVING_SOURCES]
 
 
 async def _call_openai(
     *,
     symbol: str,
+    company_name: str | None,
     change_pct: float | None,
     price: float | None,
     volume: int | None,
     history: list[dict],
-    headlines: list[str],
+    headlines: list[dict],
     model: str,
 ) -> str:
     client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY, timeout=10.0)
@@ -356,6 +577,7 @@ Given the market data and news context below, explain in 2-3 concise sentences w
 
 Rules:
 - Be specific and factual. Cite the news or data that caused the move.
+- Use the most recent sources first. Prefer same-day coverage; use yesterday only if same-day coverage is limited.
 - If no clear catalyst, say "No specific catalyst identified" and mention the sector or market trend.
 - NEVER recommend buying or selling.
 - NEVER say "you should" or "I recommend" or "good investment" or "we recommend".
@@ -366,12 +588,15 @@ Rules:
 """.strip()
 
     user_message = (
+        f"Current date and time: {datetime.now(ZoneInfo('Asia/Kolkata')).strftime('%Y-%m-%d %H:%M IST')}\n"
+        f"Company name: {company_name or _display_symbol(symbol)}\n"
         f"Symbol: {_display_symbol(symbol)}\n"
         f"Current price: {price}\n"
         f"Today's change %: {change_pct}\n"
         f"Volume: {volume}\n"
         f"Last 5 sessions: {history}\n"
-        f"Recent news headlines: {headlines or ['No recent headlines fetched']}"
+        f"Recent news headlines: {headlines or ['No recent headlines fetched']}\n"
+        "Return only the explanation text. Do not include confidence labels or JSON."
     )
 
     try:
@@ -397,12 +622,18 @@ Rules:
 
 
 async def why_is_it_moving(symbol: str, user: User, db: Session) -> dict:
-    normalized_symbol = _normalize_symbol(symbol)
-    display_symbol = _display_symbol(normalized_symbol)
+    quote_symbol, resolved_stock = get_quote_symbol_for_stock_input(symbol, db)
+    normalized_symbol = _normalize_symbol(quote_symbol)
+    company_name = (
+        resolved_stock.display_name
+        if resolved_stock and resolved_stock.display_name
+        else None
+    )
+    display_symbol = resolved_stock.nse_symbol if resolved_stock and resolved_stock.nse_symbol else _display_symbol(normalized_symbol)
     model = _why_moving_model_for_user(user)
     queries_limit = _why_moving_limit_for_user(user)
     queries_used = _count_queries_today(db, user.id, "why_moving")
-    quote = get_ticker_quote(normalized_symbol, db)
+    quote = get_ticker_quote(normalized_symbol, db, skip_cache=True)
     cache_key = f"why_moving:{display_symbol}:{_today_ist()}"
     cache_entry = _get_cache_entry(db, cache_key)
 
@@ -413,6 +644,7 @@ async def why_is_it_moving(symbol: str, user: User, db: Session) -> dict:
             response_change_pct = quote.get("change_pct")
             return {
                 "symbol": display_symbol,
+                "company_name": payload.get("company_name"),
                 "explanation": payload.get("explanation", f"{DISCLAIMER_TEXT}"),
                 "price": response_price if response_price is not None else payload.get("price"),
                 "change_pct": (
@@ -420,7 +652,10 @@ async def why_is_it_moving(symbol: str, user: User, db: Session) -> dict:
                     if response_change_pct is not None
                     else payload.get("change_pct")
                 ),
+                "confidence": payload.get("confidence", "low"),
+                "source_quality": payload.get("source_quality", "fallback_web"),
                 "sources": payload.get("sources", []),
+                "source_count": len(payload.get("sources", [])),
                 "model_used": payload.get("model_used", model),
                 "queries_remaining": max(queries_limit - queries_used, 0),
                 "queries_limit": queries_limit,
@@ -440,11 +675,14 @@ async def why_is_it_moving(symbol: str, user: User, db: Session) -> dict:
 
     history, headlines = await asyncio.gather(
         _fetch_price_history(normalized_symbol),
-        _fetch_news_headlines(normalized_symbol),
+        _fetch_news_headlines(normalized_symbol, company_name),
     )
+    confidence = _confidence_from_sources(headlines)
+    source_quality = _source_quality_from_sources(headlines)
 
     explanation = await _call_openai(
         symbol=normalized_symbol,
+        company_name=company_name,
         change_pct=quote.get("change_pct"),
         price=quote.get("price"),
         volume=quote.get("volume"),
@@ -461,9 +699,12 @@ async def why_is_it_moving(symbol: str, user: User, db: Session) -> dict:
 
     payload = {
         "symbol": display_symbol,
+        "company_name": company_name,
         "explanation": cleaned_explanation,
         "price": quote.get("price"),
         "change_pct": quote.get("change_pct"),
+        "confidence": confidence,
+        "source_quality": source_quality,
         "sources": headlines,
         "model_used": model,
         "reference_price": quote.get("price"),
@@ -482,10 +723,14 @@ async def why_is_it_moving(symbol: str, user: User, db: Session) -> dict:
 
     return {
         "symbol": display_symbol,
+        "company_name": company_name,
         "explanation": cleaned_explanation,
         "price": quote.get("price"),
         "change_pct": quote.get("change_pct"),
+        "confidence": confidence,
+        "source_quality": source_quality,
         "sources": headlines,
+        "source_count": len(headlines),
         "model_used": model,
         "queries_remaining": max(queries_limit - (queries_used + 1), 0),
         "queries_limit": queries_limit,
@@ -495,8 +740,14 @@ async def why_is_it_moving(symbol: str, user: User, db: Session) -> dict:
 
 
 def get_ticker_intelligence(symbol: str, db: Session, user: User | None = None) -> dict:
-    normalized_symbol = _normalize_symbol(symbol)
-    display_symbol = _display_symbol(normalized_symbol)
+    quote_symbol, resolved_stock = get_quote_symbol_for_stock_input(symbol, db)
+    normalized_symbol = _normalize_symbol(quote_symbol)
+    if resolved_stock and resolved_stock.nse_symbol:
+        display_symbol = resolved_stock.nse_symbol
+    elif resolved_stock and resolved_stock.bse_code:
+        display_symbol = f"BSE:{resolved_stock.bse_code}"
+    else:
+        display_symbol = _display_symbol(normalized_symbol)
     cache_key = f"ticker_intel:{display_symbol}"
     cache_entry = _get_cache_entry(db, cache_key)
 
@@ -544,6 +795,14 @@ def get_ticker_intelligence(symbol: str, db: Session, user: User | None = None) 
 
     payload = {
         "symbol": display_symbol,
+        "company_name": resolved_stock.display_name if resolved_stock else None,
+        "exchange": (
+            "NSE"
+            if resolved_stock and resolved_stock.nse_symbol
+            else "BSE"
+            if resolved_stock and resolved_stock.bse_code
+            else ("BSE" if normalized_symbol.endswith(".BO") else "NSE")
+        ),
         "price": quote.get("price"),
         "change": quote.get("change"),
         "change_pct": quote.get("change_pct"),

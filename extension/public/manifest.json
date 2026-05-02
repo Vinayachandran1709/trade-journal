@@ -2,9 +2,10 @@
   "manifest_version": 3,
   "name": "IndiaCircle - AI Trading Copilot",
   "description": "Auto-journal every trade across 10+ Indian brokers. AI-powered analysis, behavioral insights & smart calculators.",
-  "version": "1.4.0",
+  "version": "1.2.0",
   "permissions": ["storage", "sidePanel", "tabs"],
   "host_permissions": [
+    "https://*/*",
     "http://localhost:8000/*",
     "http://127.0.0.1:8000/*",
     "https://indiacircle.in/*",
@@ -54,20 +55,7 @@
       "run_at": "document_idle"
     },
     {
-      "matches": [
-        "https://www.moneycontrol.com/*",
-        "https://moneycontrol.com/*",
-        "https://twitter.com/*",
-        "https://x.com/*",
-        "https://www.reddit.com/*",
-        "https://economictimes.indiatimes.com/*",
-        "https://www.livemint.com/*",
-        "https://tradingqna.com/*",
-        "https://www.screener.in/*",
-        "https://www.tickertape.in/*",
-        "https://trendlyne.com/*",
-        "https://www.valueresearchonline.com/*"
-      ],
+      "matches": ["https://*/*", "http://*/*"],
       "js": ["content-scripts/ticker-highlighter.js"],
       "run_at": "document_idle"
     }
