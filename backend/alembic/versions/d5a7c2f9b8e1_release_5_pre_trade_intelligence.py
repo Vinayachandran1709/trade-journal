@@ -1,7 +1,7 @@
 """Release 5 pre-trade intelligence
 
 Revision ID: d5a7c2f9b8e1
-Revises: c4f7a9b2d1e3
+Revises: e8c1b7f4a2d9
 Create Date: 2026-05-01 00:00:00.000000
 
 """
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 from alembic import op
 
 revision: str = "d5a7c2f9b8e1"
-down_revision: Union[str, None] = "c4f7a9b2d1e3"
+down_revision: Union[str, None] = "e8c1b7f4a2d9"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 

@@ -16,12 +16,25 @@ let savedSetupId: number | null = null;
 
 function isBrokerOrderVisible(): boolean {
   const host = location.hostname;
+  const path = location.pathname.toLowerCase();
   const text = document.body.innerText.toLowerCase();
   if (host.includes("kite.zerodha.com")) {
     return Boolean(document.querySelector(".order-window, .order-window-layer")) || /\border\b/.test(text);
   }
   if (host.includes("groww.in")) {
     return location.pathname.includes("/stocks/") && /(quantity|market price|limit price)/i.test(text);
+  }
+  if (host.includes("dhan.co")) {
+    return /order|orderbook|trade|position|portfolio|buy|sell/.test(path) || /(quantity|limit price|market price|stop loss|target)/i.test(text);
+  }
+  if (host.includes("angelone.in") || host.includes("angelbroking.com")) {
+    return /order|trade|position|buy|sell/.test(path) || /(quantity|limit price|market price|product type)/i.test(text);
+  }
+  if (host.includes("upstox.com")) {
+    return /order|trade|position|buy|sell/.test(path) || /(quantity|limit price|market price|order type)/i.test(text);
+  }
+  if (host.includes("5paisa.com")) {
+    return /order|trade|position|buy|sell/.test(path) || /(quantity|limit price|market price|order type)/i.test(text);
   }
   return false;
 }

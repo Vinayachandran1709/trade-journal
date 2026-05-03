@@ -13,6 +13,14 @@
     "https://kite.zerodha.com/*",
     "https://groww.in/*",
     "https://web.groww.in/*",
+    "https://web.dhan.co/*",
+    "https://www.dhan.co/*",
+    "https://www.angelone.in/*",
+    "https://trade.angelone.in/*",
+    "https://upstox.com/*",
+    "https://pro.upstox.com/*",
+    "https://www.5paisa.com/*",
+    "https://trade.5paisa.com/*",
     "https://www.moneycontrol.com/*",
     "https://moneycontrol.com/*",
     "https://twitter.com/*",
@@ -40,7 +48,15 @@
       "matches": [
         "https://kite.zerodha.com/*",
         "https://groww.in/*",
-        "https://web.groww.in/*"
+        "https://web.groww.in/*",
+        "https://web.dhan.co/*",
+        "https://www.dhan.co/*",
+        "https://www.angelone.in/*",
+        "https://trade.angelone.in/*",
+        "https://upstox.com/*",
+        "https://pro.upstox.com/*",
+        "https://www.5paisa.com/*",
+        "https://trade.5paisa.com/*"
       ],
       "js": ["content-scripts/broker-detector.js"],
       "run_at": "document_idle"
@@ -49,7 +65,15 @@
       "matches": [
         "https://kite.zerodha.com/*",
         "https://groww.in/stocks/*",
-        "https://web.groww.in/stocks/*"
+        "https://web.groww.in/stocks/*",
+        "https://web.dhan.co/*",
+        "https://www.dhan.co/*",
+        "https://www.angelone.in/*",
+        "https://trade.angelone.in/*",
+        "https://upstox.com/*",
+        "https://pro.upstox.com/*",
+        "https://www.5paisa.com/*",
+        "https://trade.5paisa.com/*"
       ],
       "js": ["content-scripts/checklist-overlay.js"],
       "run_at": "document_idle"

@@ -27,6 +27,20 @@ router = APIRouter(prefix="/api/analytics", tags=["analytics"])
 SEVERITY_ORDER = {"high": 0, "medium": 1, "low": 2}
 
 
+def _empty_summary() -> AnalyticsSummaryResponse:
+    return AnalyticsSummaryResponse(
+        total_trades=0,
+        win_rate=0.0,
+        total_pnl=0.0,
+        avg_pnl_per_trade=0.0,
+        best_trade=TradeExtremes(),
+        worst_trade=TradeExtremes(),
+        avg_holding_days=0.0,
+        most_traded_symbol=None,
+        monthly_pnl=[],
+    )
+
+
 def _is_pro_active(user: User) -> bool:
     status = user.subscription_status or ""
     plan = user.subscription_plan or ""
@@ -176,16 +190,31 @@ def get_patterns(
         .all()
     )
 
-    if _should_auto_reanalyze(current_user.id, db, total_completed_trades, stored_patterns):
-        _run_and_store_analysis(current_user.id, db)
-        stored_patterns = (
-            db.query(BehavioralPattern)
-            .filter(
-                BehavioralPattern.user_id == current_user.id,
-                BehavioralPattern.is_active.is_(True),
-            )
-            .all()
+    try:
+        should_auto_reanalyze = _should_auto_reanalyze(
+            current_user.id,
+            db,
+            total_completed_trades,
+            stored_patterns,
         )
+    except Exception:
+        db.rollback()
+        should_auto_reanalyze = False
+
+    if should_auto_reanalyze:
+        try:
+            _run_and_store_analysis(current_user.id, db)
+        except Exception:
+            db.rollback()
+        else:
+            stored_patterns = (
+                db.query(BehavioralPattern)
+                .filter(
+                    BehavioralPattern.user_id == current_user.id,
+                    BehavioralPattern.is_active.is_(True),
+                )
+                .all()
+            )
 
     if total_completed_trades < MIN_PATTERN_TRADE_COUNT:
         return PatternsEnvelope(
@@ -215,61 +244,55 @@ def get_analytics_summary(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> AnalyticsSummaryResponse:
-    trades = (
-        db.query(CompletedTrade)
-        .filter(CompletedTrade.user_id == current_user.id)
-        .order_by(CompletedTrade.exit_date.asc(), CompletedTrade.id.asc())
-        .all()
-    )
-
-    total_trades = len(trades)
-    if not trades:
-        return AnalyticsSummaryResponse(
-            total_trades=0,
-            win_rate=0.0,
-            total_pnl=0.0,
-            avg_pnl_per_trade=0.0,
-            best_trade=TradeExtremes(),
-            worst_trade=TradeExtremes(),
-            avg_holding_days=0.0,
-            most_traded_symbol=None,
-            monthly_pnl=[],
+    try:
+        trades = (
+            db.query(CompletedTrade)
+            .filter(CompletedTrade.user_id == current_user.id)
+            .order_by(CompletedTrade.exit_date.asc(), CompletedTrade.id.asc())
+            .all()
         )
 
-    pnl_values = [float(trade.pnl) for trade in trades]
-    win_rate = sum(1 for trade in trades if float(trade.pnl) > 0) / total_trades
-    total_pnl = sum(pnl_values)
-    avg_pnl_per_trade = total_pnl / total_trades
-    avg_holding_days = mean(int(trade.holding_days) for trade in trades)
-    best_trade = max(trades, key=lambda trade: float(trade.pnl))
-    worst_trade = min(trades, key=lambda trade: float(trade.pnl))
-    most_traded_symbol = Counter(trade.stock_symbol for trade in trades).most_common(1)[0][0]
+        total_trades = len(trades)
+        if not trades:
+            return _empty_summary()
 
-    monthly_totals: dict[str, float] = defaultdict(float)
-    for trade in trades:
-        monthly_totals[trade.exit_date.strftime("%Y-%m")] += float(trade.pnl)
+        pnl_values = [float(trade.pnl) for trade in trades]
+        win_rate = sum(1 for trade in trades if float(trade.pnl) > 0) / total_trades
+        total_pnl = sum(pnl_values)
+        avg_pnl_per_trade = total_pnl / total_trades
+        avg_holding_days = mean(int(trade.holding_days) for trade in trades)
+        best_trade = max(trades, key=lambda trade: float(trade.pnl))
+        worst_trade = min(trades, key=lambda trade: float(trade.pnl))
+        most_traded_symbol = Counter(trade.stock_symbol for trade in trades).most_common(1)[0][0]
 
-    monthly_pnl = [
-        MonthlyPnlPoint(month=month, pnl=round(monthly_totals[month], 2))
-        for month in sorted(monthly_totals)
-    ]
+        monthly_totals: dict[str, float] = defaultdict(float)
+        for trade in trades:
+            monthly_totals[trade.exit_date.strftime("%Y-%m")] += float(trade.pnl)
 
-    return AnalyticsSummaryResponse(
-        total_trades=total_trades,
-        win_rate=round(win_rate, 4),
-        total_pnl=round(total_pnl, 2),
-        avg_pnl_per_trade=round(avg_pnl_per_trade, 2),
-        best_trade=TradeExtremes(
-            symbol=best_trade.stock_symbol,
-            pnl=round(float(best_trade.pnl), 2),
-            exit_date=best_trade.exit_date,
-        ),
-        worst_trade=TradeExtremes(
-            symbol=worst_trade.stock_symbol,
-            pnl=round(float(worst_trade.pnl), 2),
-            exit_date=worst_trade.exit_date,
-        ),
-        avg_holding_days=round(avg_holding_days, 2),
-        most_traded_symbol=most_traded_symbol,
-        monthly_pnl=monthly_pnl,
-    )
+        monthly_pnl = [
+            MonthlyPnlPoint(month=month, pnl=round(monthly_totals[month], 2))
+            for month in sorted(monthly_totals)
+        ]
+
+        return AnalyticsSummaryResponse(
+            total_trades=total_trades,
+            win_rate=round(win_rate, 4),
+            total_pnl=round(total_pnl, 2),
+            avg_pnl_per_trade=round(avg_pnl_per_trade, 2),
+            best_trade=TradeExtremes(
+                symbol=best_trade.stock_symbol,
+                pnl=round(float(best_trade.pnl), 2),
+                exit_date=best_trade.exit_date,
+            ),
+            worst_trade=TradeExtremes(
+                symbol=worst_trade.stock_symbol,
+                pnl=round(float(worst_trade.pnl), 2),
+                exit_date=worst_trade.exit_date,
+            ),
+            avg_holding_days=round(avg_holding_days, 2),
+            most_traded_symbol=most_traded_symbol,
+            monthly_pnl=monthly_pnl,
+        )
+    except Exception:
+        db.rollback()
+        return _empty_summary()

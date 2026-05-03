@@ -70,7 +70,7 @@ export async function fetchCurrentUser(token: string): Promise<User> {
 }
 
 export interface AutoCapturePayload {
-  broker: "zerodha" | "groww";
+  broker: "zerodha" | "groww" | "dhan" | "angelone" | "upstox" | "5paisa";
   capture_method: "dom";
   trades: Array<{
     stock_symbol: string;

@@ -62,7 +62,33 @@ def create_setup(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> TradeSetupResponse:
-    return create_trade_setup(current_user.id, request.model_dump(), db)
+    try:
+        setup = create_trade_setup(current_user.id, request.model_dump(), db)
+        return TradeSetupResponse(
+            id=setup.id,
+            user_id=setup.user_id,
+            symbol=setup.symbol,
+            thesis=setup.thesis,
+            entry_price=float(setup.entry_price) if setup.entry_price else None,
+            stop_loss_price=float(setup.stop_loss_price) if setup.stop_loss_price else None,
+            target_price=float(setup.target_price) if setup.target_price else None,
+            target2_price=float(setup.target2_price) if setup.target2_price else None,
+            conviction_score=setup.conviction_score,
+            checklist_responses=setup.checklist_responses,
+            position_size=setup.position_size,
+            risk_amount=float(setup.risk_amount) if setup.risk_amount else None,
+            risk_score=setup.risk_score,
+            risk_level=setup.risk_level,
+            linked_trade_id=setup.linked_trade_id,
+            linked_at=setup.linked_at,
+            created_at=setup.created_at,
+        )
+    except Exception as exc:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to create setup: {str(exc)}",
+        ) from exc
 
 
 @router.get("/my-setups", response_model=list[TradeSetupResponse])

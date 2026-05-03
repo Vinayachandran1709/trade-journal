@@ -183,7 +183,7 @@ async function handleMessage(
         }
 
         const payload = message.payload as {
-          broker: "zerodha" | "groww";
+          broker: "zerodha" | "groww" | "dhan" | "angelone" | "upstox" | "5paisa";
           capture_method: "dom";
           trades: [];
         };

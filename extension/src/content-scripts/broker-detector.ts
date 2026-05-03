@@ -1,8 +1,19 @@
+import { AngelOneAdapter } from "./brokers/angelone";
+import { DhanAdapter } from "./brokers/dhan";
+import { FivePaisaAdapter } from "./brokers/fivepaisa";
 import { growwAdapter } from "./brokers/groww";
+import { UpstoxAdapter } from "./brokers/upstox";
 import { zerodhaAdapter } from "./brokers/zerodha";
 import type { BrokerAdapter } from "./brokers/types";
 
-const adapters: BrokerAdapter[] = [zerodhaAdapter, growwAdapter];
+const adapters: BrokerAdapter[] = [
+  zerodhaAdapter,
+  growwAdapter,
+  DhanAdapter,
+  AngelOneAdapter,
+  UpstoxAdapter,
+  FivePaisaAdapter,
+];
 const currentHost = window.location.hostname;
 const currentAdapter = adapters.find((adapter) => adapter.matches(currentHost));
 

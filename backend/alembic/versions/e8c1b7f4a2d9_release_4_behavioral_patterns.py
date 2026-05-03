@@ -1,7 +1,7 @@
 """Release 4 behavioral patterns analytics
 
 Revision ID: e8c1b7f4a2d9
-Revises: c4f7a9b2d1e3
+Revises: d91b4f2c7e10
 Create Date: 2026-04-30 00:00:00.000000
 
 """
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 from alembic import op
 
 revision: str = "e8c1b7f4a2d9"
-down_revision: Union[str, None] = "c4f7a9b2d1e3"
+down_revision: Union[str, None] = "d91b4f2c7e10"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
