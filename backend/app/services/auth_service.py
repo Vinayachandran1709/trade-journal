@@ -54,3 +54,22 @@ def create_user(db: Session, email: str, password: str, name: str | None) -> Use
     db.commit()
     db.refresh(user)
     return user
+
+
+def update_user_preferences(
+    db: Session,
+    user: User,
+    *,
+    brokers: list[str],
+    sectors: list[str],
+    style: str | None,
+) -> User:
+    user.preferences = {
+        "brokers": brokers,
+        "sectors": sectors,
+        "style": style,
+    }
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    return user

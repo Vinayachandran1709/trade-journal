@@ -1,6 +1,12 @@
 from datetime import datetime
 
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, Field
+
+
+class UserPreferences(BaseModel):
+    brokers: list[str] = Field(default_factory=list)
+    sectors: list[str] = Field(default_factory=list)
+    style: str | None = None
 
 
 class UserResponse(BaseModel):
@@ -12,6 +18,7 @@ class UserResponse(BaseModel):
     subscription_expires_at: datetime | None = None
     razorpay_customer_id: str | None = None
     razorpay_subscription_id: str | None = None
+    preferences: UserPreferences | None = None
     created_at: datetime
 
     model_config = {"from_attributes": True}

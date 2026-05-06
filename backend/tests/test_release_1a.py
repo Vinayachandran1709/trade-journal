@@ -18,7 +18,9 @@ os.environ["SECRET_KEY"] = "test-secret-key"
 
 from app.database import Base, get_db  # noqa: E402
 from app.main import app  # noqa: E402
+from app.models.completed_trade import CompletedTrade  # noqa: E402
 from app.models.trade import Trade  # noqa: E402
+from app.models.trade_setup import TradeSetup  # noqa: E402
 from app.models.user import User  # noqa: E402
 from app.services.auth_service import create_access_token, hash_password  # noqa: E402
 from app.services.universal_csv_parser import detect_broker_from_headers  # noqa: E402
@@ -34,7 +36,15 @@ TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engin
 
 @pytest.fixture()
 def client():
-    Base.metadata.create_all(bind=engine, tables=[User.__table__, Trade.__table__])
+    Base.metadata.create_all(
+        bind=engine,
+        tables=[
+            User.__table__,
+            Trade.__table__,
+            CompletedTrade.__table__,
+            TradeSetup.__table__,
+        ],
+    )
 
     def override_get_db():
         db = TestingSessionLocal()
@@ -49,7 +59,15 @@ def client():
         yield test_client
 
     app.dependency_overrides.clear()
-    Base.metadata.drop_all(bind=engine, tables=[Trade.__table__, User.__table__])
+    Base.metadata.drop_all(
+        bind=engine,
+        tables=[
+            TradeSetup.__table__,
+            CompletedTrade.__table__,
+            Trade.__table__,
+            User.__table__,
+        ],
+    )
 
 
 @pytest.fixture()

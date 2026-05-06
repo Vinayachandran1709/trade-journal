@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field
 
 
 class SignupRequest(BaseModel):
@@ -15,3 +15,9 @@ class LoginRequest(BaseModel):
 class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
+
+
+class PreferencesRequest(BaseModel):
+    brokers: list[str] = Field(default_factory=list)
+    sectors: list[str] = Field(default_factory=list)
+    style: str | None = None

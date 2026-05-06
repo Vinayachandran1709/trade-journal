@@ -1,3 +1,9 @@
+export interface UserPreferences {
+  brokers: string[];
+  sectors: string[];
+  style: string | null;
+}
+
 export interface User {
   id: number;
   email: string;
@@ -7,6 +13,7 @@ export interface User {
   subscription_expires_at?: string | null;
   razorpay_customer_id?: string | null;
   razorpay_subscription_id?: string | null;
+  preferences?: UserPreferences | null;
   created_at: string;
 }
 

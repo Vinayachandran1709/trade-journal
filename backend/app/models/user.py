@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import Column, DateTime, Integer, String
+from sqlalchemy import JSON, Column, DateTime, Integer, String
 from sqlalchemy.orm import relationship
 
 from app.database import Base
@@ -18,6 +18,7 @@ class User(Base):
     subscription_expires_at = Column(DateTime)
     razorpay_customer_id = Column(String(255))
     razorpay_subscription_id = Column(String(255))
+    preferences = Column(JSON, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     trades = relationship("Trade", back_populates="user")

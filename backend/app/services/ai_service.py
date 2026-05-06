@@ -176,6 +176,18 @@ def _sentiment_line(change_pct: float | None, volume: int | None, avg_volume: in
     return "Trading in a narrow range"
 
 
+def _price_based_explanation(
+    symbol: str,
+    change_pct: float | None,
+    volume_vs_avg: str,
+) -> str:
+    move_text = f"{change_pct:.2f}%" if change_pct is not None else "an unknown amount"
+    return (
+        f"{symbol} moved {move_text} today. "
+        f"Trading volume is {volume_vs_avg}.\n\n{DISCLAIMER_TEXT}"
+    )
+
+
 def _get_cache_entry(db: Session, cache_key: str) -> MarketDataCache | None:
     return (
         db.query(MarketDataCache)
@@ -479,7 +491,7 @@ async def _fetch_news_headlines(symbol: str, company_name: str | None) -> list[d
         )
 
         try:
-            async with httpx.AsyncClient(timeout=5.0, follow_redirects=True) as client:
+            async with httpx.AsyncClient(timeout=3.0, follow_redirects=True) as client:
                 response = await client.get(url)
                 response.raise_for_status()
         except Exception:
@@ -567,7 +579,7 @@ async def _call_openai(
     headlines: list[dict],
     model: str,
 ) -> str:
-    client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY, timeout=10.0)
+    client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY, timeout=8.0)
     move_text = f"{change_pct:.2f}" if change_pct is not None else "unknown"
 
     system_prompt = f"""
@@ -603,7 +615,7 @@ Rules:
         response = await client.chat.completions.create(
             model=model,
             temperature=0.3,
-            max_tokens=500,
+            max_tokens=300,
             messages=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_message},
@@ -677,25 +689,67 @@ async def why_is_it_moving(symbol: str, user: User, db: Session) -> dict:
         _fetch_price_history(normalized_symbol),
         _fetch_news_headlines(normalized_symbol, company_name),
     )
+    avg_volume: int | None = None
+    if history:
+        recent_volumes = [
+            int(row.get("volume") or 0)
+            for row in history
+            if row.get("volume") not in (None, 0)
+        ]
+        if recent_volumes:
+            avg_volume = int(round(mean(recent_volumes)))
+
+    volume_vs_avg = _volume_vs_average(quote.get("volume"), avg_volume)
     confidence = _confidence_from_sources(headlines)
     source_quality = _source_quality_from_sources(headlines)
 
-    explanation = await _call_openai(
-        symbol=normalized_symbol,
-        company_name=company_name,
-        change_pct=quote.get("change_pct"),
-        price=quote.get("price"),
-        volume=quote.get("volume"),
-        history=history,
-        headlines=headlines,
-        model=model,
-    )
-    cleaned_explanation = _clean_explanation(
-        explanation,
+    fallback_explanation = _price_based_explanation(
         display_symbol,
         quote.get("change_pct"),
-        headlines,
+        volume_vs_avg,
     )
+
+    try:
+        explanation = await asyncio.wait_for(
+            _call_openai(
+                symbol=normalized_symbol,
+                company_name=company_name,
+                change_pct=quote.get("change_pct"),
+                price=quote.get("price"),
+                volume=quote.get("volume"),
+                history=history,
+                headlines=headlines,
+                model=model,
+            ),
+            timeout=5.0,
+        )
+        cleaned_explanation = _clean_explanation(
+            explanation,
+            display_symbol,
+            quote.get("change_pct"),
+            headlines,
+        )
+    except (asyncio.TimeoutError, AIServiceTimeoutError, AIServiceBusyError):
+        if cache_entry and cache_entry.payload:
+            payload = cache_entry.payload
+            return {
+                "symbol": display_symbol,
+                "company_name": payload.get("company_name"),
+                "explanation": payload.get("explanation", fallback_explanation),
+                "price": quote.get("price"),
+                "change_pct": quote.get("change_pct"),
+                "confidence": payload.get("confidence", confidence),
+                "source_quality": payload.get("source_quality", source_quality),
+                "sources": payload.get("sources", headlines),
+                "source_count": len(payload.get("sources", headlines)),
+                "model_used": payload.get("model_used", model),
+                "queries_remaining": max(queries_limit - queries_used, 0),
+                "queries_limit": queries_limit,
+                "cached": True,
+                "disclaimer": DISCLAIMER_TEXT,
+            }
+
+        cleaned_explanation = fallback_explanation
 
     payload = {
         "symbol": display_symbol,

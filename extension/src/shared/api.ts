@@ -237,19 +237,61 @@ export async function fetchSetupReportCard(
 export interface MarketDashboardData {
   indices: Record<string, { value: number | null; change: number | null; change_pct: number | null }>;
   vix: { value: number | null; change: number | null; context: string };
-  fii_dii: { fii_net: number | null; dii_net: number | null; date: string | null; source?: string };
+  fii_dii: { fii_net: number | null; dii_net: number | null; date: string | null; source?: string } | null;
   top_gainers: Array<{ symbol: string; price: number; change_pct: number }>;
   top_losers: Array<{ symbol: string; price: number; change_pct: number }>;
   global_cues: Record<string, { value: number | null; change_pct: number | null }>;
+  sector_performance: Record<string, { index: string; value: number | null; change_pct: number | null }>;
+  regime: {
+    nifty_trend: "Bullish" | "Bearish" | "Sideways";
+    nifty_vs_vwap: "Above VWAP" | "Below VWAP" | "At VWAP";
+    breadth: { advancing: number; declining: number; pct_advancing: number };
+    interpretation: string;
+  };
+  personalized?: {
+    preferred_sectors: Array<{ index: string; value: number | null; change_pct: number | null }>;
+    recent_symbols: string[];
+    open_positions: Array<{ symbol: string; net_quantity: number; last_trade_date?: string | null }>;
+  } | null;
   market_status: string;
   last_updated: string;
   is_stale: boolean;
 }
 
-export async function fetchMarketDashboard(): Promise<MarketDashboardData> {
-  const res = await fetch(`${API_BASE_URL}/api/market/dashboard`);
-  if (!res.ok) throw new Error(`Market data unavailable (${res.status})`);
-  return res.json() as Promise<MarketDashboardData>;
+export interface WatchlistResponse {
+  recent_symbols: string[];
+  preferred_sectors: string[];
+  sector_performance: Record<string, { index: string; value: number | null; change_pct: number | null }>;
+  recent_stock_quotes: Array<{
+    symbol: string;
+    price: number | null;
+    change: number | null;
+    change_pct: number | null;
+    high_52w: number | null;
+    low_52w: number | null;
+    volume: number | null;
+    market_status: string;
+    last_updated: string;
+    is_stale: boolean;
+  }>;
+}
+
+export async function fetchMarketDashboard(token?: string | null): Promise<MarketDashboardData> {
+  const headers: Record<string, string> = {};
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
+  return request<MarketDashboardData>("/api/market/dashboard", {
+    headers,
+  });
+}
+
+export async function fetchWatchlist(token: string): Promise<WatchlistResponse> {
+  return request<WatchlistResponse>("/api/market/watchlist", {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
 }
 
 export interface WhyMovingResponse {

@@ -4,13 +4,14 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models.user import User
-from app.schemas.auth import LoginRequest, SignupRequest, TokenResponse
+from app.schemas.auth import LoginRequest, PreferencesRequest, SignupRequest, TokenResponse
 from app.schemas.user import UserResponse
 from app.services.auth_service import (
     authenticate_user,
     create_access_token,
     create_user,
     get_user_by_email,
+    update_user_preferences,
 )
 from app.utils.dependencies import get_current_user
 
@@ -64,3 +65,18 @@ def login_oauth(
 @router.get("/me", response_model=UserResponse)
 def get_me(current_user: User = Depends(get_current_user)):
     return current_user
+
+
+@router.patch("/preferences", response_model=UserResponse)
+def patch_preferences(
+    request: PreferencesRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    return update_user_preferences(
+        db,
+        current_user,
+        brokers=request.brokers,
+        sectors=request.sectors,
+        style=request.style,
+    )

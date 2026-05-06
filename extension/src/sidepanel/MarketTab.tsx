@@ -1,10 +1,10 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import {
   fetchMarketDashboard,
-  fetchRiskAlerts,
+  fetchWatchlist,
   type MarketDashboardData,
-  type RiskAlert,
+  type WatchlistResponse,
 } from "../shared/api";
 import { getAuthToken } from "../shared/auth";
 import { storageGet, storageSet } from "../shared/chrome";
@@ -12,7 +12,30 @@ import { storageGet, storageSet } from "../shared/chrome";
 const FAST_REFRESH_MS = 15_000;
 const SLOW_REFRESH_MS = 60_000;
 const LAST_MARKET_DATA_KEY = "lastMarketData";
+const LAST_MARKET_WATCHLIST_KEY = "lastMarketWatchlist";
 const MARKET_TIMEZONE = "Asia/Kolkata";
+const SECTOR_ORDER = [
+  "IT",
+  "Banking",
+  "Pharma",
+  "Auto",
+  "Energy",
+  "Metals",
+  "Realty",
+  "FMCG",
+  "PSU Bank",
+] as const;
+const SECTOR_SHORT_LABELS: Record<string, string> = {
+  IT: "IT",
+  Banking: "Bank",
+  Pharma: "Pharma",
+  Auto: "Auto",
+  Energy: "Energy",
+  Metals: "Metal",
+  Realty: "Realty",
+  FMCG: "FMCG",
+  "PSU Bank": "PSU",
+};
 
 const numFmt = new Intl.NumberFormat("en-IN", { maximumFractionDigits: 2 });
 const fmtN = (n: number | null | undefined) => (n == null ? "—" : numFmt.format(n));
@@ -78,55 +101,87 @@ function getFetchedTimeLabel(valueMs: number | null): string {
   }).format(new Date(valueMs));
 }
 
-function StatusDot({ status }: { status: string }) {
-  const isOpen = status === "open";
-  const isPreOpen = status === "pre_open";
-  const color = isOpen ? "#16a34a" : isPreOpen ? "#f59e0b" : "#dc2626";
-  const label = isOpen ? "Market Open" : isPreOpen ? "Pre-Open" : "Market Closed";
+function globalCueInterpretation(data: MarketDashboardData["global_cues"]): string {
+  const spx = data.sp500_futures?.change_pct;
+  if (spx != null && spx < -0.5) {
+    return "US futures weak → cautious opening likely";
+  }
+  if (spx != null && spx > 0.5) {
+    return "US futures positive → supportive for opening";
+  }
+  return "US futures flat → neutral cue";
+}
+
+function regimeTone(trend: MarketDashboardData["regime"]["nifty_trend"]) {
+  if (trend === "Bullish") return "bullish";
+  if (trend === "Bearish") return "bearish";
+  return "sideways";
+}
+
+function regimeSummary(data: MarketDashboardData["regime"]): string {
+  const trend = data.nifty_trend;
+  const breadth = `${data.breadth.pct_advancing}% advancing`;
+  if (trend === "Bullish") {
+    return `🟢 Bullish · ${data.nifty_vs_vwap} · ${breadth}`;
+  }
+  if (trend === "Bearish") {
+    return `🔴 Bearish · ${data.nifty_vs_vwap === "Below VWAP" ? "Nifty weak" : data.nifty_vs_vwap} · ${breadth}`;
+  }
+  return `🟡 Sideways · Range-bound · ${breadth}`;
+}
+
+function SectorBox({
+  sector,
+  data,
+  isPreferred,
+}: {
+  sector: string;
+  data?: { index: string; value: number | null; change_pct: number | null };
+  isPreferred: boolean;
+}) {
+  const change = data?.change_pct ?? null;
+  const tone =
+    change == null
+      ? "rgba(148, 163, 184, 0.10)"
+      : change > 0
+        ? `rgba(22, 163, 74, ${Math.min(0.24, 0.08 + Math.abs(change) / 10)})`
+        : `rgba(220, 38, 38, ${Math.min(0.24, 0.08 + Math.abs(change) / 10)})`;
+
   return (
-    <span className="mkt-status-pill" style={{ borderColor: color }}>
-      <span className="mkt-dot" style={{ background: color }} />
-      {label}
-    </span>
+    <div className="mkt-sector-box" style={{ background: tone }}>
+      <div className="mkt-sector-box-top">
+        <span className="mkt-sector-name">{SECTOR_SHORT_LABELS[sector] ?? sector}</span>
+        {isPreferred ? <span className="mkt-sector-star">★</span> : null}
+      </div>
+      <div className="mkt-sector-change" style={{ color: pctColor(change) }}>
+        {fmtPct(change)}
+      </div>
+    </div>
   );
 }
 
 function IndexCard({
   label,
   data,
+  isVix = false,
 }: {
   label: string;
-  data: MarketDashboardData["indices"][string];
+  data:
+    | MarketDashboardData["indices"][string]
+    | { value: number | null; change?: number | null; change_pct?: number | null; context?: string };
+  isVix?: boolean;
 }) {
   return (
-    <div className="mkt-index-card">
+    <div className="mkt-index-card compact">
       <div className="mkt-index-name">{label}</div>
-      <div className="mkt-index-value">{fmtN(data?.value)}</div>
-      <div className="mkt-index-change" style={{ color: pctColor(data?.change_pct) }}>
-        {data?.change != null ? (data.change >= 0 ? "▲" : "▼") : ""} {fmtN(data?.change)} (
-        {fmtPct(data?.change_pct)})
-      </div>
-    </div>
-  );
-}
-
-function VixCard({ vix }: { vix: MarketDashboardData["vix"] }) {
-  const ctxColor =
-    vix.context === "Low"
-      ? "#16a34a"
-      : vix.context === "Moderate"
-        ? "#f59e0b"
-        : vix.context === "Elevated"
-          ? "#ea580c"
-          : vix.context === "High"
-            ? "#dc2626"
-            : "#64748b";
-  return (
-    <div className="mkt-index-card">
-      <div className="mkt-index-name">India VIX</div>
-      <div className="mkt-index-value">{fmtN(vix.value)}</div>
-      <div className="mkt-index-change" style={{ color: ctxColor, fontWeight: 600 }}>
-        {vix.context}
+      <div className="mkt-index-value">{fmtN(data?.value ?? null)}</div>
+      <div
+        className="mkt-index-change"
+        style={{ color: isVix ? "#475569" : pctColor((data as { change_pct?: number | null }).change_pct) }}
+      >
+        {isVix
+          ? (data as { context?: string }).context ?? "Unknown"
+          : fmtPct((data as { change_pct?: number | null }).change_pct)}
       </div>
     </div>
   );
@@ -144,7 +199,6 @@ function MoverRow({
       <span className="mkt-mover-sym">{item.symbol}</span>
       <span className="mkt-mover-price">₹{fmtN(item.price)}</span>
       <span className="mkt-mover-pct" style={{ color: isGainer ? "#16a34a" : "#dc2626" }}>
-        {isGainer ? "+" : ""}
         {fmtPct(item.change_pct)}
       </span>
     </div>
@@ -169,14 +223,13 @@ function GlobalCueRow({
   );
 }
 
-function FiiDiiSection({ data }: { data: MarketDashboardData["fii_dii"] }) {
-  if (data.source === "unavailable" || (data.fii_net == null && data.dii_net == null)) {
-    return (
-      <div className="mkt-section">
-        <h3 className="mkt-section-title">FII / DII Activity</h3>
-        <p className="mkt-unavail">Live data unavailable - check NSE website for latest figures.</p>
-      </div>
-    );
+function FiiDiiSection({
+  data,
+}: {
+  data: MarketDashboardData["fii_dii"];
+}) {
+  if (!data) {
+    return null;
   }
 
   const fii = data.fii_net ?? 0;
@@ -184,12 +237,12 @@ function FiiDiiSection({ data }: { data: MarketDashboardData["fii_dii"] }) {
 
   return (
     <div className="mkt-section">
-      <h3 className="mkt-section-title">FII / DII Activity</h3>
-      {data.date ? (
-        <p className="mkt-unavail" style={{ marginTop: 0 }}>
-          As of {data.date}
-        </p>
-      ) : null}
+      <div className="mkt-section-heading-row">
+        <div>
+          <h3 className="mkt-section-title">FII / DII</h3>
+          {data.date ? <p className="mkt-section-subcopy">As of {data.date}</p> : null}
+        </div>
+      </div>
       <div className="mkt-fiidii-bar-row">
         <span className="mkt-fiidii-lbl">FII</span>
         <div className="mkt-fiidii-bar-wrap">
@@ -201,13 +254,7 @@ function FiiDiiSection({ data }: { data: MarketDashboardData["fii_dii"] }) {
             }}
           />
         </div>
-        <span
-          style={{
-            color: fii >= 0 ? "#16a34a" : "#dc2626",
-            fontWeight: 600,
-            fontSize: 12,
-          }}
-        >
+        <span className="mkt-fiidii-value" style={{ color: fii >= 0 ? "#16a34a" : "#dc2626" }}>
           {fii >= 0 ? "+" : ""}₹{numFmt.format(Math.abs(fii))} Cr
         </span>
       </div>
@@ -222,13 +269,7 @@ function FiiDiiSection({ data }: { data: MarketDashboardData["fii_dii"] }) {
             }}
           />
         </div>
-        <span
-          style={{
-            color: dii >= 0 ? "#16a34a" : "#dc2626",
-            fontWeight: 600,
-            fontSize: 12,
-          }}
-        >
+        <span className="mkt-fiidii-value" style={{ color: dii >= 0 ? "#16a34a" : "#dc2626" }}>
           {dii >= 0 ? "+" : ""}₹{numFmt.format(Math.abs(dii))} Cr
         </span>
       </div>
@@ -243,53 +284,31 @@ function SkeletonBar({ className }: { className?: string }) {
 function MarketSkeleton() {
   return (
     <div className="mkt-root" aria-hidden="true">
-      <div className="mkt-header">
-        <SkeletonBar className="mkt-skeleton-pill" />
-        <SkeletonBar className="mkt-skeleton-updated" />
-      </div>
-
       <div className="mkt-section">
-        <div className="mkt-index-grid">
-          {Array.from({ length: 4 }).map((_, index) => (
-            <div key={index} className="mkt-index-card">
+        <SkeletonBar className="mkt-skeleton-regime" />
+      </div>
+      <div className="mkt-section">
+        <SkeletonBar className="mkt-skeleton-title" />
+        <div className="mkt-sector-grid">
+          {Array.from({ length: 9 }).map((_, index) => (
+            <div key={index} className="mkt-sector-box">
               <SkeletonBar className="mkt-skeleton-label" />
-              <SkeletonBar className="mkt-skeleton-value" />
               <SkeletonBar className="mkt-skeleton-change" />
             </div>
           ))}
         </div>
       </div>
-
-      {["Top Gainers", "Top Losers", "Global Cues", "FII / DII Activity"].map(
-        (title, index) => (
-          <div key={title} className="mkt-section">
-            <h3 className="mkt-section-title">{title}</h3>
-            <div className="mkt-skeleton-list">
-              {Array.from({ length: index === 3 ? 2 : 4 }).map((_, rowIndex) => (
-                <div
-                  key={`${title}-${rowIndex}`}
-                  className={index === 3 ? "mkt-fiidii-bar-row" : "mkt-mover-row"}
-                >
-                  <SkeletonBar className="mkt-skeleton-row-label" />
-                  <SkeletonBar className="mkt-skeleton-row-value" />
-                  <SkeletonBar className="mkt-skeleton-row-change" />
-                </div>
-              ))}
-            </div>
-          </div>
-        )
-      )}
     </div>
   );
 }
 
-export default function MarketTab() {
+export default function MarketTab({ isSignedIn }: { isSignedIn: boolean }) {
   const [data, setData] = useState<MarketDashboardData | null>(null);
+  const [watchlist, setWatchlist] = useState<WatchlistResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [lastFetchedAtMs, setLastFetchedAtMs] = useState<number | null>(null);
-  const [riskAlerts, setRiskAlerts] = useState<RiskAlert[]>([]);
   const mountedRef = useRef(true);
   const hasDataRef = useRef(false);
   const timerRef = useRef<number | null>(null);
@@ -299,7 +318,7 @@ export default function MarketTab() {
     hasDataRef.current = Boolean(data);
   }, [data]);
 
-  async function load() {
+  async function load(nextToken?: string | null) {
     if (fetchInFlightRef.current) {
       return;
     }
@@ -315,18 +334,26 @@ export default function MarketTab() {
     }
 
     try {
-      const result = await fetchMarketDashboard();
+      const token = typeof nextToken !== "undefined" ? nextToken : await getAuthToken();
+      const [dashboardResult, watchlistResult] = await Promise.all([
+        fetchMarketDashboard(token),
+        token ? fetchWatchlist(token).catch(() => null) : Promise.resolve(null),
+      ]);
+
       if (mountedRef.current) {
-        setData(result);
+        setData(dashboardResult);
+        setWatchlist(watchlistResult);
         setError(null);
         setLastFetchedAtMs(Date.now());
       }
-      void storageSet(LAST_MARKET_DATA_KEY, result).catch(() => undefined);
+
+      void storageSet(LAST_MARKET_DATA_KEY, dashboardResult).catch(() => undefined);
+      if (watchlistResult) {
+        void storageSet(LAST_MARKET_WATCHLIST_KEY, watchlistResult).catch(() => undefined);
+      }
     } catch (nextError) {
       if (mountedRef.current) {
-        setError(
-          nextError instanceof Error ? nextError.message : "Failed to load market data"
-        );
+        setError(nextError instanceof Error ? nextError.message : "Failed to load market data");
       }
     } finally {
       fetchInFlightRef.current = false;
@@ -355,21 +382,27 @@ export default function MarketTab() {
     mountedRef.current = true;
 
     async function hydrate() {
-      const cached = await storageGet<MarketDashboardData>(LAST_MARKET_DATA_KEY).catch(
-        () => null
-      );
+      const [cachedDashboard, cachedWatchlist] = await Promise.all([
+        storageGet<MarketDashboardData>(LAST_MARKET_DATA_KEY).catch(() => null),
+        storageGet<WatchlistResponse>(LAST_MARKET_WATCHLIST_KEY).catch(() => null),
+      ]);
 
       if (!mountedRef.current) {
         return;
       }
 
-      if (cached) {
-        setData(cached);
-        setLastFetchedAtMs(new Date(cached.last_updated).getTime() || Date.now());
+      if (cachedDashboard) {
+        setData(cachedDashboard);
+        setLastFetchedAtMs(new Date(cachedDashboard.last_updated).getTime() || Date.now());
         setLoading(false);
       }
 
-      await load();
+      if (cachedWatchlist) {
+        setWatchlist(cachedWatchlist);
+      }
+
+      const token = await getAuthToken().catch(() => null);
+      await load(token);
 
       if (mountedRef.current) {
         scheduleNextRefresh();
@@ -385,37 +418,6 @@ export default function MarketTab() {
       }
     };
   }, []);
-
-  useEffect(() => {
-    let active = true;
-    let timer: number | null = null;
-
-    async function loadAlerts() {
-      const token = await getAuthToken();
-      if (!token) {
-        if (active) setRiskAlerts([]);
-        return;
-      }
-      const alerts = await fetchRiskAlerts(token).catch(() => []);
-      if (active) setRiskAlerts(alerts);
-    }
-
-    void loadAlerts();
-    timer = window.setInterval(() => void loadAlerts(), 60_000);
-
-    return () => {
-      active = false;
-      if (timer != null) window.clearInterval(timer);
-    };
-  }, []);
-
-  if (loading && !data) {
-    return <MarketSkeleton />;
-  }
-
-  function handleManualRefresh() {
-    void load();
-  }
 
   if (loading && !data) {
     return <MarketSkeleton />;
@@ -437,103 +439,142 @@ export default function MarketTab() {
     return null;
   }
 
+  const preferredSectors = new Set(watchlist?.preferred_sectors ?? []);
+  const sectorPerformance = Object.keys(data.sector_performance || {}).length
+    ? data.sector_performance
+    : watchlist?.sector_performance ?? {};
+  const yourStocks = (watchlist?.recent_stock_quotes ?? []).slice(0, 6);
+  const showYourStocks = isSignedIn && yourStocks.length > 0;
+
   return (
     <div className="mkt-root">
-      {riskAlerts.length ? (
-        <div className="risk-alert-list">
-          {riskAlerts.map((alert) => (
-            <div
-              key={`${alert.alert_type}-${alert.timestamp}`}
-              className={`risk-alert risk-alert--${alert.severity}`}
-            >
-              <strong>{alert.title}</strong>
-              <p>{alert.message}</p>
-            </div>
-          ))}
-        </div>
+      {data.is_stale ? (
+        <div className="mkt-stale-banner">Data may be delayed. Showing the latest saved snapshot.</div>
       ) : null}
-
-      {data.is_stale && (
-        <div className="mkt-stale-banner">
-          Data may be delayed. Source temporarily unavailable.
-        </div>
-      )}
 
       {error ? (
-        <div className="mkt-inline-note">
-          Showing the last saved market snapshot while a refresh retries.
+        <div className="mkt-inline-note">Showing cached market context while a refresh retries.</div>
+      ) : null}
+
+      {isSignedIn ? (
+        <div className={`mkt-regime-bar ${regimeTone(data.regime.nifty_trend)}`}>
+          {regimeSummary(data.regime)}
         </div>
       ) : null}
 
-      <div className="mkt-header">
-        <StatusDot status={data.market_status} />
-        <div className="mkt-updated-wrap">
-          <span className="mkt-updated">{getFetchedTimeLabel(lastFetchedAtMs)}</span>
-          <button
-            aria-label="Refresh market data"
-            className="mkt-refresh-button"
-            disabled={refreshing || loading}
-            onClick={handleManualRefresh}
-            title="Refresh market data"
-          >
-            {refreshing || loading ? "Refreshing..." : "\u27F3 Refresh"}
-          </button>
+      {showYourStocks ? (
+        <div className="mkt-section">
+          <div className="mkt-section-heading-row">
+            <div>
+              <h3 className="mkt-section-title">Your Stocks</h3>
+              <p className="mkt-section-subcopy">Based on your recent trades</p>
+            </div>
+          </div>
+          <div className="mkt-your-stocks-list">
+            {yourStocks.map((stock, index) => (
+              <div
+                key={`${stock.symbol}-${index}`}
+                className={`mkt-your-stock-row${index % 2 === 0 ? " alt" : ""}`}
+              >
+                <span className="mkt-your-stock-symbol">{stock.symbol}</span>
+                <span className="mkt-your-stock-price">₹{fmtN(stock.price)}</span>
+                <span
+                  className="mkt-your-stock-change"
+                  style={{ color: pctColor(stock.change_pct) }}
+                >
+                  {fmtPct(stock.change_pct)}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
+      <div className="mkt-section">
+        <div className="mkt-section-heading-row">
+          <div>
+            <h3 className="mkt-section-title">Sector Flow</h3>
+          </div>
+        </div>
+        <div className="mkt-sector-grid">
+          {SECTOR_ORDER.map((sector) => (
+            <SectorBox
+              key={sector}
+              sector={sector}
+              data={sectorPerformance[sector]}
+              isPreferred={preferredSectors.has(sector)}
+            />
+          ))}
         </div>
       </div>
 
       <div className="mkt-section">
-        <div className="mkt-index-grid">
+        <div className="mkt-index-grid compact">
           {Object.entries(INDEX_LABELS).map(([key, label]) => (
             <IndexCard
               key={key}
               label={label}
-              data={
-                data.indices[key] ?? {
-                  value: null,
-                  change: null,
-                  change_pct: null,
-                }
-              }
+              data={data.indices[key] ?? { value: null, change: null, change_pct: null }}
             />
           ))}
-          <VixCard vix={data.vix} />
+          <IndexCard label="India VIX" data={data.vix} isVix={true} />
         </div>
       </div>
 
       <div className="mkt-section">
-        <h3 className="mkt-section-title mkt-title-green">{"\u25B2 Top Gainers"}</h3>
-        {data.top_gainers.length === 0 ? (
-          <p className="mkt-unavail">No data</p>
-        ) : (
-          data.top_gainers.map((gainer) => (
-            <MoverRow key={gainer.symbol} item={gainer} isGainer={true} />
-          ))
-        )}
+        <div className="mkt-section-heading-row">
+          <div>
+            <h3 className="mkt-section-title">Market Movers</h3>
+          </div>
+        </div>
+        <div className="mkt-movers-grid">
+          <div className="mkt-movers-col">
+            <div className="mkt-mini-label">Gainers</div>
+            {data.top_gainers.slice(0, 5).map((gainer) => (
+              <MoverRow key={gainer.symbol} item={gainer} isGainer={true} />
+            ))}
+          </div>
+          <div className="mkt-movers-col">
+            <div className="mkt-mini-label">Losers</div>
+            {data.top_losers.slice(0, 5).map((loser) => (
+              <MoverRow key={loser.symbol} item={loser} isGainer={false} />
+            ))}
+          </div>
+        </div>
       </div>
 
       <div className="mkt-section">
-        <h3 className="mkt-section-title mkt-title-red">{"\u25BC Top Losers"}</h3>
-        {data.top_losers.length === 0 ? (
-          <p className="mkt-unavail">No data</p>
-        ) : (
-          data.top_losers.map((loser) => (
-            <MoverRow key={loser.symbol} item={loser} isGainer={false} />
-          ))
-        )}
-      </div>
-
-      <div className="mkt-section">
-        <h3 className="mkt-section-title">Global Cues</h3>
-        {Object.entries(GLOBAL_LABELS).map(([key, label]) => (
-          <GlobalCueRow
-            key={key}
-            label={label}
-            data={data.global_cues[key] ?? { value: null, change_pct: null }}
-          />
-        ))}
+        <div className="mkt-section-heading-row">
+          <div>
+            <h3 className="mkt-section-title">Global Cues</h3>
+            <p className="mkt-section-subcopy">{globalCueInterpretation(data.global_cues)}</p>
+          </div>
+        </div>
+        <div className="mkt-global-grid">
+          {Object.entries(GLOBAL_LABELS).map(([key, label]) => (
+            <GlobalCueRow
+              key={key}
+              label={label}
+              data={data.global_cues[key] ?? { value: null, change_pct: null }}
+            />
+          ))}
+        </div>
       </div>
 
       <FiiDiiSection data={data.fii_dii} />
+
+      <div className="mkt-footer-bar">
+        <span className="mkt-footer-time">{getFetchedTimeLabel(lastFetchedAtMs)}</span>
+        <button
+          aria-label="Refresh market data"
+          className="mkt-refresh-button"
+          disabled={refreshing || loading}
+          onClick={() => void load()}
+          title="Refresh market data"
+        >
+          {refreshing || loading ? "Refreshing..." : "\u27F3 Refresh"}
+        </button>
+      </div>
     </div>
   );
 }

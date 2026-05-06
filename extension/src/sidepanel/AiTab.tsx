@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { APIError, fetchWhyMoving, type WhyMovingResponse } from "../shared/api";
 import { getAuthToken } from "../shared/auth";
@@ -6,6 +6,7 @@ import { storageGet, storageSet } from "../shared/chrome";
 
 const RECENT_AI_QUERIES_KEY = "recentAiQueries";
 const MAX_RECENT_QUERIES = 5;
+const MAX_VISIBLE_SOURCES = 3;
 
 function toFiniteNumber(value: unknown): number | null {
   return typeof value === "number" && Number.isFinite(value) ? value : null;
@@ -33,58 +34,79 @@ function formatNullablePercent(value: unknown): string {
   return formatSignedPercent(value);
 }
 
-function formatPublishedAt(value?: string | null): string {
-  if (!value) {
-    return "Latest";
-  }
-
-  const parts = value.split(" ");
-  if (parts.length >= 2) {
-    return `${parts[0]} • ${parts[1]} IST`;
-  }
-
-  return value;
-}
-
-function formatRecencyBucket(value?: string | null): string {
-  if (value === "today") {
-    return "Today";
-  }
-  if (value === "yesterday") {
-    return "Yesterday";
-  }
-  return "Recent";
-}
-
-function formatConfidence(value?: string | null): string {
-  if (value === "high") {
-    return "High confidence";
-  }
-  if (value === "medium") {
-    return "Medium confidence";
-  }
-  return "Low confidence";
-}
-
-function formatSourceQuality(value?: string | null): string {
-  if (value === "official_filing") {
-    return "Official filing";
-  }
-  if (value === "trusted_news") {
-    return "Trusted news";
-  }
-  if (value === "social_chatter") {
-    return "Social chatter";
-  }
-  return "Fallback web";
-}
-
 function getExplanationBody(result: WhyMovingResponse): string {
   if (!result.disclaimer) {
     return result.explanation.trim();
   }
 
   return result.explanation.replace(result.disclaimer, "").trim();
+}
+
+function normalizePublisherName(publisher: string | undefined): string {
+  const cleaned = (publisher ?? "").trim();
+  if (!cleaned) {
+    return "News";
+  }
+  if (/^(the )?economic times$/i.test(cleaned) || /^et now$/i.test(cleaned)) {
+    return "Economic Times";
+  }
+  if (/^livemint$/i.test(cleaned) || /^mint$/i.test(cleaned)) {
+    return "Livemint";
+  }
+  return cleaned;
+}
+
+function getPublisherPriority(publisher: string | undefined): number {
+  const normalized = normalizePublisherName(publisher).toLowerCase();
+  if (normalized === "moneycontrol") return 0;
+  if (normalized === "economic times") return 1;
+  if (normalized === "business standard") return 2;
+  if (normalized === "financial express") return 3;
+  if (normalized === "livemint") return 4;
+  if (normalized === "ndtv profit") return 5;
+  return 6;
+}
+
+function truncateTitle(title: string, maxLength = 80): string {
+  if (title.length <= maxLength) {
+    return title;
+  }
+  return `${title.slice(0, maxLength - 1).trimEnd()}…`;
+}
+
+function parsePublishedAt(value?: string | null): Date | null {
+  if (!value) {
+    return null;
+  }
+
+  const normalized = value.replace(" IST", "+05:30").replace(" ", "T");
+  const parsed = new Date(normalized);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+function formatRelativeDate(value?: string | null): string {
+  const publishedAt = parsePublishedAt(value);
+  if (!publishedAt) {
+    return "Recent";
+  }
+
+  const now = new Date();
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const startOfPublishedDay = new Date(
+    publishedAt.getFullYear(),
+    publishedAt.getMonth(),
+    publishedAt.getDate()
+  );
+  const diffMs = startOfToday.getTime() - startOfPublishedDay.getTime();
+  const diffDays = Math.round(diffMs / 86_400_000);
+
+  if (diffDays <= 0) {
+    return "Today";
+  }
+  if (diffDays === 1) {
+    return "Yesterday";
+  }
+  return `${diffDays} days ago`;
 }
 
 export default function AiTab({ isSignedIn }: { isSignedIn: boolean }) {
@@ -109,6 +131,27 @@ export default function AiTab({ isSignedIn }: { isSignedIn: boolean }) {
       active = false;
     };
   }, []);
+
+  const visibleSources = useMemo(() => {
+    const sources = Array.isArray(result?.sources) ? result.sources : [];
+    return [...sources]
+      .sort((left, right) => {
+        const priorityGap =
+          getPublisherPriority(left.publisher) - getPublisherPriority(right.publisher);
+        if (priorityGap !== 0) {
+          return priorityGap;
+        }
+
+        const leftTime = parsePublishedAt(left.published_at)?.getTime() ?? 0;
+        const rightTime = parsePublishedAt(right.published_at)?.getTime() ?? 0;
+        if (leftTime !== rightTime) {
+          return rightTime - leftTime;
+        }
+
+        return (right.final_score ?? 0) - (left.final_score ?? 0);
+      })
+      .slice(0, MAX_VISIBLE_SOURCES);
+  }, [result]);
 
   async function saveRecentQuery(nextSymbol: string) {
     const nextQueries = [nextSymbol, ...recentQueries.filter((item) => item !== nextSymbol)]
@@ -226,29 +269,19 @@ export default function AiTab({ isSignedIn }: { isSignedIn: boolean }) {
 
           <p className="ai-result-explanation">{getExplanationBody(result)}</p>
 
-          <div className="ai-signal-row">
-            <span className={`ai-signal-pill confidence-${result.confidence ?? "low"}`}>
-              {formatConfidence(result.confidence)}
-            </span>
-            <span className="ai-signal-pill quality">
-              {formatSourceQuality(result.source_quality)}
-            </span>
-          </div>
-
           <div className="ai-source-panel">
             <div className="ai-source-panel-header">
               <div>
                 <div className="ai-source-title">Latest coverage</div>
                 <p className="ai-source-subcopy">
-                  Showing up to {result.source_count || 0} relevant articles from today first,
-                  then yesterday only if needed.
+                  Clean, readable source links for the most relevant recent articles.
                 </p>
               </div>
               {result.cached ? <span className="ai-source-state">Cached</span> : null}
             </div>
 
             <div className="ai-source-grid">
-              {(Array.isArray(result.sources) ? result.sources : []).map((source) => (
+              {visibleSources.map((source) => (
                 <a
                   key={`${source.url}-${source.title}`}
                   className="ai-source-card"
@@ -257,18 +290,16 @@ export default function AiTab({ isSignedIn }: { isSignedIn: boolean }) {
                   rel="noreferrer"
                 >
                   <div className="ai-source-card-top">
-                    <span className="ai-source-publisher">{source.publisher}</span>
-                    <span className={`ai-source-badge ${source.recency_bucket ?? "recent"}`}>
-                      {formatRecencyBucket(source.recency_bucket)}
+                    <span className="ai-source-publisher">
+                      {normalizePublisherName(source.publisher)}
+                    </span>
+                    <span className="ai-source-date">
+                      {formatRelativeDate(source.published_at)}
                     </span>
                   </div>
-                  <strong className="ai-source-card-title">{source.title}</strong>
-                  <div className="ai-source-card-footer">
-                    <span>{formatPublishedAt(source.published_at)}</span>
-                    <span>
-                      Score {Math.round(source.final_score || 0)} • Open article
-                    </span>
-                  </div>
+                  <strong className="ai-source-card-title">
+                    {truncateTitle(source.title)}
+                  </strong>
                 </a>
               ))}
             </div>

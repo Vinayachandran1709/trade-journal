@@ -168,7 +168,7 @@ export default function App() {
         ))}
       </nav>
 
-      {activeTab === "market" && <MarketTab />}
+      {activeTab === "market" && <MarketTab isSignedIn={Boolean(user)} />}
 
       {activeTab === "ai" && <AiTab isSignedIn={Boolean(user)} />}
 

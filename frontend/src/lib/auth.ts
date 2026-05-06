@@ -1,5 +1,11 @@
 import { apiFetch } from "./api";
-import type { LoginRequest, SignupRequest, TokenResponse, User } from "@/types/user";
+import type {
+  LoginRequest,
+  SignupRequest,
+  TokenResponse,
+  User,
+  UserPreferences,
+} from "@/types/user";
 
 export async function signup(data: SignupRequest): Promise<User> {
   return apiFetch<User>("/auth/signup", {
@@ -19,6 +25,15 @@ export async function login(data: LoginRequest): Promise<string> {
 
 export async function getMe(): Promise<User> {
   return apiFetch<User>("/auth/me");
+}
+
+export async function updatePreferences(
+  data: UserPreferences
+): Promise<User> {
+  return apiFetch<User>("/auth/preferences", {
+    method: "PATCH",
+    body: JSON.stringify(data),
+  });
 }
 
 export function logout(): void {
