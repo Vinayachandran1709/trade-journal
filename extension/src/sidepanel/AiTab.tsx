@@ -1,6 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 
-import { APIError, fetchWhyMoving, type WhyMovingResponse } from "../shared/api";
+import {
+  APIError,
+  fetchCompletedTrades,
+  fetchWhyMoving,
+  type CompletedTradeListItem,
+  type TickerIntelResponse,
+  type WhyMovingResponse,
+} from "../shared/api";
 import { getAuthToken } from "../shared/auth";
 import { storageGet, storageSet } from "../shared/chrome";
 
@@ -19,6 +26,13 @@ function formatSignedPercent(value: unknown): string {
   }
 
   return `${numericValue >= 0 ? "+" : ""}${numericValue.toFixed(2)}%`;
+}
+
+function formatPercent(value: number | null | undefined): string {
+  if (value == null || !Number.isFinite(value)) {
+    return "--";
+  }
+  return `${(value * 100).toFixed(0)}%`;
 }
 
 function formatIndianNumber(num: number | null): string {
@@ -71,7 +85,7 @@ function truncateTitle(title: string, maxLength = 80): string {
   if (title.length <= maxLength) {
     return title;
   }
-  return `${title.slice(0, maxLength - 1).trimEnd()}…`;
+  return `${title.slice(0, maxLength - 3).trimEnd()}...`;
 }
 
 function parsePublishedAt(value?: string | null): Date | null {
@@ -115,6 +129,8 @@ export default function AiTab({ isSignedIn }: { isSignedIn: boolean }) {
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<WhyMovingResponse | null>(null);
   const [recentQueries, setRecentQueries] = useState<string[]>([]);
+  const [previewIntel, setPreviewIntel] = useState<TickerIntelResponse | null>(null);
+  const [personalTrades, setPersonalTrades] = useState<CompletedTradeListItem[]>([]);
 
   useEffect(() => {
     let active = true;
@@ -153,6 +169,18 @@ export default function AiTab({ isSignedIn }: { isSignedIn: boolean }) {
       .slice(0, MAX_VISIBLE_SOURCES);
   }, [result]);
 
+  const personalHistory = useMemo(() => {
+    if (!personalTrades.length) {
+      return null;
+    }
+    const wins = personalTrades.filter((trade) => trade.pnl > 0).length;
+    return {
+      count: personalTrades.length,
+      winRate: wins / personalTrades.length,
+      lastTrade: personalTrades[0],
+    };
+  }, [personalTrades]);
+
   async function saveRecentQuery(nextSymbol: string) {
     const nextQueries = [nextSymbol, ...recentQueries.filter((item) => item !== nextSymbol)]
       .slice(0, MAX_RECENT_QUERIES);
@@ -175,6 +203,24 @@ export default function AiTab({ isSignedIn }: { isSignedIn: boolean }) {
     setSymbol(normalizedSymbol);
     setLoading(true);
     setError(null);
+    setResult(null);
+    setPersonalTrades([]);
+
+    void chrome.runtime
+      .sendMessage({
+        type: "ticker:fetch-intel",
+        payload: { symbol: normalizedSymbol.toUpperCase() },
+      })
+      .then((response) => {
+        if (response?.ok && response.tickerIntel) {
+          setPreviewIntel(response.tickerIntel as TickerIntelResponse);
+          return;
+        }
+        setPreviewIntel(null);
+      })
+      .catch(() => {
+        setPreviewIntel(null);
+      });
 
     try {
       const token = await getAuthToken();
@@ -184,9 +230,25 @@ export default function AiTab({ isSignedIn }: { isSignedIn: boolean }) {
 
       const response = await fetchWhyMoving(token, normalizedSymbol);
       setResult(response);
+
+      const completedTrades = await fetchCompletedTrades(token, { limit: 200, offset: 0 }).catch(
+        () => []
+      );
+      setPersonalTrades(
+        completedTrades
+          .filter(
+            (trade) => trade.stock_symbol.toUpperCase() === normalizedSymbol.toUpperCase()
+          )
+          .sort(
+            (left, right) =>
+              new Date(right.exit_date).getTime() - new Date(left.exit_date).getTime()
+          )
+      );
+
       await saveRecentQuery(normalizedSymbol);
     } catch (queryError) {
       setResult(null);
+      setPersonalTrades([]);
       if (queryError instanceof APIError && queryError.status === 429) {
         setError(queryError.message);
       } else {
@@ -248,6 +310,35 @@ export default function AiTab({ isSignedIn }: { isSignedIn: boolean }) {
 
       {error ? <div className="connection-error-banner">{error}</div> : null}
 
+      {loading ? (
+        <article className="ai-result-card ai-loading-card">
+          <div className="ai-loading-pulse" />
+          <div className="ai-result-header">
+            <div>
+              <h2>Analyzing {symbol.toUpperCase()}...</h2>
+              {previewIntel?.company_name ? (
+                <p className="ai-result-company">{previewIntel.company_name}</p>
+              ) : null}
+              {previewIntel ? (
+                <p className="ai-result-price">₹{formatPrice(previewIntel.price)}</p>
+              ) : null}
+            </div>
+            {previewIntel ? (
+              <span
+                className={`ai-result-change${
+                  (toFiniteNumber(previewIntel.change_pct) ?? 0) >= 0 ? " positive" : " negative"
+                }`}
+              >
+                {formatNullablePercent(previewIntel.change_pct)}
+              </span>
+            ) : null}
+          </div>
+          <p className="ai-result-explanation">
+            Pulling recent coverage and market context for this symbol.
+          </p>
+        </article>
+      ) : null}
+
       {result ? (
         <article className="ai-result-card">
           <div className="ai-result-header">
@@ -268,6 +359,30 @@ export default function AiTab({ isSignedIn }: { isSignedIn: boolean }) {
           </div>
 
           <p className="ai-result-explanation">{getExplanationBody(result)}</p>
+
+          {personalHistory ? (
+            <section className="ai-personal-history">
+              <div className="ai-personal-history-title">Your history with {result.symbol}</div>
+              <div className="ai-personal-stat">
+                <span>Trades</span>
+                <strong>{personalHistory.count}</strong>
+              </div>
+              <div className="ai-personal-stat">
+                <span>Win rate</span>
+                <strong>{formatPercent(personalHistory.winRate)}</strong>
+              </div>
+              <div className="ai-personal-stat">
+                <span>Last trade</span>
+                <strong>
+                  {new Date(personalHistory.lastTrade.exit_date).toLocaleDateString("en-IN", {
+                    day: "numeric",
+                    month: "short",
+                  })}{" "}
+                  · ₹{formatIndianNumber(personalHistory.lastTrade.pnl)}
+                </strong>
+              </div>
+            </section>
+          ) : null}
 
           <div className="ai-source-panel">
             <div className="ai-source-panel-header">
@@ -297,9 +412,7 @@ export default function AiTab({ isSignedIn }: { isSignedIn: boolean }) {
                       {formatRelativeDate(source.published_at)}
                     </span>
                   </div>
-                  <strong className="ai-source-card-title">
-                    {truncateTitle(source.title)}
-                  </strong>
+                  <strong className="ai-source-card-title">{truncateTitle(source.title)}</strong>
                 </a>
               ))}
             </div>

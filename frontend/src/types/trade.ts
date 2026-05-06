@@ -50,3 +50,23 @@ export interface CompletedTrade {
   holding_days: number;
   created_at: string;
 }
+
+export interface TradeSetup {
+  id: number;
+  user_id: number;
+  symbol: string | null;
+  thesis: string | null;
+  entry_price: number | null;
+  stop_loss_price: number | null;
+  target_price: number | null;
+  target2_price: number | null;
+  conviction_score: number | null;
+  checklist_responses: Record<string, unknown> | null;
+  position_size: number | null;
+  risk_amount: number | null;
+  risk_score: number | null;
+  risk_level: string | null;
+  linked_trade_id: number | null;
+  linked_at: string | null;
+  created_at: string;
+}

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import {
   fetchSetupReportCard,
@@ -9,6 +9,7 @@ import {
 } from "../shared/api";
 import { getAuthToken } from "../shared/auth";
 import type { CaptureState } from "../shared/captures";
+import { composePlanNote, extractPlanMetadata, type PlanValue, type ReasonValue } from "./behavioral";
 
 const EMOTIONS = [
   { emoji: "😎", label: "Confident", value: "confident" },
@@ -19,6 +20,21 @@ const EMOTIONS = [
   { emoji: "😐", label: "Neutral", value: "neutral" },
   { emoji: "🥱", label: "Bored", value: "bored" },
 ] as const;
+
+const PLAN_OPTIONS: Array<{ label: string; value: PlanValue; className: string }> = [
+  { label: "✅ Yes", value: "YES", className: "selected-yes" },
+  { label: "⚠️ Partially", value: "PARTIAL", className: "selected-partial" },
+  { label: "❌ No", value: "NO", className: "selected-no" },
+];
+
+const REASON_OPTIONS: Array<{ label: string; value: Exclude<ReasonValue, null> }> = [
+  { label: "Early exit", value: "EARLY_EXIT" },
+  { label: "Late entry", value: "LATE_ENTRY" },
+  { label: "Revenge", value: "REVENGE" },
+  { label: "Oversized", value: "OVERSIZED" },
+  { label: "FOMO", value: "FOMO" },
+  { label: "Ignored SL", value: "IGNORED_SL" },
+];
 
 const DATE_TIME_FORMATTER = new Intl.DateTimeFormat("en-IN", {
   day: "2-digit",
@@ -96,7 +112,6 @@ export default function CapturesTab({
       }
 
       setRecentLoading(true);
-
       try {
         const token = await getAuthToken();
         if (!token) {
@@ -123,7 +138,6 @@ export default function CapturesTab({
     }
 
     void loadRecentTrades();
-
     return () => {
       active = false;
     };
@@ -222,11 +236,7 @@ export default function CapturesTab({
                     {setup.risk_score ? `Risk ${setup.risk_score}` : "Risk pending"}
                   </small>
                 </span>
-                <em>
-                  {setup.linked_trade_id
-                    ? "Linked"
-                    : "Pending"}
-                </em>
+                <em>{setup.linked_trade_id ? "Linked" : "Pending"}</em>
               </button>
             ))}
           </div>
@@ -254,14 +264,47 @@ function CaptureCard({
   saving: boolean;
   onSave: (tradeId: number, emotionTag: string, note: string) => Promise<void>;
 }) {
+  const parsedNote = useMemo(() => extractPlanMetadata(trade.notes), [trade.notes]);
   const [emotionTag, setEmotionTag] = useState(trade.emotion_tag ?? "");
-  const [note, setNote] = useState(trade.notes ?? "");
+  const [plan, setPlan] = useState<PlanValue>(parsedNote.plan);
+  const [reason, setReason] = useState<ReasonValue>(parsedNote.reason);
+  const [note, setNote] = useState(parsedNote.text);
   const [noteOpen, setNoteOpen] = useState(false);
+
+  useEffect(() => {
+    const nextParsed = extractPlanMetadata(trade.notes);
+    setEmotionTag(trade.emotion_tag ?? "");
+    setPlan(nextParsed.plan);
+    setReason(nextParsed.reason);
+    setNote(nextParsed.text);
+  }, [trade.emotion_tag, trade.notes]);
+
+  function buildNote(nextPlan = plan, nextReason = reason, nextText = note) {
+    return composePlanNote({
+      plan: nextPlan,
+      reason: nextPlan === "NO" || nextPlan === "PARTIAL" ? nextReason : null,
+      text: nextText,
+    });
+  }
 
   function handleEmotionTap(value: string) {
     const next = emotionTag === value ? "" : value;
     setEmotionTag(next);
-    void onSave(trade.id, next, note);
+    void onSave(trade.id, next, buildNote());
+  }
+
+  function handlePlanTap(value: PlanValue) {
+    const nextPlan = plan === value ? null : value;
+    const nextReason = nextPlan === "NO" || nextPlan === "PARTIAL" ? reason : null;
+    setPlan(nextPlan);
+    setReason(nextReason);
+    void onSave(trade.id, emotionTag, buildNote(nextPlan, nextReason));
+  }
+
+  function handleReasonTap(value: Exclude<ReasonValue, null>) {
+    const nextReason = reason === value ? null : value;
+    setReason(nextReason);
+    void onSave(trade.id, emotionTag, buildNote(plan, nextReason));
   }
 
   return (
@@ -292,13 +335,47 @@ function CaptureCard({
         ))}
       </div>
 
+      <div className="post-trade-question">
+        <div className="plan-question-label">Did you follow your plan?</div>
+        <div className="plan-pills">
+          {PLAN_OPTIONS.map((option) => (
+            <button
+              key={option.value}
+              className={`plan-pill${plan === option.value ? ` ${option.className}` : ""}`}
+              onClick={() => handlePlanTap(option.value)}
+              disabled={saving}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+
+        {plan === "NO" || plan === "PARTIAL" ? (
+          <>
+            <div className="plan-question-label">What happened?</div>
+            <div className="reason-pills">
+              {REASON_OPTIONS.map((option) => (
+                <button
+                  key={option.value}
+                  className={`reason-pill${reason === option.value ? " selected" : ""}`}
+                  onClick={() => handleReasonTap(option.value)}
+                  disabled={saving}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+          </>
+        ) : null}
+      </div>
+
       {noteOpen ? (
         <textarea
           className="field-input field-textarea"
           value={note}
           autoFocus
           onChange={(event) => setNote(event.target.value)}
-          placeholder="Why this trade was taken..."
+          placeholder="What stood out about this trade?"
         />
       ) : (
         <button className="add-note-link" onClick={() => setNoteOpen(true)}>
@@ -310,7 +387,7 @@ function CaptureCard({
         <button
           className="save-button"
           disabled={saving}
-          onClick={() => onSave(trade.id, emotionTag, note)}
+          onClick={() => onSave(trade.id, emotionTag, buildNote(plan, reason, note))}
         >
           {saving ? "Saving..." : "Save"}
         </button>

@@ -28,7 +28,8 @@ export default function Navbar() {
 
   useEffect(() => {
     setLoggedIn(isAuthenticated());
-  }, []);
+    setMobileOpen(false);
+  }, [pathname]);
 
   useEffect(() => {
     const handler = () => setScrolled(window.scrollY > 20);
@@ -44,14 +45,17 @@ export default function Navbar() {
     router.push("/");
   };
 
-  const links = [
-    { href: "/pricing", label: "Pricing", show: true },
-    { href: "/download", label: "Download", show: true },
-    { href: "/dashboard", label: "Dashboard", show: loggedIn },
-    { href: "/account", label: "Account", show: loggedIn },
-  ].filter((link) => link.show);
+  const navLinks = [
+    { href: "/pricing", label: "Pricing" },
+    { href: "/download", label: "Download" },
+    ...(loggedIn ? [{ href: "/dashboard", label: "Dashboard" }] : []),
+  ];
+
   const onDarkHero = pathname === "/" || pathname === "/download";
   const solid = scrolled || !onDarkHero;
+  const desktopGhostClass = solid
+    ? "btn-ghost"
+    : "inline-flex items-center justify-center rounded-xl px-6 py-3 text-sm font-semibold text-slate-200 transition-all duration-200 hover:bg-white/10 hover:text-white";
 
   return (
     <nav
@@ -67,7 +71,7 @@ export default function Navbar() {
         </Link>
 
         <div className="hidden items-center gap-7 md:flex">
-          {links.map((link) => (
+          {navLinks.map((link) => (
             <Link
               key={link.href}
               href={link.href}
@@ -82,30 +86,24 @@ export default function Navbar() {
 
         <div className="hidden items-center gap-3 md:flex">
           {loggedIn ? (
-            <button
-              onClick={handleLogout}
-              className={`rounded-xl px-4 py-2 text-sm font-semibold transition ${
-                solid
-                  ? "text-gray-600 hover:bg-gray-100"
-                  : "text-slate-200 hover:bg-white/10 hover:text-white"
-              }`}
-            >
-              Logout
-            </button>
+            <>
+              <Link href="/account" className={desktopGhostClass}>
+                Account
+              </Link>
+              <button
+                onClick={handleLogout}
+                className={`${desktopGhostClass} ${solid ? "!text-rose-600 hover:!bg-rose-50" : "!text-rose-200 hover:!bg-white/10 hover:!text-rose-100"}`}
+              >
+                Log out
+              </button>
+            </>
           ) : (
             <>
-              <Link
-                href="/login"
-                className={`rounded-xl px-4 py-2 text-sm font-semibold transition ${
-                  solid
-                    ? "text-gray-600 hover:bg-gray-100"
-                    : "text-slate-200 hover:bg-white/10 hover:text-white"
-                }`}
-              >
+              <Link href="/login" className={desktopGhostClass}>
                 Login
               </Link>
-              <Link href="/signup" className="btn-primary py-2.5">
-                Get Started Free
+              <Link href="/signup" className="btn-primary">
+                Sign Up
               </Link>
             </>
           )}
@@ -136,7 +134,7 @@ export default function Navbar() {
         }`}
       >
         <div className="space-y-1">
-          {links.map((link) => (
+          {navLinks.map((link) => (
             <Link
               key={link.href}
               href={link.href}
@@ -149,24 +147,33 @@ export default function Navbar() {
         </div>
         <div className="mt-4 border-t border-gray-100 pt-4">
           {loggedIn ? (
-            <button onClick={handleLogout} className="btn-secondary w-full">
-              Logout
-            </button>
+            <div className="grid gap-2">
+              <Link
+                href="/account"
+                onClick={() => setMobileOpen(false)}
+                className="btn-secondary w-full"
+              >
+                Account
+              </Link>
+              <button onClick={handleLogout} className="btn-ghost w-full text-rose-600 hover:bg-rose-50">
+                Log out
+              </button>
+            </div>
           ) : (
             <div className="grid gap-2">
+              <Link
+                href="/login"
+                onClick={() => setMobileOpen(false)}
+                className="btn-ghost w-full"
+              >
+                Login
+              </Link>
               <Link
                 href="/signup"
                 onClick={() => setMobileOpen(false)}
                 className="btn-primary w-full"
               >
-                Get Started Free
-              </Link>
-              <Link
-                href="/login"
-                onClick={() => setMobileOpen(false)}
-                className="btn-secondary w-full"
-              >
-                Login
+                Sign Up
               </Link>
             </div>
           )}

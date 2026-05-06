@@ -1,19 +1,38 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import {
+  fetchCompletedTrades,
   fetchMarketDashboard,
   fetchWatchlist,
+  type CompletedTradeListItem,
   type MarketDashboardData,
+  type PatternsEnvelope,
+  type TickerIntelResponse,
   type WatchlistResponse,
 } from "../shared/api";
 import { getAuthToken } from "../shared/auth";
+import type { CaptureState } from "../shared/captures";
 import { storageGet, storageSet } from "../shared/chrome";
+import {
+  buildBehavioralWarnings,
+  buildRealtimeRiskAlerts,
+  findPattern,
+  formatPercent,
+  getCachedBehaviorPatterns,
+  getIstDateKey,
+  getPatternSeverityRank,
+  getSessionContext,
+  type RealtimeRiskAlert,
+} from "./behavioral";
 
 const FAST_REFRESH_MS = 15_000;
 const SLOW_REFRESH_MS = 60_000;
 const LAST_MARKET_DATA_KEY = "lastMarketData";
 const LAST_MARKET_WATCHLIST_KEY = "lastMarketWatchlist";
-const MARKET_TIMEZONE = "Asia/Kolkata";
+const DISMISSED_ALERTS_KEY_PREFIX = "riskAlertDismissed";
+const SEEN_ALERTS_KEY_PREFIX = "riskAlertSeen";
+const NUMBER_FORMATTER = new Intl.NumberFormat("en-IN", { maximumFractionDigits: 2 });
+
 const SECTOR_ORDER = [
   "IT",
   "Banking",
@@ -25,6 +44,7 @@ const SECTOR_ORDER = [
   "FMCG",
   "PSU Bank",
 ] as const;
+
 const SECTOR_SHORT_LABELS: Record<string, string> = {
   IT: "IT",
   Banking: "Bank",
@@ -36,13 +56,6 @@ const SECTOR_SHORT_LABELS: Record<string, string> = {
   FMCG: "FMCG",
   "PSU Bank": "PSU",
 };
-
-const numFmt = new Intl.NumberFormat("en-IN", { maximumFractionDigits: 2 });
-const fmtN = (n: number | null | undefined) => (n == null ? "—" : numFmt.format(n));
-const fmtPct = (n: number | null | undefined) =>
-  n == null ? "—" : `${n >= 0 ? "+" : ""}${numFmt.format(n)}%`;
-const pctColor = (n: number | null | undefined) =>
-  n == null ? "#64748b" : n > 0 ? "#16a34a" : n < 0 ? "#dc2626" : "#64748b";
 
 const INDEX_LABELS: Record<string, string> = {
   nifty_50: "Nifty 50",
@@ -58,31 +71,58 @@ const GLOBAL_LABELS: Record<string, string> = {
   usd_inr: "USD/INR",
 };
 
-function getIstClock(now: Date) {
-  const parts = new Intl.DateTimeFormat("en-US", {
-    timeZone: MARKET_TIMEZONE,
-    weekday: "short",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  }).formatToParts(now);
+const SECTOR_MAP: Record<string, string> = {
+  TCS: "IT",
+  INFY: "IT",
+  WIPRO: "IT",
+  HCLTECH: "IT",
+  HDFCBANK: "Banking",
+  ICICIBANK: "Banking",
+  SBIN: "Banking",
+  RELIANCE: "Energy",
+  ONGC: "Energy",
+  SUNPHARMA: "Pharma",
+  DRREDDY: "Pharma",
+  TATAMOTORS: "Auto",
+  MARUTI: "Auto",
+  TATASTEEL: "Metals",
+  ITC: "FMCG",
+};
 
-  const weekday = parts.find((part) => part.type === "weekday")?.value ?? "";
-  const hour = Number(parts.find((part) => part.type === "hour")?.value ?? "0");
-  const minute = Number(parts.find((part) => part.type === "minute")?.value ?? "0");
+function formatNumber(value: number | null | undefined): string {
+  return value == null ? "--" : NUMBER_FORMATTER.format(value);
+}
 
-  return { weekday, minutesFromMidnight: hour * 60 + minute };
+function formatSignedPercent(value: number | null | undefined): string {
+  if (value == null) {
+    return "--";
+  }
+  return `${value >= 0 ? "+" : ""}${NUMBER_FORMATTER.format(value)}%`;
+}
+
+function percentColor(value: number | null | undefined): string {
+  if (value == null) {
+    return "#64748b";
+  }
+  if (value > 0) {
+    return "#16a34a";
+  }
+  if (value < 0) {
+    return "#dc2626";
+  }
+  return "#64748b";
+}
+
+function getDismissedAlertsKey(dateKey: string) {
+  return `${DISMISSED_ALERTS_KEY_PREFIX}_${dateKey}`;
+}
+
+function getSeenAlertsKey(dateKey: string) {
+  return `${SEEN_ALERTS_KEY_PREFIX}_${dateKey}`;
 }
 
 function isMarketHours(now: Date): boolean {
-  const { weekday, minutesFromMidnight } = getIstClock(now);
-  const isWeekend = weekday === "Sat" || weekday === "Sun";
-
-  if (isWeekend) {
-    return false;
-  }
-
-  return minutesFromMidnight >= 9 * 60 + 15 && minutesFromMidnight <= 15 * 60 + 30;
+  return getSessionContext(now).kind === "market-open";
 }
 
 function getRefreshIntervalMs(now = new Date()): number {
@@ -93,23 +133,11 @@ function getFetchedTimeLabel(valueMs: number | null): string {
   if (!valueMs) {
     return "--:--";
   }
-
   return new Intl.DateTimeFormat("en-IN", {
     hour: "numeric",
     minute: "2-digit",
     hour12: true,
   }).format(new Date(valueMs));
-}
-
-function globalCueInterpretation(data: MarketDashboardData["global_cues"]): string {
-  const spx = data.sp500_futures?.change_pct;
-  if (spx != null && spx < -0.5) {
-    return "US futures weak → cautious opening likely";
-  }
-  if (spx != null && spx > 0.5) {
-    return "US futures positive → supportive for opening";
-  }
-  return "US futures flat → neutral cue";
 }
 
 function regimeTone(trend: MarketDashboardData["regime"]["nifty_trend"]) {
@@ -119,25 +147,60 @@ function regimeTone(trend: MarketDashboardData["regime"]["nifty_trend"]) {
 }
 
 function regimeSummary(data: MarketDashboardData["regime"]): string {
-  const trend = data.nifty_trend;
   const breadth = `${data.breadth.pct_advancing}% advancing`;
-  if (trend === "Bullish") {
-    return `🟢 Bullish · ${data.nifty_vs_vwap} · ${breadth}`;
+  if (data.nifty_trend === "Bullish") {
+    return `Bullish · ${data.nifty_vs_vwap} · ${breadth}`;
   }
-  if (trend === "Bearish") {
-    return `🔴 Bearish · ${data.nifty_vs_vwap === "Below VWAP" ? "Nifty weak" : data.nifty_vs_vwap} · ${breadth}`;
+  if (data.nifty_trend === "Bearish") {
+    return `Bearish · ${data.nifty_vs_vwap === "Below VWAP" ? "Nifty weak" : data.nifty_vs_vwap} · ${breadth}`;
   }
-  return `🟡 Sideways · Range-bound · ${breadth}`;
+  return `Sideways · Range-bound · ${breadth}`;
+}
+
+function globalCueInterpretation(data: MarketDashboardData["global_cues"]): string {
+  const spx = data.sp500_futures?.change_pct;
+  if (spx != null && spx < -0.5) {
+    return "US futures weak. Opening tone may stay cautious.";
+  }
+  if (spx != null && spx > 0.5) {
+    return "US futures are positive. Opening tone may stay supportive.";
+  }
+  return "US futures are flat. Global cues look neutral.";
+}
+
+function getTradeSector(symbol: string): string {
+  return SECTOR_MAP[symbol.toUpperCase()] ?? "Other";
+}
+
+function getStockMarker(args: {
+  symbol: string;
+  tickerIntel: TickerIntelResponse | null;
+  strongSector: string | null;
+}): string[] {
+  const markers: string[] = [];
+  if (
+    args.tickerIntel?.avg_volume &&
+    args.tickerIntel.volume &&
+    args.tickerIntel.volume / args.tickerIntel.avg_volume > 1.5
+  ) {
+    markers.push("🔥");
+  }
+  if (args.strongSector && getTradeSector(args.symbol) === args.strongSector) {
+    markers.push("⭐");
+  }
+  return markers;
 }
 
 function SectorBox({
   sector,
   data,
   isPreferred,
+  isConcentrated,
 }: {
   sector: string;
   data?: { index: string; value: number | null; change_pct: number | null };
   isPreferred: boolean;
+  isConcentrated: boolean;
 }) {
   const change = data?.change_pct ?? null;
   const tone =
@@ -148,13 +211,20 @@ function SectorBox({
         : `rgba(220, 38, 38, ${Math.min(0.24, 0.08 + Math.abs(change) / 10)})`;
 
   return (
-    <div className="mkt-sector-box" style={{ background: tone }}>
+    <div
+      className="mkt-sector-box"
+      style={{
+        background: tone,
+        boxShadow: isConcentrated ? "0 0 0 2px rgba(79, 70, 229, 0.18) inset" : undefined,
+        borderColor: isConcentrated ? "rgba(79, 70, 229, 0.4)" : undefined,
+      }}
+    >
       <div className="mkt-sector-box-top">
         <span className="mkt-sector-name">{SECTOR_SHORT_LABELS[sector] ?? sector}</span>
         {isPreferred ? <span className="mkt-sector-star">★</span> : null}
       </div>
-      <div className="mkt-sector-change" style={{ color: pctColor(change) }}>
-        {fmtPct(change)}
+      <div className="mkt-sector-change" style={{ color: percentColor(change) }}>
+        {formatSignedPercent(change)}
       </div>
     </div>
   );
@@ -174,14 +244,14 @@ function IndexCard({
   return (
     <div className="mkt-index-card compact">
       <div className="mkt-index-name">{label}</div>
-      <div className="mkt-index-value">{fmtN(data?.value ?? null)}</div>
+      <div className="mkt-index-value">{formatNumber(data?.value ?? null)}</div>
       <div
         className="mkt-index-change"
-        style={{ color: isVix ? "#475569" : pctColor((data as { change_pct?: number | null }).change_pct) }}
+        style={{ color: isVix ? "#475569" : percentColor((data as { change_pct?: number | null }).change_pct) }}
       >
         {isVix
           ? (data as { context?: string }).context ?? "Unknown"
-          : fmtPct((data as { change_pct?: number | null }).change_pct)}
+          : formatSignedPercent((data as { change_pct?: number | null }).change_pct)}
       </div>
     </div>
   );
@@ -197,9 +267,9 @@ function MoverRow({
   return (
     <div className="mkt-mover-row">
       <span className="mkt-mover-sym">{item.symbol}</span>
-      <span className="mkt-mover-price">₹{fmtN(item.price)}</span>
+      <span className="mkt-mover-price">₹{formatNumber(item.price)}</span>
       <span className="mkt-mover-pct" style={{ color: isGainer ? "#16a34a" : "#dc2626" }}>
-        {fmtPct(item.change_pct)}
+        {formatSignedPercent(item.change_pct)}
       </span>
     </div>
   );
@@ -215,9 +285,9 @@ function GlobalCueRow({
   return (
     <div className="mkt-global-row">
       <span className="mkt-global-label">{label}</span>
-      <span className="mkt-global-val">{fmtN(data.value)}</span>
-      <span className="mkt-global-pct" style={{ color: pctColor(data.change_pct) }}>
-        {fmtPct(data.change_pct)}
+      <span className="mkt-global-val">{formatNumber(data.value)}</span>
+      <span className="mkt-global-pct" style={{ color: percentColor(data.change_pct) }}>
+        {formatSignedPercent(data.change_pct)}
       </span>
     </div>
   );
@@ -255,7 +325,7 @@ function FiiDiiSection({
           />
         </div>
         <span className="mkt-fiidii-value" style={{ color: fii >= 0 ? "#16a34a" : "#dc2626" }}>
-          {fii >= 0 ? "+" : ""}₹{numFmt.format(Math.abs(fii))} Cr
+          {fii >= 0 ? "+" : ""}₹{NUMBER_FORMATTER.format(Math.abs(fii))} Cr
         </span>
       </div>
       <div className="mkt-fiidii-bar-row">
@@ -270,9 +340,29 @@ function FiiDiiSection({
           />
         </div>
         <span className="mkt-fiidii-value" style={{ color: dii >= 0 ? "#16a34a" : "#dc2626" }}>
-          {dii >= 0 ? "+" : ""}₹{numFmt.format(Math.abs(dii))} Cr
+          {dii >= 0 ? "+" : ""}₹{NUMBER_FORMATTER.format(Math.abs(dii))} Cr
         </span>
       </div>
+    </div>
+  );
+}
+
+function RiskAlertCard({
+  alert,
+  onDismiss,
+}: {
+  alert: RealtimeRiskAlert;
+  onDismiss: (id: string) => void;
+}) {
+  return (
+    <div className={`risk-alert-card alert-${alert.severity}`}>
+      <button className="risk-alert-dismiss" onClick={() => onDismiss(alert.id)}>
+        ×
+      </button>
+      <div className="risk-alert-title">
+        {alert.emoji} {alert.title}
+      </div>
+      <div className="risk-alert-detail">{alert.detail}</div>
     </div>
   );
 }
@@ -302,9 +392,22 @@ function MarketSkeleton() {
   );
 }
 
-export default function MarketTab({ isSignedIn }: { isSignedIn: boolean }) {
+export default function MarketTab({
+  isSignedIn,
+  captureState,
+  onDataChange,
+}: {
+  isSignedIn: boolean;
+  captureState: CaptureState | null;
+  onDataChange?: (data: MarketDashboardData | null) => void;
+}) {
   const [data, setData] = useState<MarketDashboardData | null>(null);
   const [watchlist, setWatchlist] = useState<WatchlistResponse | null>(null);
+  const [patternsEnvelope, setPatternsEnvelope] = useState<PatternsEnvelope | null>(null);
+  const [completedTrades, setCompletedTrades] = useState<CompletedTradeListItem[]>([]);
+  const [stockIntel, setStockIntel] = useState<Record<string, TickerIntelResponse | null>>({});
+  const [dismissedAlerts, setDismissedAlerts] = useState<string[]>([]);
+  const [seenTimeWarning, setSeenTimeWarning] = useState(false);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -313,10 +416,29 @@ export default function MarketTab({ isSignedIn }: { isSignedIn: boolean }) {
   const hasDataRef = useRef(false);
   const timerRef = useRef<number | null>(null);
   const fetchInFlightRef = useRef(false);
+  const todayKey = getIstDateKey();
 
   useEffect(() => {
     hasDataRef.current = Boolean(data);
-  }, [data]);
+    onDataChange?.(data);
+  }, [data, onDataChange]);
+
+  useEffect(() => {
+    let active = true;
+    async function hydrateAlertState() {
+      const [storedDismissed, storedSeen] = await Promise.all([
+        storageGet<string[]>(getDismissedAlertsKey(todayKey)).catch(() => []),
+        storageGet<boolean>(getSeenAlertsKey(todayKey)).catch(() => false),
+      ]);
+      if (!active) return;
+      setDismissedAlerts(storedDismissed ?? []);
+      setSeenTimeWarning(Boolean(storedSeen));
+    }
+    void hydrateAlertState();
+    return () => {
+      active = false;
+    };
+  }, [todayKey]);
 
   async function load(nextToken?: string | null) {
     if (fetchInFlightRef.current) {
@@ -324,7 +446,6 @@ export default function MarketTab({ isSignedIn }: { isSignedIn: boolean }) {
     }
 
     fetchInFlightRef.current = true;
-
     if (mountedRef.current) {
       if (hasDataRef.current) {
         setRefreshing(true);
@@ -335,14 +456,18 @@ export default function MarketTab({ isSignedIn }: { isSignedIn: boolean }) {
 
     try {
       const token = typeof nextToken !== "undefined" ? nextToken : await getAuthToken();
-      const [dashboardResult, watchlistResult] = await Promise.all([
+      const [dashboardResult, watchlistResult, patternsResult, completedTradesResult] = await Promise.all([
         fetchMarketDashboard(token),
         token ? fetchWatchlist(token).catch(() => null) : Promise.resolve(null),
+        isSignedIn && token ? getCachedBehaviorPatterns(token) : Promise.resolve(null),
+        isSignedIn && token ? fetchCompletedTrades(token, { limit: 200 }).catch(() => []) : Promise.resolve([]),
       ]);
 
       if (mountedRef.current) {
         setData(dashboardResult);
         setWatchlist(watchlistResult);
+        setPatternsEnvelope(patternsResult);
+        setCompletedTrades(completedTradesResult);
         setError(null);
         setLastFetchedAtMs(Date.now());
       }
@@ -387,23 +512,28 @@ export default function MarketTab({ isSignedIn }: { isSignedIn: boolean }) {
         storageGet<WatchlistResponse>(LAST_MARKET_WATCHLIST_KEY).catch(() => null),
       ]);
 
-      if (!mountedRef.current) {
-        return;
-      }
+      if (!mountedRef.current) return;
 
       if (cachedDashboard) {
         setData(cachedDashboard);
         setLastFetchedAtMs(new Date(cachedDashboard.last_updated).getTime() || Date.now());
         setLoading(false);
       }
-
       if (cachedWatchlist) {
         setWatchlist(cachedWatchlist);
       }
 
       const token = await getAuthToken().catch(() => null);
-      await load(token);
+      if (isSignedIn && token) {
+        const cachedPatterns = await getCachedBehaviorPatterns(token);
+        if (mountedRef.current) {
+          setPatternsEnvelope(cachedPatterns);
+        }
+      } else if (mountedRef.current) {
+        setPatternsEnvelope(null);
+      }
 
+      await load(token);
       if (mountedRef.current) {
         scheduleNextRefresh();
       }
@@ -413,11 +543,111 @@ export default function MarketTab({ isSignedIn }: { isSignedIn: boolean }) {
 
     return () => {
       mountedRef.current = false;
+      onDataChange?.(null);
       if (timerRef.current != null) {
         window.clearTimeout(timerRef.current);
       }
     };
-  }, []);
+  }, [isSignedIn, onDataChange]);
+
+  const yourStocks = (watchlist?.recent_stock_quotes ?? []).slice(0, 6);
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadStockIntel() {
+      if (!isSignedIn || yourStocks.length === 0) {
+        if (active) {
+          setStockIntel({});
+        }
+        return;
+      }
+
+      const responses = await Promise.all(
+        yourStocks.map(async (stock) => {
+          try {
+            const response = await chrome.runtime.sendMessage({
+              type: "ticker:fetch-intel",
+              payload: { symbol: stock.symbol },
+            });
+            return [stock.symbol, (response?.tickerIntel as TickerIntelResponse | undefined) ?? null] as const;
+          } catch {
+            return [stock.symbol, null] as const;
+          }
+        })
+      );
+
+      if (!active) return;
+      setStockIntel(Object.fromEntries(responses));
+    }
+
+    void loadStockIntel();
+    return () => {
+      active = false;
+    };
+  }, [isSignedIn, yourStocks]);
+
+  const sectorWinRates = useMemo(() => {
+    const stats = new Map<string, { total: number; wins: number }>();
+    for (const trade of completedTrades) {
+      const sector = getTradeSector(trade.stock_symbol);
+      const current = stats.get(sector) ?? { total: 0, wins: 0 };
+      current.total += 1;
+      if (trade.pnl > 0) current.wins += 1;
+      stats.set(sector, current);
+    }
+    return stats;
+  }, [completedTrades]);
+
+  const sectorPattern = findPattern(patternsEnvelope?.patterns, "sector_concentration");
+  const concentratedSector = sectorPattern ? String(sectorPattern.data?.sector ?? "") : "";
+  const concentratedWinRate = concentratedSector
+    ? (() => {
+        const stats = sectorWinRates.get(concentratedSector);
+        return stats && stats.total > 0 ? stats.wins / stats.total : null;
+      })()
+    : null;
+  const strongSector =
+    sectorPattern &&
+    Number(sectorPattern.data?.sector_avg_pnl ?? 0) >= Number(sectorPattern.data?.overall_avg_pnl ?? 0)
+      ? concentratedSector
+      : null;
+
+  const warnings = useMemo(
+    () =>
+      buildBehavioralWarnings({
+        patterns: patternsEnvelope?.patterns,
+        captureState,
+        marketData: data,
+        session: getSessionContext(),
+      }),
+    [captureState, data, patternsEnvelope]
+  );
+
+  const activeRiskAlerts = useMemo(
+    () =>
+      buildRealtimeRiskAlerts({
+        patterns: patternsEnvelope?.patterns,
+        captureState,
+        marketData: data,
+        seenTimeWarning,
+      }).filter((alert) => !dismissedAlerts.includes(alert.id)),
+    [captureState, data, dismissedAlerts, patternsEnvelope, seenTimeWarning]
+  );
+
+  useEffect(() => {
+    if (!activeRiskAlerts.some((alert) => alert.id.startsWith("time-warning-")) || seenTimeWarning) {
+      return;
+    }
+    setSeenTimeWarning(true);
+    void storageSet(getSeenAlertsKey(todayKey), true).catch(() => undefined);
+  }, [activeRiskAlerts, seenTimeWarning, todayKey]);
+
+  async function dismissAlert(id: string) {
+    const next = [...new Set([...dismissedAlerts, id])];
+    setDismissedAlerts(next);
+    await storageSet(getDismissedAlertsKey(todayKey), next).catch(() => undefined);
+  }
 
   if (loading && !data) {
     return <MarketSkeleton />;
@@ -443,17 +673,48 @@ export default function MarketTab({ isSignedIn }: { isSignedIn: boolean }) {
   const sectorPerformance = Object.keys(data.sector_performance || {}).length
     ? data.sector_performance
     : watchlist?.sector_performance ?? {};
-  const yourStocks = (watchlist?.recent_stock_quotes ?? []).slice(0, 6);
   const showYourStocks = isSignedIn && yourStocks.length > 0;
+  const highestSeverityPattern = [...(patternsEnvelope?.patterns ?? [])]
+    .filter((pattern) => !pattern.locked)
+    .sort((left, right) => getPatternSeverityRank(left.severity) - getPatternSeverityRank(right.severity))[0] ?? null;
+  const vixBehaviorLine =
+    data.vix.value != null &&
+    data.vix.value > 18 &&
+    typeof highestSeverityPattern?.data?.high_vix_win_rate === "number"
+      ? `Your data shows high-VIX days reduce your win rate to ${formatPercent(
+          Number(highestSeverityPattern.data.high_vix_win_rate) / 100,
+          0
+        )}.`
+      : null;
 
   return (
     <div className="mkt-root">
+      {activeRiskAlerts.length > 0 ? (
+        <div className="behavioral-warnings-section">
+          {activeRiskAlerts.map((alert) => (
+            <RiskAlertCard key={alert.id} alert={alert} onDismiss={dismissAlert} />
+          ))}
+        </div>
+      ) : null}
+
       {data.is_stale ? (
         <div className="mkt-stale-banner">Data may be delayed. Showing the latest saved snapshot.</div>
       ) : null}
 
       {error ? (
         <div className="mkt-inline-note">Showing cached market context while a refresh retries.</div>
+      ) : null}
+
+      {warnings.length > 0 ? (
+        <div className="behavioral-warnings-section">
+          <div className="behavioral-warnings-label">Based on your trading patterns</div>
+          {warnings.map((warning) => (
+            <div key={warning.id} className={`behavioral-warning warn-${warning.severity}`}>
+              <div className="warn-title">{warning.title}</div>
+              <div className="warn-detail">{warning.detail}</div>
+            </div>
+          ))}
+        </div>
       ) : null}
 
       {isSignedIn ? (
@@ -471,21 +732,27 @@ export default function MarketTab({ isSignedIn }: { isSignedIn: boolean }) {
             </div>
           </div>
           <div className="mkt-your-stocks-list">
-            {yourStocks.map((stock, index) => (
-              <div
-                key={`${stock.symbol}-${index}`}
-                className={`mkt-your-stock-row${index % 2 === 0 ? " alt" : ""}`}
-              >
-                <span className="mkt-your-stock-symbol">{stock.symbol}</span>
-                <span className="mkt-your-stock-price">₹{fmtN(stock.price)}</span>
-                <span
-                  className="mkt-your-stock-change"
-                  style={{ color: pctColor(stock.change_pct) }}
+            {yourStocks.map((stock, index) => {
+              const markers = getStockMarker({
+                symbol: stock.symbol,
+                tickerIntel: stockIntel[stock.symbol] ?? null,
+                strongSector,
+              });
+              return (
+                <div
+                  key={`${stock.symbol}-${index}`}
+                  className={`mkt-your-stock-row${index % 2 === 0 ? " alt" : ""}`}
                 >
-                  {fmtPct(stock.change_pct)}
-                </span>
-              </div>
-            ))}
+                  <span className="mkt-your-stock-symbol">
+                    {stock.symbol} {markers.length ? <span>{markers.join(" ")}</span> : null}
+                  </span>
+                  <span className="mkt-your-stock-price">₹{formatNumber(stock.price)}</span>
+                  <span className="mkt-your-stock-change" style={{ color: percentColor(stock.change_pct) }}>
+                    {formatSignedPercent(stock.change_pct)}
+                  </span>
+                </div>
+              );
+            })}
           </div>
         </div>
       ) : null}
@@ -503,9 +770,15 @@ export default function MarketTab({ isSignedIn }: { isSignedIn: boolean }) {
               sector={sector}
               data={sectorPerformance[sector]}
               isPreferred={preferredSectors.has(sector)}
+              isConcentrated={sector === concentratedSector}
             />
           ))}
         </div>
+        {concentratedSector && concentratedWinRate != null ? (
+          <p className="mkt-section-subcopy" style={{ marginTop: 8 }}>
+            You trade {concentratedSector} most · {formatPercent(concentratedWinRate, 0)} win rate there
+          </p>
+        ) : null}
       </div>
 
       <div className="mkt-section">
@@ -559,6 +832,11 @@ export default function MarketTab({ isSignedIn }: { isSignedIn: boolean }) {
             />
           ))}
         </div>
+        {vixBehaviorLine ? (
+          <p className="mkt-section-subcopy" style={{ marginTop: 8 }}>
+            {vixBehaviorLine}
+          </p>
+        ) : null}
       </div>
 
       <FiiDiiSection data={data.fii_dii} />
@@ -572,7 +850,7 @@ export default function MarketTab({ isSignedIn }: { isSignedIn: boolean }) {
           onClick={() => void load()}
           title="Refresh market data"
         >
-          {refreshing || loading ? "Refreshing..." : "\u27F3 Refresh"}
+          {refreshing || loading ? "Refreshing..." : "Refresh"}
         </button>
       </div>
     </div>

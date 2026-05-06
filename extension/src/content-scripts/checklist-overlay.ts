@@ -1,5 +1,11 @@
-const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "http://localhost:8000").replace(/\/$/, "");
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "http://localhost:8000").replace(
+  /\/$/,
+  ""
+);
 const ROOT_ID = "indiacircle-checklist-overlay";
+const DEFAULT_CAPITAL = 500_000;
+const DEFAULT_RISK_PCT = 0.02;
+const DEFAULT_BROKERAGE_PER_SIDE = 20;
 
 type Template = { id: number; checklist_items: string[] | null };
 type Score = {
@@ -13,6 +19,7 @@ let dismissed = false;
 let minimized = false;
 let currentScore: Score | null = null;
 let savedSetupId: number | null = null;
+let planningCapital = DEFAULT_CAPITAL;
 
 function isBrokerOrderVisible(): boolean {
   const host = location.hostname;
@@ -48,7 +55,9 @@ function detectSymbol(): string {
 
 function detectEntryPrice(): string {
   const inputs = Array.from(document.querySelectorAll<HTMLInputElement>("input"));
-  const priceInput = inputs.find((input) => /price|limit|market/i.test(input.placeholder || input.name || input.id));
+  const priceInput = inputs.find((input) =>
+    /price|limit|market/i.test(input.placeholder || input.name || input.id)
+  );
   if (priceInput?.value) return priceInput.value;
   const priceText = document.body.innerText.match(/(?:₹|Rs\.?)\s*([\d,.]+)/i)?.[1];
   return priceText?.replace(/,/g, "") || "";
@@ -69,11 +78,28 @@ async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
   if (!response.ok) {
     const error = await response.json().catch(() => ({ detail: "Request failed" }));
     if (response.status === 403 && path.includes("/score")) {
-      throw new Error("🔒 Upgrade to Pro for risk assessment");
+      throw new Error("Upgrade to Pro for risk assessment");
     }
     throw new Error(error.detail || "Request failed");
   }
   return response.json() as Promise<T>;
+}
+
+async function hydratePlanningCapital(): Promise<void> {
+  try {
+    const response = await chrome.runtime.sendMessage({ type: "auth:get-me" });
+    const capital =
+      typeof response?.user?.preferences?.capital === "number"
+        ? response.user.preferences.capital
+        : typeof response?.user?.preferences?.risk_capital === "number"
+          ? response.user.preferences.risk_capital
+          : null;
+    if (capital && Number.isFinite(capital) && capital > 0) {
+      planningCapital = capital;
+    }
+  } catch {
+    planningCapital = DEFAULT_CAPITAL;
+  }
 }
 
 async function loadChecklist(): Promise<string[]> {
@@ -97,6 +123,54 @@ function styleForScore(score: number): string {
 
 function formValue(root: HTMLElement, name: string): string {
   return (root.querySelector(`[name="${name}"]`) as HTMLInputElement | HTMLTextAreaElement)?.value || "";
+}
+
+function toNumber(value: string): number | null {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+}
+
+function formatIndianNumber(value: number): string {
+  return new Intl.NumberFormat("en-IN", { maximumFractionDigits: 2 }).format(value);
+}
+
+function renderQuickMath(root: HTMLElement) {
+  const quickMath = root.querySelector<HTMLElement>(".ic-quick-math");
+  if (!quickMath) {
+    return;
+  }
+
+  const entry = toNumber(formValue(root, "entry_price"));
+  const stopLoss = toNumber(formValue(root, "stop_loss_price"));
+  const target = toNumber(formValue(root, "target_price"));
+
+  if (!entry || !stopLoss || entry === stopLoss) {
+    quickMath.innerHTML = "";
+    quickMath.style.display = "none";
+    return;
+  }
+
+  const riskPerShare = Math.abs(entry - stopLoss);
+  const riskAmount = planningCapital * DEFAULT_RISK_PCT;
+  const shares = Math.max(1, Math.floor(riskAmount / riskPerShare));
+  const riskPct = (riskAmount / planningCapital) * 100;
+  const charges = DEFAULT_BROKERAGE_PER_SIDE * 2;
+
+  const rrMarkup = target
+    ? (() => {
+        const ratio = Math.abs(target - entry) / riskPerShare;
+        const rrClass = ratio >= 2 ? "rr-good" : ratio >= 1 ? "rr-ok" : "rr-bad";
+        return `<div>R:R <strong class="${rrClass}">1:${ratio.toFixed(2)}</strong></div>`;
+      })()
+    : "";
+
+  quickMath.innerHTML = `
+    <div><strong>Quick Math</strong></div>
+    <div>Qty: <strong>${shares}</strong> · Risk: <strong>₹${formatIndianNumber(riskAmount)}</strong> (${riskPct.toFixed(1)}%)</div>
+    ${rrMarkup}
+    <div>Charges: <strong>~₹${formatIndianNumber(charges)}</strong></div>
+  `;
+  quickMath.style.display = "grid";
 }
 
 async function assess(root: HTMLElement) {
@@ -156,7 +230,7 @@ function attachDrag(root: HTMLElement) {
     root.style.right = `${nextRight}px`;
     root.style.top = `${nextTop}px`;
   };
-};
+}
 
 async function render() {
   if (dismissed || !isBrokerOrderVisible()) {
@@ -202,9 +276,10 @@ async function render() {
         <label>Size<input name="position_size" type="number" min="1" value="1" /></label>
       </div>
       <div class="ic-row">
-        <label>Risk level<input name="stop_loss_price" type="number" step="0.01" /></label>
+        <label>Stop Loss<input name="stop_loss_price" type="number" step="0.01" /></label>
         <label>Target<input name="target_price" type="number" step="0.01" /></label>
       </div>
+      <div class="ic-quick-math quick-math-box" style="display:none"></div>
       <label>Conviction <span class="ic-conv">5</span><input name="conviction_score" type="range" min="1" max="10" value="5" /></label>
       <div class="ic-scale"><span>Low</span><span>Neutral</span><span>Very High</span></div>
       <div class="ic-checks">
@@ -218,6 +293,8 @@ async function render() {
   `;
   document.body.appendChild(root);
   attachDrag(root);
+  renderQuickMath(root);
+
   root.querySelector("[data-close]")?.addEventListener("click", () => {
     dismissed = true;
     root.remove();
@@ -230,8 +307,15 @@ async function render() {
     const out = root.querySelector(".ic-conv");
     if (out) out.textContent = (event.target as HTMLInputElement).value;
   });
+
+  ["entry_price", "stop_loss_price", "target_price"].forEach((name) => {
+    root.querySelector(`[name="${name}"]`)?.addEventListener("input", () => renderQuickMath(root));
+  });
+
   root.querySelector("[data-assess]")?.addEventListener("click", () => {
-    void assess(root).catch((error) => setStatus(root, error instanceof Error ? error.message : "Risk assessment failed."));
+    void assess(root).catch((error) =>
+      setStatus(root, error instanceof Error ? error.message : "Risk assessment failed.")
+    );
   });
   root.querySelector("[data-proceed]")?.addEventListener("click", () => {
     dismissed = true;
@@ -243,7 +327,7 @@ function scoreHtml(score: Score): string {
   return `<div class="ic-score" style="border-color:${styleForScore(score.risk_score)}">
     <div><span style="color:${styleForScore(score.risk_score)}">${score.risk_score}</span><small>${score.risk_level}</small></div>
     ${score.warning ? `<p>${score.warning}</p>` : ""}
-    ${score.factors.map((f) => `<section class="ic-factor ${f.impact}"><strong>${f.factor.replace(/_/g, " ")}</strong><p>${f.detail}</p></section>`).join("")}
+    ${score.factors.map((factor) => `<section class="ic-factor ${factor.impact}"><strong>${factor.factor.replace(/_/g, " ")}</strong><p>${factor.detail}</p></section>`).join("")}
   </div>`;
 }
 
@@ -253,6 +337,8 @@ function styles(): string {
     .ic-header{display:flex;justify-content:space-between;align-items:center;cursor:move}.ic-icon{border:0;background:#f1f5f9;border-radius:6px;margin-left:4px;padding:4px 7px;cursor:pointer}
     .ic-panel label{display:grid;gap:4px;font-size:11px;font-weight:700;color:#475569}.ic-panel input,.ic-panel textarea{box-sizing:border-box;width:100%;border:1px solid #cbd5e1;border-radius:6px;padding:7px;font:inherit;color:#0f172a}
     .ic-row{display:grid;grid-template-columns:1fr 1fr;gap:8px}.ic-scale{display:flex;justify-content:space-between;font-size:10px;color:#64748b}.ic-checks{display:grid;gap:6px;max-height:120px;overflow:auto}
+    .ic-quick-math{margin-top:2px;padding:8px 10px;border-radius:10px;background:#f8fafc;border:1px solid rgba(148,163,184,.15);display:grid;gap:4px;font-size:11px;color:#475569}
+    .ic-quick-math strong{color:#0f172a}.ic-quick-math .rr-good{color:#059669;font-weight:700}.ic-quick-math .rr-ok{color:#d97706;font-weight:700}.ic-quick-math .rr-bad{color:#dc2626;font-weight:700}
     .ic-check{display:flex!important;grid-template-columns:18px 1fr!important;align-items:center;gap:7px;font-weight:500!important}.ic-check input{width:auto}.ic-primary,.ic-secondary{border:0;border-radius:7px;padding:9px 10px;font-weight:700;cursor:pointer}.ic-primary{background:#0f172a;color:#fff}.ic-secondary{background:#e2e8f0;color:#0f172a}
     .ic-status{margin:0;font-size:11px;color:#64748b}.ic-score{border:2px solid;border-radius:8px;padding:8px;display:grid;gap:7px}.ic-score div:first-child{display:flex;align-items:baseline;gap:8px}.ic-score span{font-size:32px;font-weight:800}.ic-score small{font-weight:800}
     .ic-factor{border-radius:6px;padding:7px;background:#f8fafc}.ic-factor p{margin:3px 0 0;font-size:11px}.ic-factor.negative{border-left:3px solid #dc2626}.ic-factor.positive{border-left:3px solid #16a34a}.ic-factor.neutral{border-left:3px solid #64748b}
@@ -260,6 +346,7 @@ function styles(): string {
   </style>`;
 }
 
+void hydratePlanningCapital();
 const observer = new MutationObserver(() => void render());
 observer.observe(document.documentElement, { childList: true, subtree: true });
 void render();

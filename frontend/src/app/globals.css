@@ -84,6 +84,111 @@
   .btn-ghost {
     @apply inline-flex items-center justify-center rounded-xl px-6 py-3 text-sm font-semibold text-gray-600 transition-all duration-200 hover:bg-gray-100;
   }
+
+  .command-center {
+    @apply mx-auto max-w-6xl px-4 py-8;
+  }
+
+  .score-ring {
+    width: 100px;
+    height: 100px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .score-ring-inner {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 2px;
+    font-size: 28px;
+    font-weight: 900;
+    color: #0f172a;
+  }
+
+  .score-ring-value {
+    font-size: 24px;
+    font-weight: 900;
+    color: #0f172a;
+  }
+
+  .score-ring-label {
+    font-size: 9px;
+    text-transform: uppercase;
+    color: #64748b;
+    letter-spacing: 0.1em;
+  }
+
+  .analytics-profile-card {
+    @apply rounded-[2rem] border border-gray-100 bg-white p-8 shadow-sm;
+  }
+
+  .analytics-profile-grid {
+    @apply grid gap-4 md:grid-cols-2 xl:grid-cols-3;
+  }
+
+  .analytics-profile-stat {
+    @apply rounded-3xl bg-slate-50 px-5 py-4;
+  }
+
+  .analytics-profile-stat span {
+    @apply text-xs font-bold uppercase tracking-[0.18em] text-slate-500;
+  }
+
+  .analytics-profile-stat strong {
+    @apply mt-3 block text-2xl font-black text-slate-950;
+  }
+
+  .analytics-section-kicker {
+    @apply text-xs font-black uppercase tracking-[0.24em] text-indigo-500;
+  }
+
+  .insight-confidence {
+    @apply inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold;
+  }
+
+  .confidence-high {
+    background: #ecfdf5;
+    color: #065f46;
+  }
+
+  .confidence-moderate {
+    background: #fffbeb;
+    color: #92400e;
+  }
+
+  .confidence-low {
+    background: #f1f5f9;
+    color: #64748b;
+  }
+
+  .insight-recommendation {
+    @apply flex gap-3 rounded-2xl bg-sky-50 px-4 py-4 text-sm leading-6 text-sky-800;
+  }
+
+  .dna-card {
+    @apply rounded-2xl border border-indigo-100 bg-gradient-to-br from-indigo-50/50 to-violet-50/30 p-6;
+  }
+
+  .mistakes-card {
+    @apply rounded-2xl border border-rose-100 bg-rose-50/30 p-6;
+  }
+
+  .improvement-item {
+    @apply flex items-start gap-3 border-b border-gray-100 py-3 last:border-0;
+  }
+
+  .improvement-item::before {
+    content: "→";
+    @apply flex-shrink-0 font-bold text-indigo-500;
+  }
 }
 
 @layer utilities {

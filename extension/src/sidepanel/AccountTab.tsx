@@ -12,12 +12,12 @@ const DATE_FORMATTER = new Intl.DateTimeFormat("en-IN", {
 
 function formatDate(value?: string | null): string {
   if (!value) {
-    return "—";
+    return "Recently joined";
   }
 
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime())) {
-    return "—";
+    return "Recently joined";
   }
 
   return DATE_FORMATTER.format(parsed);
@@ -27,11 +27,9 @@ function getSubscriptionLabel(user: User): "Free" | "Pro" | "Pro Founding" {
   if (user.subscription_plan === "pro_founding") {
     return "Pro Founding";
   }
-
   if (user.subscription_status?.startsWith("pro")) {
     return "Pro";
   }
-
   return "Free";
 }
 
@@ -75,7 +73,6 @@ export default function AccountTab({
       }
 
       setLoadingSummary(true);
-
       try {
         const token = await getAuthToken();
         if (!token) {
@@ -102,7 +99,6 @@ export default function AccountTab({
     }
 
     void loadSummary();
-
     return () => {
       active = false;
     };
@@ -128,8 +124,20 @@ export default function AccountTab({
   const tradeCount = loadingSummary
     ? "Loading..."
     : summary
-    ? summary.total_trades.toLocaleString("en-IN")
-    : "—";
+      ? summary.total_trades === 0
+        ? "0 trades — import CSV or open your broker"
+        : summary.total_trades.toLocaleString("en-IN")
+      : "—";
+
+  const subscriptionLabel = isFreePlan
+    ? "Free plan"
+    : user.subscription_expires_at
+      ? new Intl.DateTimeFormat("en-IN", {
+          year: "numeric",
+          month: "long",
+          day: "numeric",
+        }).format(new Date(user.subscription_expires_at))
+      : "Active";
 
   return (
     <section className="placeholder-grid">
@@ -155,9 +163,7 @@ export default function AccountTab({
             <span className="account-metric-label">
               {isFreePlan ? "Subscription" : "Expiry date"}
             </span>
-            <strong>
-              {isFreePlan ? "Free plan" : formatDate(user.subscription_expires_at)}
-            </strong>
+            <strong>{subscriptionLabel}</strong>
           </div>
         </div>
 
@@ -165,23 +171,14 @@ export default function AccountTab({
 
         <div className="account-actions">
           {isFreePlan ? (
-            <button
-              className="pro-banner-button"
-              onClick={() => openPath("/pricing")}
-            >
+            <button className="pro-banner-button" onClick={() => openPath("/pricing")}>
               Upgrade to Pro
             </button>
           ) : null}
-          <button
-            className="account-link-button"
-            onClick={() => openPath("/account/billing")}
-          >
+          <button className="account-link-button" onClick={() => openPath("/account/billing")}>
             Manage Billing
           </button>
-          <button
-            className="account-link-button"
-            onClick={() => openPath("/dashboard")}
-          >
+          <button className="account-link-button" onClick={() => openPath("/dashboard")}>
             View Full Dashboard
           </button>
           <button

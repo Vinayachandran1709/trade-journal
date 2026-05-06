@@ -1,15 +1,22 @@
 import { useEffect, useState } from "react";
 
-import { fetchCurrentUser } from "../shared/api";
+import {
+  fetchCurrentUser,
+  type AnalyticsSummaryResponse,
+  type MarketDashboardData,
+  type PatternsEnvelope,
+} from "../shared/api";
 import { clearAuthToken, getAuthToken, onAuthTokenChange } from "../shared/auth";
 import { getCaptureState, type CaptureState } from "../shared/captures";
 import type { User } from "../shared/types";
 import AccountTab from "./AccountTab";
 import AiTab from "./AiTab";
+import { getCachedAnalyticsSummary, getCachedBehaviorPatterns } from "./behavioral";
 import CalculatorsTab from "./CalculatorsTab";
 import CapturesTab from "./CapturesTab";
 import InsightsTab from "./InsightsTab";
 import MarketTab from "./MarketTab";
+import TraderPulse from "./TraderPulse";
 
 const WEB_APP_URL = (import.meta.env.VITE_WEB_APP_URL || "https://indiacircle.in").replace(/\/$/, "");
 
@@ -22,6 +29,9 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<TabId>("market");
   const [captureState, setCaptureState] = useState<CaptureState | null>(null);
   const [savingTradeId, setSavingTradeId] = useState<number | null>(null);
+  const [marketData, setMarketData] = useState<MarketDashboardData | null>(null);
+  const [patternsEnvelope, setPatternsEnvelope] = useState<PatternsEnvelope | null>(null);
+  const [analyticsSummary, setAnalyticsSummary] = useState<AnalyticsSummaryResponse | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -38,15 +48,25 @@ export default function App() {
             setUser(null);
             setBannerError(null);
             setCaptureState(await getCaptureState());
+            setPatternsEnvelope(null);
+            setAnalyticsSummary(null);
           }
           return;
         }
 
-        const currentUser = await fetchCurrentUser(token);
+        const [currentUser, nextCaptureState, nextPatterns, nextSummary] = await Promise.all([
+          fetchCurrentUser(token),
+          getCaptureState(),
+          getCachedBehaviorPatterns(token),
+          getCachedAnalyticsSummary(token),
+        ]);
+
         if (active) {
           setUser(currentUser);
           setBannerError(null);
-          setCaptureState(await getCaptureState());
+          setCaptureState(nextCaptureState);
+          setPatternsEnvelope(nextPatterns);
+          setAnalyticsSummary(nextSummary);
         }
       } catch {
         if (active) {
@@ -89,6 +109,8 @@ export default function App() {
       await clearAuthToken();
       setUser(null);
       setBannerError(null);
+      setPatternsEnvelope(null);
+      setAnalyticsSummary(null);
     } finally {
       setIsLoggingOut(false);
     }
@@ -127,23 +149,13 @@ export default function App() {
 
   return (
     <main className="sidepanel-shell">
-      <section className="hero-card">
-        <p className="eyebrow">IndiaCircle</p>
-        <h1>Your AI Trading Copilot</h1>
-        <p className="hero-copy">
-          Auto-capture trades from any Indian broker. Get AI-powered market
-          insights, behavioral pattern analysis, smart position sizing, and
-          real-time market data — all in one sidebar.
-        </p>
-        <div className="feature-pill-row">
-          <span className="feature-pill">📊 Market Data</span>
-          <span className="feature-pill">🤖 AI Insights</span>
-          <span className="feature-pill">📈 Pattern Analysis</span>
-          <span className="feature-pill">🧮 Calculators</span>
-          <span className="feature-pill">📝 Trade Journal</span>
-        </div>
-        {user ? <p className="signed-in-copy">{user.email}</p> : null}
-      </section>
+      <TraderPulse
+        user={user}
+        marketData={marketData}
+        captureState={captureState}
+        patternsEnvelope={patternsEnvelope}
+        analyticsSummary={analyticsSummary}
+      />
 
       {bannerError ? <div className="connection-error-banner">{bannerError}</div> : null}
 
@@ -168,7 +180,13 @@ export default function App() {
         ))}
       </nav>
 
-      {activeTab === "market" && <MarketTab isSignedIn={Boolean(user)} />}
+      {activeTab === "market" && (
+        <MarketTab
+          isSignedIn={Boolean(user)}
+          captureState={captureState}
+          onDataChange={setMarketData}
+        />
+      )}
 
       {activeTab === "ai" && <AiTab isSignedIn={Boolean(user)} />}
 
@@ -204,7 +222,7 @@ export default function App() {
           <div className="pro-banner-text">
             <span className="pro-banner-title">Unlock Pro</span>
             <span className="pro-banner-desc">
-              AI analysis, unlimited imports &amp; 10+ brokers
+              AI analysis, unlimited imports and 10+ brokers
             </span>
           </div>
           <button

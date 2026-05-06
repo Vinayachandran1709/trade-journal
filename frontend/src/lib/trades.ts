@@ -4,6 +4,7 @@ import type {
   TradeImportResponse,
   TradesSummary,
   CompletedTrade,
+  TradeSetup,
 } from "@/types/trade";
 
 const API_URL =
@@ -121,4 +122,75 @@ export async function getCompletedTrades(
   return apiFetch<CompletedTrade[]>(
     `/trades/completed${query ? `?${query}` : ""}`
   );
+}
+
+export async function getTradeSetups(
+  limit?: number,
+  offset?: number
+): Promise<TradeSetup[]> {
+  const params = new URLSearchParams();
+  if (limit !== undefined) params.set("limit", String(limit));
+  if (offset !== undefined) params.set("offset", String(offset));
+
+  const query = params.toString();
+  return apiFetch<TradeSetup[]>(`/setups/my-setups${query ? `?${query}` : ""}`);
+}
+
+export async function exportCompletedTradesCSV(): Promise<void> {
+  const token =
+    typeof window !== "undefined" ? localStorage.getItem("token") : null;
+  if (!token) {
+    throw new Error("Not authenticated");
+  }
+
+  const response = await fetch(`${API_URL}/trades/completed?limit=10000&offset=0`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ detail: "Request failed" }));
+    throw new Error(error.detail || `Error ${response.status}`);
+  }
+
+  const trades = (await response.json()) as CompletedTrade[];
+  const headers = [
+    "Symbol",
+    "Entry Date",
+    "Exit Date",
+    "Entry Price",
+    "Exit Price",
+    "Quantity",
+    "P&L",
+    "Return %",
+    "Holding Days",
+  ];
+  const rows = trades.map((trade) => [
+    trade.stock_symbol,
+    trade.entry_date,
+    trade.exit_date,
+    trade.entry_price,
+    trade.exit_price,
+    trade.quantity,
+    trade.pnl,
+    trade.return_pct,
+    trade.holding_days,
+  ]);
+
+  const escapeCell = (value: string | number | null | undefined) =>
+    `"${String(value ?? "").replace(/"/g, '""')}"`;
+
+  const csv = [
+    headers.map(escapeCell).join(","),
+    ...rows.map((row) => row.map(escapeCell).join(",")),
+  ].join("\n");
+
+  const blob = new Blob([csv], { type: "text/csv" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `indiacircle-journal-${new Date().toISOString().split("T")[0]}.csv`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
 }

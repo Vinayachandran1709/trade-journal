@@ -5,13 +5,13 @@ import {
   getAnalyticsSummary,
   getPatterns,
   type AnalyticsSummaryResponse,
-  type PatternsEnvelope,
   type PatternResponse,
+  type PatternsEnvelope,
 } from "../shared/api";
 import { getAuthToken } from "../shared/auth";
 
 const CURRENCY_FORMATTER = new Intl.NumberFormat("en-IN", {
-  maximumFractionDigits: 2,
+  maximumFractionDigits: 0,
 });
 
 function formatCurrency(value: number | null | undefined): string {
@@ -40,9 +40,20 @@ function severityIcon(severity: string): string {
     case "high":
       return "🔴";
     case "medium":
-      return "🟡";
+      return "🟠";
     default:
       return "🟢";
+  }
+}
+
+function severityBorderColor(severity: string): string {
+  switch (severity) {
+    case "high":
+      return "#ef4444";
+    case "medium":
+      return "#f59e0b";
+    default:
+      return "#10b981";
   }
 }
 
@@ -68,16 +79,157 @@ function formatPatternStat(key: string, value: unknown): string {
   if (typeof value !== "number") {
     return formatStatValue(value);
   }
-
   if (key.includes("win_rate") || key.includes("share")) {
     return formatPercent(value);
   }
-
   if (key.includes("pnl")) {
     return formatCurrency(value);
   }
-
   return formatCount(value);
+}
+
+function getConfidenceMeta(pattern: PatternResponse) {
+  const sampleSize = Number(pattern.data?.sample_size ?? 0);
+  if (sampleSize > 30) {
+    return {
+      className: "confidence-high",
+      text: `High confidence · ${sampleSize} trades analyzed`,
+    };
+  }
+  if (sampleSize >= 20) {
+    return {
+      className: "confidence-moderate",
+      text: `Moderate confidence · ${sampleSize} trades`,
+    };
+  }
+  return {
+    className: "confidence-low",
+    text: `Low sample size · ${sampleSize} trades — pattern may change`,
+  };
+}
+
+function estimateImpact(
+  pattern: PatternResponse,
+  summary: AnalyticsSummaryResponse | null
+): { amount: number; text: string } | null {
+  const sampleSize = Number(pattern.data?.sample_size ?? 0);
+  const avgPnl = summary?.avg_pnl_per_trade ?? 0;
+
+  switch (pattern.pattern_type) {
+    case "revenge_trading": {
+      const pnl = Number(pattern.data?.revenge_trade_pnl ?? NaN);
+      if (!Number.isFinite(pnl)) return null;
+      return { amount: pnl, text: `Estimated monthly impact: ${formatCurrency(pnl)}` };
+    }
+    case "time_of_day": {
+      const gap =
+        Number(pattern.data?.best_win_rate ?? 0) - Number(pattern.data?.worst_win_rate ?? 0);
+      if (!Number.isFinite(gap) || !Number.isFinite(avgPnl)) return null;
+      const saved = Math.max(0, gap * Math.max(Math.abs(avgPnl), 1) * Math.max(sampleSize, 1));
+      return {
+        amount: saved,
+        text: `If you had avoided your worst hours, you would have saved approximately ${formatCurrency(saved)}`,
+      };
+    }
+    case "holding_period": {
+      const diff =
+        Number(pattern.data?.best_avg_pnl ?? 0) - Number(pattern.data?.worst_avg_pnl ?? 0);
+      if (!Number.isFinite(diff)) return null;
+      const amount = diff * Math.max(1, sampleSize / 6);
+      return { amount, text: `Estimated monthly impact: ${formatCurrency(amount)}` };
+    }
+    case "overtrading": {
+      const gap =
+        Number(pattern.data?.normal_day_win_rate ?? 0) -
+        Number(pattern.data?.high_volume_day_win_rate ?? 0);
+      if (!Number.isFinite(gap)) return null;
+      const amount = -Math.abs(gap * Math.max(Math.abs(avgPnl), 1) * Math.max(sampleSize, 1));
+      return { amount, text: `Estimated monthly impact: ${formatCurrency(amount)}` };
+    }
+    case "losing_streak_tilt": {
+      const diff =
+        Number(pattern.data?.post_streak_avg_pnl ?? 0) -
+        Number(pattern.data?.overall_avg_pnl ?? 0);
+      if (!Number.isFinite(diff)) return null;
+      const amount = diff * Math.max(1, sampleSize / 3);
+      return { amount, text: `Estimated monthly impact: ${formatCurrency(amount)}` };
+    }
+    case "winning_streak_tilt": {
+      const gap =
+        Number(pattern.data?.overall_win_rate ?? 0) -
+        Number(pattern.data?.post_streak_win_rate ?? 0);
+      if (!Number.isFinite(gap)) return null;
+      const amount = -Math.abs(gap * Math.max(Math.abs(avgPnl), 1) * Math.max(sampleSize, 1));
+      return { amount, text: `Estimated monthly impact: ${formatCurrency(amount)}` };
+    }
+    case "sector_concentration": {
+      const diff =
+        Number(pattern.data?.sector_avg_pnl ?? 0) - Number(pattern.data?.overall_avg_pnl ?? 0);
+      if (!Number.isFinite(diff)) return null;
+      const amount = diff * Math.max(1, sampleSize / 4);
+      return { amount, text: `Estimated monthly impact: ${formatCurrency(amount)}` };
+    }
+    case "day_of_week": {
+      const gap =
+        Number(pattern.data?.best_win_rate ?? 0) - Number(pattern.data?.worst_win_rate ?? 0);
+      if (!Number.isFinite(gap)) return null;
+      const amount = gap * Math.max(Math.abs(avgPnl), 1) * Math.max(sampleSize / 2, 1);
+      return { amount, text: `Estimated monthly impact: ${formatCurrency(amount)}` };
+    }
+    default:
+      return null;
+  }
+}
+
+function getRecommendation(pattern: PatternResponse): string {
+  switch (pattern.pattern_type) {
+    case "time_of_day":
+      return `Consider reducing position size during ${String(pattern.data?.worst_bucket ?? "weaker hours")} or limiting trades to ${String(pattern.data?.best_bucket ?? "your stronger hours")}.`;
+    case "day_of_week":
+      return `Your data suggests ${String(pattern.data?.best_bucket ?? "some weekdays")} are stronger. Consider being more selective on ${String(pattern.data?.worst_bucket ?? "weaker days")}.`;
+    case "holding_period":
+      return `Your most profitable trades are held for ${String(pattern.data?.best_bucket ?? "your strongest bucket")}. Consider adjusting your holding strategy.`;
+    case "revenge_trading":
+      return "After a loss, consider waiting at least 30 minutes before entering a new trade.";
+    case "overtrading":
+      return "On days with elevated trade count, your profitability drops significantly. Consider setting a daily trade limit.";
+    case "sector_concentration":
+      return "Diversifying across sectors could reduce your concentration risk.";
+    case "winning_streak_tilt":
+      return "After winning streaks, consider maintaining your normal position size instead of increasing it.";
+    case "losing_streak_tilt":
+      return "During losing streaks, your data shows losses compound. Consider reducing size or taking a break.";
+    default:
+      return "Your data suggests a repeatable pattern here. Consider tracking it more closely in your journal.";
+  }
+}
+
+function getWeeklyFocusCopy(pattern: PatternResponse): string | null {
+  switch (pattern.pattern_type) {
+    case "time_of_day":
+      return `Limit entries during ${String(pattern.data?.worst_bucket ?? "your weaker hours")}.`;
+    case "day_of_week":
+      return `Be more selective on ${String(pattern.data?.worst_bucket ?? "weaker days")}.`;
+    case "revenge_trading":
+      return "After a loss, wait 30 minutes.";
+    case "overtrading": {
+      const threshold = Math.max(
+        1,
+        Math.ceil(Number(pattern.data?.average_trades_per_day ?? 2) * 2)
+      );
+      return `Max ${threshold} trades per day.`;
+    }
+    case "sector_concentration":
+      return `Look for setups outside ${String(pattern.data?.sector ?? "one concentrated sector")}.`;
+    case "holding_period":
+      return `Target ${String(pattern.data?.best_bucket ?? "your strongest")} hold times.`;
+    case "winning_streak_tilt":
+      return "After 3 wins, keep normal sizing.";
+    case "losing_streak_tilt":
+      return "After 2 losses, halve your size.";
+    default:
+      return null;
+  }
 }
 
 export default function InsightsTab({
@@ -192,6 +344,16 @@ export default function InsightsTab({
   const unlocked = patternsData?.unlocked ?? false;
   const progressPct = Math.min((totalCompletedTrades / threshold) * 100, 100);
   const patterns = sortPatterns(patternsData?.patterns ?? []);
+  const weeklyFocusItems = patterns
+    .filter((pattern) => !pattern.locked)
+    .map((pattern) => ({
+      severityOrder: pattern.severity === "high" ? 0 : pattern.severity === "medium" ? 1 : 2,
+      text: getWeeklyFocusCopy(pattern),
+    }))
+    .filter((item): item is { severityOrder: number; text: string } => Boolean(item.text))
+    .sort((a, b) => a.severityOrder - b.severityOrder)
+    .map((item) => item.text)
+    .slice(0, 3);
 
   return (
     <section className="insights-root">
@@ -203,7 +365,7 @@ export default function InsightsTab({
           <div className="insights-progress-copy">
             <h2>Insights unlock at {threshold} completed trades</h2>
             <p>
-              Insights unlock at {threshold} trades - you have {totalCompletedTrades}/{threshold}.
+              Insights unlock at {threshold} trades. You have {totalCompletedTrades}/{threshold}.
             </p>
           </div>
           <div className="insights-progress-bar">
@@ -215,6 +377,19 @@ export default function InsightsTab({
         </article>
       ) : (
         <>
+          {weeklyFocusItems.length ? (
+            <section className="weekly-focus-card">
+              <div className="weekly-focus-title">📋 This Week&apos;s Focus</div>
+              <div>
+                {weeklyFocusItems.map((item) => (
+                  <div key={item} className="weekly-focus-item">
+                    {item}
+                  </div>
+                ))}
+              </div>
+            </section>
+          ) : null}
+
           <div className="insights-toolbar">
             <div>
               <h2 className="insights-heading">Behavioral Patterns</h2>
@@ -269,10 +444,14 @@ export default function InsightsTab({
           <div className="insights-pattern-list">
             {patterns.map((pattern) => {
               const isExpanded = expanded[pattern.pattern_type] ?? false;
+              const confidence = getConfidenceMeta(pattern);
+              const impact = estimateImpact(pattern, summary);
+
               return (
                 <article
                   key={pattern.pattern_type}
                   className={`insights-pattern-card${pattern.locked ? " is-locked" : ""}`}
+                  style={{ borderLeft: `4px solid ${severityBorderColor(pattern.severity)}` }}
                 >
                   <div className="insights-pattern-content">
                     <div className="insights-pattern-header">
@@ -280,9 +459,25 @@ export default function InsightsTab({
                         {severityIcon(pattern.severity)}
                       </span>
                       <div className="insights-pattern-copy">
-                        <h3>{pattern.title}</h3>
+                        <div className="insights-pattern-title-row">
+                          <h3>{pattern.title}</h3>
+                          <span className={`insight-confidence ${confidence.className}`}>
+                            {confidence.text}
+                          </span>
+                        </div>
                         <p>{pattern.description}</p>
                       </div>
+                    </div>
+
+                    {impact ? (
+                      <div className={`insight-impact ${impact.amount >= 0 ? "impact-positive" : "impact-negative"}`}>
+                        {impact.text}
+                      </div>
+                    ) : null}
+
+                    <div className="insight-recommendation">
+                      <span>💡</span>
+                      <span>{getRecommendation(pattern)}</span>
                     </div>
 
                     <button

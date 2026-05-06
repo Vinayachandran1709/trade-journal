@@ -141,6 +141,21 @@ export interface TradeListItem {
   created_at?: string;
 }
 
+export interface CompletedTradeListItem {
+  id: number;
+  user_id: number;
+  stock_symbol: string;
+  entry_date: string;
+  exit_date: string;
+  entry_price: number;
+  exit_price: number;
+  quantity: number;
+  pnl: number;
+  return_pct: number;
+  holding_days: number;
+  created_at?: string;
+}
+
 export async function fetchTradesSummary(token: string): Promise<TradesSummary> {
   return request<TradesSummary>("/api/trades/summary", {
     headers: {
@@ -152,11 +167,16 @@ export async function fetchTradesSummary(token: string): Promise<TradesSummary> 
 export async function fetchTrades(
   token: string,
   filters?: {
+    symbol?: string;
     limit?: number;
     offset?: number;
   }
 ): Promise<TradeListItem[]> {
   const params = new URLSearchParams();
+
+  if (filters?.symbol) {
+    params.set("symbol", filters.symbol);
+  }
 
   if (filters?.limit !== undefined) {
     params.set("limit", String(filters.limit));
@@ -173,6 +193,32 @@ export async function fetchTrades(
       Authorization: `Bearer ${token}`,
     },
   });
+}
+
+export async function fetchCompletedTrades(
+  token: string,
+  filters?: {
+    limit?: number;
+    offset?: number;
+  }
+): Promise<CompletedTradeListItem[]> {
+  const params = new URLSearchParams();
+  if (filters?.limit !== undefined) {
+    params.set("limit", String(filters.limit));
+  }
+  if (filters?.offset !== undefined) {
+    params.set("offset", String(filters.offset));
+  }
+
+  const query = params.toString();
+  return request<CompletedTradeListItem[]>(
+    `/api/trades/completed${query ? `?${query}` : ""}`,
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    }
+  );
 }
 
 export interface RiskAlert {
