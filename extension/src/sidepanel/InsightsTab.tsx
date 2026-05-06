@@ -9,6 +9,11 @@ import {
   type PatternsEnvelope,
 } from "../shared/api";
 import { getAuthToken } from "../shared/auth";
+import { storageGet, storageSet } from "../shared/chrome";
+import SkeletonLine from "./SkeletonLine";
+
+const CACHED_INSIGHTS_PATTERNS_KEY = "cachedInsightsPatterns";
+const CACHED_INSIGHTS_SUMMARY_KEY = "cachedInsightsSummary";
 
 const CURRENCY_FORMATTER = new Intl.NumberFormat("en-IN", {
   maximumFractionDigits: 0,
@@ -232,6 +237,22 @@ function getWeeklyFocusCopy(pattern: PatternResponse): string | null {
   }
 }
 
+function InsightsSkeleton() {
+  return (
+    <section className="insights-root" aria-hidden="true">
+      {Array.from({ length: 2 }).map((_, index) => (
+        <article key={index} className="insights-pattern-card">
+          <div className="insights-pattern-content">
+            <SkeletonLine width="42%" height="16px" />
+            <SkeletonLine width="92%" height="12px" />
+            <SkeletonLine width="76%" height="12px" />
+          </div>
+        </article>
+      ))}
+    </section>
+  );
+}
+
 export default function InsightsTab({
   isSignedIn,
   webAppUrl,
@@ -260,7 +281,15 @@ export default function InsightsTab({
         return;
       }
 
-      setLoading(true);
+      const [cachedPatterns, cachedSummary] = await Promise.all([
+        storageGet<PatternsEnvelope>(CACHED_INSIGHTS_PATTERNS_KEY).catch(() => null),
+        storageGet<AnalyticsSummaryResponse>(CACHED_INSIGHTS_SUMMARY_KEY).catch(() => null),
+      ]);
+      if (!active) return;
+      if (cachedPatterns) setPatternsData(cachedPatterns);
+      if (cachedSummary) setSummary(cachedSummary);
+      setLoading(!cachedPatterns);
+
       try {
         const token = await getAuthToken();
         if (!token) {
@@ -277,6 +306,8 @@ export default function InsightsTab({
           setSummary(summaryResponse);
           setError(null);
         }
+        void storageSet(CACHED_INSIGHTS_PATTERNS_KEY, patternsResponse).catch(() => undefined);
+        void storageSet(CACHED_INSIGHTS_SUMMARY_KEY, summaryResponse).catch(() => undefined);
       } catch (loadError) {
         if (active) {
           setError(loadError instanceof Error ? loadError.message : "Unable to load insights.");
@@ -313,6 +344,8 @@ export default function InsightsTab({
       setPatternsData(patternsResponse);
       setSummary(summaryResponse);
       setError(null);
+      void storageSet(CACHED_INSIGHTS_PATTERNS_KEY, patternsResponse).catch(() => undefined);
+      void storageSet(CACHED_INSIGHTS_SUMMARY_KEY, summaryResponse).catch(() => undefined);
     } catch (refreshError) {
       setError(
         refreshError instanceof Error
@@ -336,7 +369,7 @@ export default function InsightsTab({
   }
 
   if (loading) {
-    return <section className="insights-loading">Loading your insights...</section>;
+    return <InsightsSkeleton />;
   }
 
   const totalCompletedTrades = patternsData?.total_completed_trades ?? 0;

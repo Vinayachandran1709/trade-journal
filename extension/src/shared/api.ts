@@ -233,6 +233,9 @@ export interface RiskAlert {
 export interface TradeSetupItem {
   id: number;
   symbol: string | null;
+  entry_price?: number | null;
+  stop_loss_price?: number | null;
+  target_price?: number | null;
   thesis?: string | null;
   conviction_score?: number | null;
   risk_score?: number | null;

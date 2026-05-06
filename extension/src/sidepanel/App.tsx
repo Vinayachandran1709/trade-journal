@@ -13,8 +13,8 @@ import AccountTab from "./AccountTab";
 import AiTab from "./AiTab";
 import { getCachedAnalyticsSummary, getCachedBehaviorPatterns } from "./behavioral";
 import CalculatorsTab from "./CalculatorsTab";
-import CapturesTab from "./CapturesTab";
 import InsightsTab from "./InsightsTab";
+import JournalTab from "./JournalTab";
 import MarketTab from "./MarketTab";
 import TraderPulse from "./TraderPulse";
 
@@ -165,7 +165,7 @@ export default function App() {
             ["market", "Market"],
             ["ai", "AI"],
             ["insights", "Insights"],
-            ["captures", "Captures"],
+            ["captures", "Journal"],
             ["calculators", "Calculators"],
             ["account", "Account"],
           ] as Array<[TabId, string]>
@@ -198,7 +198,7 @@ export default function App() {
       )}
 
       {activeTab === "captures" && (
-        <CapturesTab
+        <JournalTab
           captureState={captureState}
           savingTradeId={savingTradeId}
           onSave={handleSaveCapture}

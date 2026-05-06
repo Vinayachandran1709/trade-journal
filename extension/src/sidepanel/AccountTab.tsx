@@ -2,7 +2,11 @@ import { useEffect, useState } from "react";
 
 import { fetchTradesSummary, type TradesSummary } from "../shared/api";
 import { getAuthToken } from "../shared/auth";
+import { storageGet, storageSet } from "../shared/chrome";
 import type { User } from "../shared/types";
+import SkeletonLine from "./SkeletonLine";
+
+const CACHED_ACCOUNT_SUMMARY_KEY = "cachedAccountSummary";
 
 const DATE_FORMATTER = new Intl.DateTimeFormat("en-IN", {
   year: "numeric",
@@ -72,7 +76,15 @@ export default function AccountTab({
         return;
       }
 
-      setLoadingSummary(true);
+      const cachedSummary = await storageGet<TradesSummary>(CACHED_ACCOUNT_SUMMARY_KEY).catch(
+        () => null
+      );
+      if (!active) return;
+      if (cachedSummary) {
+        setSummary(cachedSummary);
+      }
+      setLoadingSummary(!cachedSummary);
+
       try {
         const token = await getAuthToken();
         if (!token) {
@@ -84,6 +96,7 @@ export default function AccountTab({
           setSummary(nextSummary);
           setSummaryError(null);
         }
+        void storageSet(CACHED_ACCOUNT_SUMMARY_KEY, nextSummary).catch(() => undefined);
       } catch (error) {
         if (active) {
           setSummary(null);
@@ -121,9 +134,7 @@ export default function AccountTab({
 
   const badgeLabel = getSubscriptionLabel(user);
   const isFreePlan = badgeLabel === "Free";
-  const tradeCount = loadingSummary
-    ? "Loading..."
-    : summary
+  const tradeCount = summary
       ? summary.total_trades === 0
         ? "0 trades — import CSV or open your broker"
         : summary.total_trades.toLocaleString("en-IN")
@@ -157,7 +168,9 @@ export default function AccountTab({
           </div>
           <div className="account-metric">
             <span className="account-metric-label">Total trades captured</span>
-            <strong>{tradeCount}</strong>
+            <strong>
+              {loadingSummary ? <SkeletonLine width="72px" height="14px" /> : tradeCount}
+            </strong>
           </div>
           <div className="account-metric">
             <span className="account-metric-label">

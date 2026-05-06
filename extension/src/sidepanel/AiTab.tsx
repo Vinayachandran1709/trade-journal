@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import {
   APIError,
   fetchCompletedTrades,
+  fetchTickerIntel,
   fetchWhyMoving,
   type CompletedTradeListItem,
   type TickerIntelResponse,
@@ -10,10 +11,18 @@ import {
 } from "../shared/api";
 import { getAuthToken } from "../shared/auth";
 import { storageGet, storageSet } from "../shared/chrome";
+import { getIstDateKey } from "./behavioral";
+import SkeletonLine from "./SkeletonLine";
 
 const RECENT_AI_QUERIES_KEY = "recentAiQueries";
+const CACHED_AI_COMPLETED_TRADES_KEY = "cachedAiCompletedTrades";
 const MAX_RECENT_QUERIES = 5;
 const MAX_VISIBLE_SOURCES = 3;
+
+interface AiQueryItem {
+  symbol: string;
+  date: string;
+}
 
 function toFiniteNumber(value: unknown): number | null {
   return typeof value === "number" && Number.isFinite(value) ? value : null;
@@ -38,6 +47,10 @@ function formatPercent(value: number | null | undefined): string {
 function formatIndianNumber(num: number | null): string {
   if (num == null) return "--";
   return new Intl.NumberFormat("en-IN", { maximumFractionDigits: 2 }).format(num);
+}
+
+function formatPnl(value: number): string {
+  return `${value < 0 ? "-₹" : "₹"}${formatIndianNumber(Math.abs(value))}`;
 }
 
 function formatPrice(value: unknown): string {
@@ -128,17 +141,30 @@ export default function AiTab({ isSignedIn }: { isSignedIn: boolean }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<WhyMovingResponse | null>(null);
-  const [recentQueries, setRecentQueries] = useState<string[]>([]);
-  const [previewIntel, setPreviewIntel] = useState<TickerIntelResponse | null>(null);
+  const [recentQueries, setRecentQueries] = useState<AiQueryItem[]>([]);
+  const [resultIntel, setResultIntel] = useState<TickerIntelResponse | null>(null);
   const [personalTrades, setPersonalTrades] = useState<CompletedTradeListItem[]>([]);
+  const [completedTradeCache, setCompletedTradeCache] = useState<CompletedTradeListItem[]>([]);
 
   useEffect(() => {
     let active = true;
 
-    void storageGet<string[]>(RECENT_AI_QUERIES_KEY)
+    void storageGet<Array<string | AiQueryItem>>(RECENT_AI_QUERIES_KEY)
       .then((stored) => {
         if (active) {
-          setRecentQueries(stored ?? []);
+          setRecentQueries(
+            (stored ?? []).map((item) =>
+              typeof item === "string" ? { symbol: item, date: getIstDateKey() } : item
+            )
+          );
+        }
+      })
+      .catch(() => undefined);
+
+    void storageGet<CompletedTradeListItem[]>(CACHED_AI_COMPLETED_TRADES_KEY)
+      .then((stored) => {
+        if (active && stored) {
+          setCompletedTradeCache(stored);
         }
       })
       .catch(() => undefined);
@@ -147,6 +173,11 @@ export default function AiTab({ isSignedIn }: { isSignedIn: boolean }) {
       active = false;
     };
   }, []);
+
+  const todaysQueries = useMemo(
+    () => recentQueries.filter((item) => item.date === getIstDateKey()).slice(0, MAX_RECENT_QUERIES),
+    [recentQueries]
+  );
 
   const visibleSources = useMemo(() => {
     const sources = Array.isArray(result?.sources) ? result.sources : [];
@@ -182,7 +213,12 @@ export default function AiTab({ isSignedIn }: { isSignedIn: boolean }) {
   }, [personalTrades]);
 
   async function saveRecentQuery(nextSymbol: string) {
-    const nextQueries = [nextSymbol, ...recentQueries.filter((item) => item !== nextSymbol)]
+    const today = getIstDateKey();
+    const normalized = nextSymbol.toUpperCase();
+    const nextQueries = [
+      { symbol: normalized, date: today },
+      ...recentQueries.filter((item) => !(item.symbol === normalized && item.date === today)),
+    ]
       .slice(0, MAX_RECENT_QUERIES);
     setRecentQueries(nextQueries);
     await storageSet(RECENT_AI_QUERIES_KEY, nextQueries);
@@ -204,23 +240,8 @@ export default function AiTab({ isSignedIn }: { isSignedIn: boolean }) {
     setLoading(true);
     setError(null);
     setResult(null);
+    setResultIntel(null);
     setPersonalTrades([]);
-
-    void chrome.runtime
-      .sendMessage({
-        type: "ticker:fetch-intel",
-        payload: { symbol: normalizedSymbol.toUpperCase() },
-      })
-      .then((response) => {
-        if (response?.ok && response.tickerIntel) {
-          setPreviewIntel(response.tickerIntel as TickerIntelResponse);
-          return;
-        }
-        setPreviewIntel(null);
-      })
-      .catch(() => {
-        setPreviewIntel(null);
-      });
 
     try {
       const token = await getAuthToken();
@@ -228,12 +249,22 @@ export default function AiTab({ isSignedIn }: { isSignedIn: boolean }) {
         throw new Error("Sign in to use AI market explanations.");
       }
 
-      const response = await fetchWhyMoving(token, normalizedSymbol);
+      const [response, tickerIntel] = await Promise.all([
+        fetchWhyMoving(token, normalizedSymbol),
+        fetchTickerIntel(normalizedSymbol).catch(() => null),
+      ]);
+      if (tickerIntel) {
+        setResultIntel(tickerIntel);
+      }
       setResult(response);
 
-      const completedTrades = await fetchCompletedTrades(token, { limit: 200, offset: 0 }).catch(
-        () => []
-      );
+      const completedTrades = completedTradeCache.length
+        ? completedTradeCache
+        : await fetchCompletedTrades(token, { limit: 200, offset: 0 }).catch(() => []);
+      if (!completedTradeCache.length && completedTrades.length) {
+        setCompletedTradeCache(completedTrades);
+        void storageSet(CACHED_AI_COMPLETED_TRADES_KEY, completedTrades).catch(() => undefined);
+      }
       setPersonalTrades(
         completedTrades
           .filter(
@@ -248,6 +279,7 @@ export default function AiTab({ isSignedIn }: { isSignedIn: boolean }) {
       await saveRecentQuery(normalizedSymbol);
     } catch (queryError) {
       setResult(null);
+      setResultIntel(null);
       setPersonalTrades([]);
       if (queryError instanceof APIError && queryError.status === 429) {
         setError(queryError.message);
@@ -266,44 +298,43 @@ export default function AiTab({ isSignedIn }: { isSignedIn: boolean }) {
   return (
     <section className="ai-root">
       <div className="ai-card">
-        <label className="ai-label" htmlFor="ai-symbol-input">
-          Stock Symbol
-        </label>
-        <input
-          id="ai-symbol-input"
-          className="ai-input"
-          placeholder="Enter stock symbol (e.g., TCS, ETERNAL)"
-          value={symbol}
-          onChange={(event) => setSymbol(event.target.value)}
-          onKeyDown={(event) => {
-            if (event.key === "Enter") {
-              event.preventDefault();
-              void runQuery();
-            }
-          }}
-        />
+        <div className="ai-search-row">
+          <input
+            id="ai-symbol-input"
+            className="ai-input"
+            placeholder="TCS, RELIANCE, VEDL..."
+            value={symbol}
+            onChange={(event) => setSymbol(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") {
+                event.preventDefault();
+                void runQuery();
+              }
+            }}
+          />
 
-        <button className="ai-search-button" disabled={loading} onClick={() => void runQuery()}>
-          {loading ? "Loading..." : "Why is it moving? \uD83D\uDD0D"}
-        </button>
+          <button className="ai-submit" disabled={loading} onClick={() => void runQuery()}>
+            {loading ? "Thinking..." : "Why moving?"}
+          </button>
+        </div>
 
         <div className="ai-recent-block">
-          <div className="ai-recent-title">Recent queries</div>
-          {recentQueries.length ? (
-            <div className="ai-recent-list">
-              {recentQueries.map((recentSymbol) => (
+          <div className="ai-recent-title">Today's queries</div>
+          {todaysQueries.length ? (
+            <div className="ai-today-queries">
+              {todaysQueries.map((recentQuery) => (
                 <button
-                  key={recentSymbol}
+                  key={`${recentQuery.symbol}-${recentQuery.date}`}
                   className="ai-recent-pill"
                   disabled={loading}
-                  onClick={() => void runQuery(recentSymbol)}
+                  onClick={() => void runQuery(recentQuery.symbol)}
                 >
-                  {recentSymbol}
+                  {recentQuery.symbol}
                 </button>
               ))}
             </div>
           ) : (
-            <p className="ai-recent-empty">Your last 5 symbols will show here.</p>
+            <p className="ai-recent-empty">Symbols you check today will show here.</p>
           )}
         </div>
       </div>
@@ -316,26 +347,14 @@ export default function AiTab({ isSignedIn }: { isSignedIn: boolean }) {
           <div className="ai-result-header">
             <div>
               <h2>Analyzing {symbol.toUpperCase()}...</h2>
-              {previewIntel?.company_name ? (
-                <p className="ai-result-company">{previewIntel.company_name}</p>
-              ) : null}
-              {previewIntel ? (
-                <p className="ai-result-price">₹{formatPrice(previewIntel.price)}</p>
-              ) : null}
+              <SkeletonLine width="70%" height="12px" />
+              <SkeletonLine width="48%" height="16px" />
             </div>
-            {previewIntel ? (
-              <span
-                className={`ai-result-change${
-                  (toFiniteNumber(previewIntel.change_pct) ?? 0) >= 0 ? " positive" : " negative"
-                }`}
-              >
-                {formatNullablePercent(previewIntel.change_pct)}
-              </span>
-            ) : null}
+            <SkeletonLine width="54px" height="28px" />
           </div>
-          <p className="ai-result-explanation">
-            Pulling recent coverage and market context for this symbol.
-          </p>
+          <SkeletonLine width="100%" height="12px" />
+          <SkeletonLine width="94%" height="12px" />
+          <SkeletonLine width="76%" height="12px" />
         </article>
       ) : null}
 
@@ -348,6 +367,17 @@ export default function AiTab({ isSignedIn }: { isSignedIn: boolean }) {
                 <p className="ai-result-company">{result.company_name}</p>
               ) : null}
               <p className="ai-result-price">₹{formatPrice(result.price)}</p>
+              {resultIntel ? (
+                <p className="ai-momentum-line">
+                  Vol:{" "}
+                  {/above/i.test(resultIntel.volume_vs_avg) ? (
+                    <strong>{resultIntel.volume_vs_avg}</strong>
+                  ) : (
+                    <span>{resultIntel.volume_vs_avg}</span>
+                  )}{" "}
+                  · {resultIntel.sentiment_line}
+                </p>
+              ) : null}
             </div>
             <span
               className={`ai-result-change${
@@ -360,41 +390,7 @@ export default function AiTab({ isSignedIn }: { isSignedIn: boolean }) {
 
           <p className="ai-result-explanation">{getExplanationBody(result)}</p>
 
-          {personalHistory ? (
-            <section className="ai-personal-history">
-              <div className="ai-personal-history-title">Your history with {result.symbol}</div>
-              <div className="ai-personal-stat">
-                <span>Trades</span>
-                <strong>{personalHistory.count}</strong>
-              </div>
-              <div className="ai-personal-stat">
-                <span>Win rate</span>
-                <strong>{formatPercent(personalHistory.winRate)}</strong>
-              </div>
-              <div className="ai-personal-stat">
-                <span>Last trade</span>
-                <strong>
-                  {new Date(personalHistory.lastTrade.exit_date).toLocaleDateString("en-IN", {
-                    day: "numeric",
-                    month: "short",
-                  })}{" "}
-                  · ₹{formatIndianNumber(personalHistory.lastTrade.pnl)}
-                </strong>
-              </div>
-            </section>
-          ) : null}
-
-          <div className="ai-source-panel">
-            <div className="ai-source-panel-header">
-              <div>
-                <div className="ai-source-title">Latest coverage</div>
-                <p className="ai-source-subcopy">
-                  Clean, readable source links for the most relevant recent articles.
-                </p>
-              </div>
-              {result.cached ? <span className="ai-source-state">Cached</span> : null}
-            </div>
-
+          {visibleSources.length ? (
             <div className="ai-source-grid">
               {visibleSources.map((source) => (
                 <a
@@ -416,7 +412,28 @@ export default function AiTab({ isSignedIn }: { isSignedIn: boolean }) {
                 </a>
               ))}
             </div>
-          </div>
+          ) : null}
+
+          {personalHistory ? (
+            <section className="ai-history-card">
+              <div className="ai-history-title">Your history with {result.symbol}</div>
+              <div className="ai-history-stats">
+                {personalHistory.count} trades · Win rate:{" "}
+                <strong>{formatPercent(personalHistory.winRate)}</strong> · Last:{" "}
+                {new Date(personalHistory.lastTrade.exit_date).toLocaleDateString("en-IN", {
+                  day: "numeric",
+                  month: "short",
+                })}
+              </div>
+              <div
+                className={`ai-history-stats ${
+                  personalHistory.lastTrade.pnl >= 0 ? "journal-pnl positive" : "journal-pnl negative"
+                }`}
+              >
+                Last P&amp;L: {formatPnl(personalHistory.lastTrade.pnl)}
+              </div>
+            </section>
+          ) : null}
 
           <div className="ai-quota-copy">
             Queries remaining: {result.queries_remaining}/{result.queries_limit} today

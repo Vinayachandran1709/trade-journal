@@ -157,38 +157,172 @@ function regimeSummary(data: MarketDashboardData["regime"]): string {
   return `Sideways · Range-bound · ${breadth}`;
 }
 
-function globalCueInterpretation(data: MarketDashboardData["global_cues"]): string {
-  const spx = data.sp500_futures?.change_pct;
-  if (spx != null && spx < -0.5) {
-    return "US futures weak. Opening tone may stay cautious.";
+function getRegimeInterpretation(data: MarketDashboardData): string {
+  const advPct = data.regime?.breadth?.pct_advancing ?? 50;
+  const vix = data.vix?.value ?? 15;
+  const niftyChange = data.indices?.nifty_50?.change_pct ?? 0;
+
+  if (niftyChange > 0.8 && advPct > 55) {
+    return "Strong broad-based rally. Trend-following setups look favorable.";
   }
-  if (spx != null && spx > 0.5) {
-    return "US futures are positive. Opening tone may stay supportive.";
+  if (niftyChange > 0.5 && advPct < 40) {
+    return "Index up but breadth is narrow. Few stocks are driving the move.";
   }
-  return "US futures are flat. Global cues look neutral.";
+  if (niftyChange < -0.8 && advPct < 35) {
+    return "Broad downside pressure. Risk management is priority.";
+  }
+  if (niftyChange < -0.3 && advPct > 45) {
+    return "Index weak but internals are mixed. Selective strength in pockets.";
+  }
+  if (vix > 20) {
+    return "Elevated volatility. Wider stops and smaller positions may help control risk.";
+  }
+  if (Math.abs(niftyChange) < 0.3) {
+    return "Low conviction session. Consider avoiding overactivity in the chop.";
+  }
+  return "Mixed signals. Watch for sector-specific opportunities.";
+}
+
+function getGlobalCuesInsight(globalCues: MarketDashboardData["global_cues"]): string {
+  const spChange = globalCues?.sp500_futures?.change_pct ?? 0;
+  const nasdaqChange = globalCues?.nasdaq_futures?.change_pct ?? 0;
+  const crudeChange = globalCues?.crude_oil?.change_pct ?? 0;
+  const goldChange = globalCues?.gold?.change_pct ?? 0;
+  const usdInrChange = globalCues?.usd_inr?.change_pct ?? 0;
+  const parts: string[] = [];
+
+  if (spChange > 0.5 && nasdaqChange > 0.5) {
+    parts.push("US futures firmly positive — supportive for opening");
+  } else if (spChange < -0.5 && nasdaqChange < -0.5) {
+    parts.push("US futures under pressure — may weigh on opening");
+  } else if (spChange > 0.3) {
+    parts.push("US futures mildly positive");
+  } else if (spChange < -0.3) {
+    parts.push("US futures mildly negative");
+  }
+
+  if (crudeChange > 2) {
+    parts.push("Rising crude may support upstream energy while pressuring airlines");
+  } else if (crudeChange < -2) {
+    parts.push("Falling crude may support paint, airlines, and auto sectors");
+  }
+
+  if (goldChange > 1.5) {
+    parts.push("Gold rally signals risk-off sentiment globally");
+  }
+
+  if (usdInrChange > 0.3) {
+    parts.push("Rupee weakening may support IT export earnings");
+  } else if (usdInrChange < -0.3) {
+    parts.push("Rupee strengthening may affect IT sector sentiment");
+  }
+
+  if (parts.length === 0) {
+    return "Global cues are broadly neutral.";
+  }
+  return `${parts.slice(0, 2).join(". ")}.`;
+}
+
+function getSectorFlowInsight(
+  sectorPerformance: Record<string, { change_pct: number | null } | undefined>
+): string {
+  const entries = Object.entries(sectorPerformance)
+    .map(([name, data]) => ({ name, pct: data?.change_pct ?? 0 }))
+    .sort((left, right) => right.pct - left.pct);
+
+  if (!entries.length) {
+    return "Sector data is limited. Watch for clearer leadership.";
+  }
+
+  const positiveCount = entries.filter((entry) => entry.pct > 0).length;
+  const top2 = entries.slice(0, 2).map((entry) => entry.name).join(" and ");
+  const bottom = entries[entries.length - 1]?.name ?? "laggards";
+
+  if (positiveCount >= 7) {
+    return `Broad sector strength. ${top2} leading the rally.`;
+  }
+  if (positiveCount >= 4) {
+    return `Rotation into ${top2}. ${bottom} underperforming.`;
+  }
+  if (positiveCount <= 2) {
+    return `Most sectors under pressure. Only ${top2} holding up.`;
+  }
+  return `Mixed sector performance. ${top2} showing relative strength.`;
+}
+
+function generateMarketNarrative(
+  data: MarketDashboardData,
+  sectorData: Record<string, { change_pct: number | null } | undefined>
+): string {
+  const niftyChange = data.indices?.nifty_50?.change_pct ?? 0;
+  const vix = data.vix?.value ?? 15;
+  const advPct = data.regime?.breadth?.pct_advancing ?? 50;
+  const sectors = Object.entries(sectorData)
+    .map(([name, sector]) => ({ name, pct: sector?.change_pct ?? 0 }))
+    .sort((left, right) => right.pct - left.pct);
+  const leading = sectors.filter((sector) => sector.pct > 0.5).slice(0, 2).map((sector) => sector.name);
+  const lagging = sectors.filter((sector) => sector.pct < -0.5).slice(0, 2).map((sector) => sector.name);
+  const parts: string[] = [];
+
+  if (niftyChange > 1) {
+    parts.push(`Markets are in a strong uptrend with Nifty up ${niftyChange.toFixed(1)}%.`);
+  } else if (niftyChange > 0.3) {
+    parts.push(`Positive session with Nifty holding gains of ${niftyChange.toFixed(1)}%.`);
+  } else if (niftyChange < -1) {
+    parts.push(`Markets are under broad pressure with Nifty down ${Math.abs(niftyChange).toFixed(1)}%.`);
+  } else if (niftyChange < -0.3) {
+    parts.push(`Markets are mildly weak with Nifty slipping ${Math.abs(niftyChange).toFixed(1)}%.`);
+  } else {
+    parts.push(`Markets are trading flat with Nifty at ${data.indices?.nifty_50?.value?.toLocaleString("en-IN") ?? "--"}.`);
+  }
+
+  if (leading.length > 0 && lagging.length > 0) {
+    parts.push(`${leading.join(" and ")} are leading while ${lagging.join(" and ")} trail.`);
+  } else if (leading.length > 0) {
+    parts.push(`Strength concentrated in ${leading.join(" and ")}.`);
+  }
+
+  if (advPct > 60) {
+    parts.push(`Breadth is healthy at ${advPct}% advancing — broad participation.`);
+  } else if (advPct < 35) {
+    parts.push(`Breadth is weak at ${advPct}% advancing — narrow participation.`);
+  }
+
+  if (vix > 20) {
+    parts.push(`Volatility is elevated (VIX ${vix.toFixed(1)}) — consider smaller positions.`);
+  }
+
+  return parts.slice(0, 3).join(" ");
 }
 
 function getTradeSector(symbol: string): string {
   return SECTOR_MAP[symbol.toUpperCase()] ?? "Other";
 }
 
-function getStockMarker(args: {
-  symbol: string;
-  tickerIntel: TickerIntelResponse | null;
-  strongSector: string | null;
-}): string[] {
-  const markers: string[] = [];
-  if (
-    args.tickerIntel?.avg_volume &&
-    args.tickerIntel.volume &&
-    args.tickerIntel.volume / args.tickerIntel.avg_volume > 1.5
-  ) {
-    markers.push("🔥");
+function getStockTag(stock: {
+  change_pct?: number | null;
+  volume?: number | null;
+  avg_volume?: number | null;
+}): { label: string; className: string } | null {
+  const changePct = stock.change_pct ?? 0;
+  const volRatio =
+    stock.volume && stock.avg_volume && stock.avg_volume > 0
+      ? stock.volume / stock.avg_volume
+      : null;
+
+  if (changePct > 2.5 && volRatio && volRatio > 1.3) {
+    return { label: "🔥 Momentum", className: "stock-tag-momentum" };
   }
-  if (args.strongSector && getTradeSector(args.symbol) === args.strongSector) {
-    markers.push("⭐");
+  if (volRatio && volRatio > 2.0) {
+    return { label: "📊 Vol Spike", className: "stock-tag-volume" };
   }
-  return markers;
+  if (changePct > 2.0) {
+    return { label: "↑ Strong", className: "stock-tag-strong" };
+  }
+  if (changePct < -2.5) {
+    return { label: "↓ Weak", className: "stock-tag-weak" };
+  }
+  return null;
 }
 
 function SectorBox({
@@ -196,11 +330,13 @@ function SectorBox({
   data,
   isPreferred,
   isConcentrated,
+  rank,
 }: {
   sector: string;
   data?: { index: string; value: number | null; change_pct: number | null };
   isPreferred: boolean;
   isConcentrated: boolean;
+  rank: number;
 }) {
   const change = data?.change_pct ?? null;
   const tone =
@@ -219,6 +355,7 @@ function SectorBox({
         borderColor: isConcentrated ? "rgba(79, 70, 229, 0.4)" : undefined,
       }}
     >
+      <span className="sector-rank">#{rank}</span>
       <div className="mkt-sector-box-top">
         <span className="mkt-sector-name">{SECTOR_SHORT_LABELS[sector] ?? sector}</span>
         {isPreferred ? <span className="mkt-sector-star">★</span> : null}
@@ -556,7 +693,11 @@ export default function MarketTab({
     let active = true;
 
     async function loadStockIntel() {
-      if (!isSignedIn || yourStocks.length === 0) {
+      const stocksNeedingIntel = yourStocks
+        .filter((stock) => stock.volume == null)
+        .slice(0, 3);
+
+      if (!isSignedIn || stocksNeedingIntel.length === 0) {
         if (active) {
           setStockIntel({});
         }
@@ -564,7 +705,7 @@ export default function MarketTab({
       }
 
       const responses = await Promise.all(
-        yourStocks.map(async (stock) => {
+        stocksNeedingIntel.map(async (stock) => {
           try {
             const response = await chrome.runtime.sendMessage({
               type: "ticker:fetch-intel",
@@ -673,6 +814,10 @@ export default function MarketTab({
   const sectorPerformance = Object.keys(data.sector_performance || {}).length
     ? data.sector_performance
     : watchlist?.sector_performance ?? {};
+  const rankedSectorEntries = SECTOR_ORDER.map((sector) => ({
+    sector,
+    data: sectorPerformance[sector],
+  })).sort((left, right) => (right.data?.change_pct ?? 0) - (left.data?.change_pct ?? 0));
   const showYourStocks = isSignedIn && yourStocks.length > 0;
   const highestSeverityPattern = [...(patternsEnvelope?.patterns ?? [])]
     .filter((pattern) => !pattern.locked)
@@ -686,6 +831,16 @@ export default function MarketTab({
           0
         )}.`
       : null;
+  const strongSectorTodayChange = strongSector ? sectorPerformance[strongSector]?.change_pct : null;
+  const concentratedSectorChange = concentratedSector
+    ? sectorPerformance[concentratedSector]?.change_pct
+    : null;
+  const yourStocksInsight =
+    strongSector && strongSectorTodayChange != null && strongSectorTodayChange > 0
+      ? `Your strongest sector (${strongSector}) is up ${formatSignedPercent(strongSectorTodayChange)} today.`
+      : concentratedSector && concentratedSectorChange != null && concentratedSectorChange < 0
+        ? `Your most-traded sector (${concentratedSector}) is down ${formatSignedPercent(Math.abs(concentratedSectorChange))} today.`
+        : null;
 
   return (
     <div className="mkt-root">
@@ -718,10 +873,21 @@ export default function MarketTab({
       ) : null}
 
       {isSignedIn ? (
-        <div className={`mkt-regime-bar ${regimeTone(data.regime.nifty_trend)}`}>
-          {regimeSummary(data.regime)}
-        </div>
+        <>
+          <div className={`mkt-regime-bar ${regimeTone(data.regime.nifty_trend)}`}>
+            {regimeSummary(data.regime)}
+          </div>
+          <p className="regime-interpretation">{getRegimeInterpretation(data)}</p>
+        </>
       ) : null}
+
+      <div className="market-narrative">
+        <div className="narrative-header">
+          <span className="narrative-icon">📋</span>
+          <span className="narrative-title">Today&apos;s Setup</span>
+        </div>
+        <p className="narrative-text">{generateMarketNarrative(data, sectorPerformance)}</p>
+      </div>
 
       {showYourStocks ? (
         <div className="mkt-section">
@@ -729,26 +895,31 @@ export default function MarketTab({
             <div>
               <h3 className="mkt-section-title">Your Stocks</h3>
               <p className="mkt-section-subcopy">Based on your recent trades</p>
+              {yourStocksInsight ? (
+                <p className="your-stocks-insight">{yourStocksInsight}</p>
+              ) : null}
             </div>
           </div>
           <div className="mkt-your-stocks-list">
             {yourStocks.map((stock, index) => {
-              const markers = getStockMarker({
-                symbol: stock.symbol,
-                tickerIntel: stockIntel[stock.symbol] ?? null,
-                strongSector,
+              const intel = stockIntel[stock.symbol] ?? null;
+              const tag = getStockTag({
+                change_pct: stock.change_pct,
+                volume: stock.volume ?? intel?.volume ?? null,
+                avg_volume: intel?.avg_volume ?? null,
               });
               return (
                 <div
                   key={`${stock.symbol}-${index}`}
                   className={`mkt-your-stock-row${index % 2 === 0 ? " alt" : ""}`}
                 >
-                  <span className="mkt-your-stock-symbol">
-                    {stock.symbol} {markers.length ? <span>{markers.join(" ")}</span> : null}
-                  </span>
-                  <span className="mkt-your-stock-price">₹{formatNumber(stock.price)}</span>
-                  <span className="mkt-your-stock-change" style={{ color: percentColor(stock.change_pct) }}>
-                    {formatSignedPercent(stock.change_pct)}
+                  <span className="mkt-your-stock-symbol">{stock.symbol}</span>
+                  <span className="mkt-your-stock-data">
+                    <span className="mkt-your-stock-price">₹{formatNumber(stock.price)}</span>
+                    <span className="mkt-your-stock-change" style={{ color: percentColor(stock.change_pct) }}>
+                      {formatSignedPercent(stock.change_pct)}
+                    </span>
+                    {tag ? <span className={`stock-mini-tag ${tag.className}`}>{tag.label}</span> : null}
                   </span>
                 </div>
               );
@@ -764,16 +935,18 @@ export default function MarketTab({
           </div>
         </div>
         <div className="mkt-sector-grid">
-          {SECTOR_ORDER.map((sector) => (
+          {rankedSectorEntries.map(({ sector, data: sectorData }, index) => (
             <SectorBox
               key={sector}
               sector={sector}
-              data={sectorPerformance[sector]}
+              data={sectorData}
               isPreferred={preferredSectors.has(sector)}
               isConcentrated={sector === concentratedSector}
+              rank={index + 1}
             />
           ))}
         </div>
+        <p className="sector-flow-insight">{getSectorFlowInsight(sectorPerformance)}</p>
         {concentratedSector && concentratedWinRate != null ? (
           <p className="mkt-section-subcopy" style={{ marginTop: 8 }}>
             You trade {concentratedSector} most · {formatPercent(concentratedWinRate, 0)} win rate there
@@ -820,7 +993,7 @@ export default function MarketTab({
         <div className="mkt-section-heading-row">
           <div>
             <h3 className="mkt-section-title">Global Cues</h3>
-            <p className="mkt-section-subcopy">{globalCueInterpretation(data.global_cues)}</p>
+            <p className="mkt-section-subcopy">{getGlobalCuesInsight(data.global_cues)}</p>
           </div>
         </div>
         <div className="mkt-global-grid">
