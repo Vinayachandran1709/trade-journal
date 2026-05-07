@@ -48,7 +48,14 @@ export default function Navbar() {
   const navLinks = [
     { href: "/pricing", label: "Pricing" },
     { href: "/download", label: "Download" },
-    ...(loggedIn ? [{ href: "/dashboard", label: "Dashboard" }] : []),
+    ...(loggedIn
+      ? [
+          { href: "/dashboard", label: "Dashboard" },
+          { href: "/dashboard/trades", label: "Trades" },
+          { href: "/dashboard/analytics", label: "Patterns" },
+          { href: "/dashboard/mistakes", label: "Mistakes" },
+        ]
+      : []),
   ];
 
   const onDarkHero = pathname === "/" || pathname === "/download";

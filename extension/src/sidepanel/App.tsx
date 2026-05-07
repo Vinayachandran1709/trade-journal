@@ -159,26 +159,29 @@ export default function App() {
 
       {bannerError ? <div className="connection-error-banner">{bannerError}</div> : null}
 
-      <nav className="tabs-row">
-        {(
-          [
-            ["market", "Market"],
-            ["ai", "AI"],
-            ["insights", "Insights"],
-            ["captures", "Journal"],
-            ["calculators", "Calculators"],
-            ["account", "Account"],
-          ] as Array<[TabId, string]>
-        ).map(([id, label]) => (
-          <button
-            key={id}
-            className={`tab-button${activeTab === id ? " active" : ""}`}
-            onClick={() => setActiveTab(id)}
-          >
-            {label}
-          </button>
-        ))}
-      </nav>
+      <div className="tabs-wrapper">
+        <nav className="tabs-row">
+          {(
+            [
+              ["market", "Market"],
+              ["ai", "Research"],
+              ["insights", "Insights"],
+              ["captures", "Journal"],
+              ["calculators", "Calculators"],
+              ["account", "Account"],
+            ] as Array<[TabId, string]>
+          ).map(([id, label]) => (
+            <button
+              key={id}
+              className={`tab-button${activeTab === id ? " active" : ""}`}
+              onClick={() => setActiveTab(id)}
+            >
+              {label}
+            </button>
+          ))}
+        </nav>
+        <div className="tabs-fade-hint" aria-hidden="true" />
+      </div>
 
       {activeTab === "market" && (
         <MarketTab
@@ -188,7 +191,7 @@ export default function App() {
         />
       )}
 
-      {activeTab === "ai" && <AiTab isSignedIn={Boolean(user)} />}
+      {activeTab === "ai" && <AiTab isSignedIn={Boolean(user)} marketData={marketData} />}
 
       {activeTab === "insights" && (
         <InsightsTab

@@ -173,3 +173,23 @@ def test_repeated_extension_capture_is_idempotent(
     assert first.json()["imported_count"] == 1
     assert second.json()["imported_count"] == 0
     assert second.json()["duplicate_count"] == 1
+
+
+def test_login_with_malformed_stored_hash_returns_401(client: TestClient):
+    db = TestingSessionLocal()
+    user = User(
+        email="legacy-hash@example.com",
+        hashed_password="not-a-valid-bcrypt-hash",
+        name="Legacy User",
+    )
+    db.add(user)
+    db.commit()
+    db.close()
+
+    response = client.post(
+        "/api/auth/login",
+        json={"email": "legacy-hash@example.com", "password": "password123"},
+    )
+
+    assert response.status_code == 401
+    assert response.json()["detail"] == "Invalid email or password"

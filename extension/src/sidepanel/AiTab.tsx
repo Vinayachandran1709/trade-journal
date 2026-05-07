@@ -6,6 +6,7 @@ import {
   fetchTickerIntel,
   fetchWhyMoving,
   type CompletedTradeListItem,
+  type MarketDashboardData,
   type TickerIntelResponse,
   type WhyMovingResponse,
 } from "../shared/api";
@@ -67,6 +68,108 @@ function getExplanationBody(result: WhyMovingResponse): string {
   }
 
   return result.explanation.replace(result.disclaimer, "").trim();
+}
+
+function classifyMoveType(
+  result: WhyMovingResponse,
+  intel: TickerIntelResponse | null
+): { type: string; className: string } {
+  const changePct = Math.abs(result.change_pct ?? 0);
+  const explanation = (result.explanation ?? "").toLowerCase();
+  const volAboveAvg = intel?.volume_vs_avg?.toLowerCase().includes("above") ?? false;
+  const volRatio = parseFloat(intel?.volume_vs_avg?.match(/(\d+)/)?.[1] ?? "0");
+
+  if (/earnings|results|q[1-4]|quarter|revenue|profit|loss narrow|pat/i.test(explanation)) {
+    return { type: "📊 Earnings Reaction", className: "move-type-earnings" };
+  }
+  if (/demerger|merger|buyback|split|bonus|rights|acquisition/i.test(explanation)) {
+    return { type: "🏢 Corporate Action", className: "move-type-corporate" };
+  }
+  if (/sector|industry|peer|sympathy|broad|across/i.test(explanation)) {
+    return { type: "🔗 Sector Sympathy", className: "move-type-sector" };
+  }
+  if (changePct > 3 && volAboveAvg && volRatio > 50) {
+    return { type: "🔥 Volume Breakout", className: "move-type-breakout" };
+  }
+  if ((result.change_pct ?? 0) < -3 && volAboveAvg) {
+    return { type: "📉 Heavy Selling", className: "move-type-selling" };
+  }
+  if (/short cover|profit book|booking/i.test(explanation)) {
+    return { type: "🔄 Technical Move", className: "move-type-technical" };
+  }
+  if (/rbi|fed|policy|rate|macro|global|crude|dollar|inflation/i.test(explanation)) {
+    return { type: "🌍 Macro Driven", className: "move-type-macro" };
+  }
+  if (changePct > 2) {
+    return { type: "📈 Momentum Move", className: "move-type-momentum" };
+  }
+  return { type: "📋 Market Activity", className: "move-type-general" };
+}
+
+function getMoveConviction(
+  result: WhyMovingResponse,
+  intel: TickerIntelResponse | null
+): { level: string; score: number; reasons: string[] } {
+  let score = 50;
+  const reasons: string[] = [];
+
+  const volText = intel?.volume_vs_avg ?? "";
+  const volPct = parseInt(volText.match(/(\d+)/)?.[1] ?? "0", 10);
+  if (volText.toLowerCase().includes("above") && volPct > 50) {
+    score += 20;
+    reasons.push(`Volume ${volPct}% above average`);
+  } else if (volText.toLowerCase().includes("below")) {
+    score -= 15;
+    reasons.push("Below-average volume — weak participation");
+  }
+
+  const sourceCount = result.sources?.length ?? 0;
+  if (sourceCount >= 3) {
+    score += 15;
+    reasons.push(`${sourceCount} news sources confirm`);
+  } else if (sourceCount <= 1) {
+    score -= 10;
+    reasons.push("Limited news coverage");
+  }
+
+  const absChange = Math.abs(result.change_pct ?? 0);
+  if (absChange > 5) {
+    score += 15;
+    reasons.push("Significant price movement");
+  } else if (absChange < 1) {
+    score -= 10;
+    reasons.push("Minor price change");
+  }
+
+  score = Math.max(10, Math.min(95, score));
+  const level = score >= 70 ? "High" : score >= 45 ? "Moderate" : "Low";
+  return { level, score, reasons };
+}
+
+function getCleanExplanation(result: WhyMovingResponse): string {
+  return getExplanationBody(result)
+    .replace(/trading volume is \d+% (above|below) average/gi, "")
+    .replace(/volume is \d+% (above|below) average/gi, "")
+    .replace(/volume is \d+% (above|below)/gi, "")
+    .replace(/\s+\./g, ".")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+}
+
+function splitExplanationText(text: string): { headline: string; detail: string | null } {
+  const normalized = text.trim();
+  if (!normalized) {
+    return { headline: "No explanation available right now.", detail: null };
+  }
+
+  const match = normalized.match(/^.*?[.!?](?:\s|$)/);
+  if (!match) {
+    return { headline: normalized, detail: null };
+  }
+
+  const headline = match[0].trim();
+  const detail = normalized.slice(match[0].length).trim();
+  return { headline, detail: detail || null };
 }
 
 function normalizePublisherName(publisher: string | undefined): string {
@@ -136,7 +239,13 @@ function formatRelativeDate(value?: string | null): string {
   return `${diffDays} days ago`;
 }
 
-export default function AiTab({ isSignedIn }: { isSignedIn: boolean }) {
+export default function AiTab({
+  isSignedIn,
+  marketData,
+}: {
+  isSignedIn: boolean;
+  marketData: MarketDashboardData | null;
+}) {
   const [symbol, setSymbol] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -145,6 +254,7 @@ export default function AiTab({ isSignedIn }: { isSignedIn: boolean }) {
   const [resultIntel, setResultIntel] = useState<TickerIntelResponse | null>(null);
   const [personalTrades, setPersonalTrades] = useState<CompletedTradeListItem[]>([]);
   const [completedTradeCache, setCompletedTradeCache] = useState<CompletedTradeListItem[]>([]);
+  const [sourcesOpen, setSourcesOpen] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -218,8 +328,7 @@ export default function AiTab({ isSignedIn }: { isSignedIn: boolean }) {
     const nextQueries = [
       { symbol: normalized, date: today },
       ...recentQueries.filter((item) => !(item.symbol === normalized && item.date === today)),
-    ]
-      .slice(0, MAX_RECENT_QUERIES);
+    ].slice(0, MAX_RECENT_QUERIES);
     setRecentQueries(nextQueries);
     await storageSet(RECENT_AI_QUERIES_KEY, nextQueries);
   }
@@ -242,6 +351,7 @@ export default function AiTab({ isSignedIn }: { isSignedIn: boolean }) {
     setResult(null);
     setResultIntel(null);
     setPersonalTrades([]);
+    setSourcesOpen(false);
 
     try {
       const token = await getAuthToken();
@@ -267,9 +377,7 @@ export default function AiTab({ isSignedIn }: { isSignedIn: boolean }) {
       }
       setPersonalTrades(
         completedTrades
-          .filter(
-            (trade) => trade.stock_symbol.toUpperCase() === normalizedSymbol.toUpperCase()
-          )
+          .filter((trade) => trade.stock_symbol.toUpperCase() === normalizedSymbol.toUpperCase())
           .sort(
             (left, right) =>
               new Date(right.exit_date).getTime() - new Date(left.exit_date).getTime()
@@ -294,6 +402,16 @@ export default function AiTab({ isSignedIn }: { isSignedIn: boolean }) {
       setLoading(false);
     }
   }
+
+  const moveType = result ? classifyMoveType(result, resultIntel) : null;
+  const conviction = result ? getMoveConviction(result, resultIntel) : null;
+  const convictionClass = conviction ? `conviction-${conviction.level.toLowerCase()}` : null;
+  const relativePerf =
+    result && marketData
+      ? (result.change_pct ?? 0) - (marketData.indices?.nifty_50?.change_pct ?? 0)
+      : null;
+  const cleanExplanation = result ? getCleanExplanation(result) : "";
+  const splitExplanation = result ? splitExplanationText(cleanExplanation) : null;
 
   return (
     <section className="ai-root">
@@ -358,15 +476,27 @@ export default function AiTab({ isSignedIn }: { isSignedIn: boolean }) {
         </article>
       ) : null}
 
-      {result ? (
+      {result && moveType && conviction && convictionClass && splitExplanation ? (
         <article className="ai-result-card">
           <div className="ai-result-header">
             <div>
               <h2>{result.symbol}</h2>
-              {result.company_name ? (
-                <p className="ai-result-company">{result.company_name}</p>
-              ) : null}
+              {result.company_name ? <p className="ai-result-company">{result.company_name}</p> : null}
               <p className="ai-result-price">₹{formatPrice(result.price)}</p>
+            </div>
+            <span
+              className={`ai-result-change${
+                (toFiniteNumber(result.change_pct) ?? 0) >= 0 ? " positive" : " negative"
+              }`}
+            >
+              {formatNullablePercent(result.change_pct)}
+            </span>
+          </div>
+
+          <div className={`move-type-badge ${moveType.className}`}>{moveType.type}</div>
+
+          {(resultIntel || relativePerf != null) ? (
+            <div className="ai-context-lines">
               {resultIntel ? (
                 <p className="ai-momentum-line">
                   Vol:{" "}
@@ -378,41 +508,42 @@ export default function AiTab({ isSignedIn }: { isSignedIn: boolean }) {
                   · {resultIntel.sentiment_line}
                 </p>
               ) : null}
-            </div>
-            <span
-              className={`ai-result-change${
-                (toFiniteNumber(result.change_pct) ?? 0) >= 0 ? " positive" : " negative"
-              }`}
-            >
-              {formatNullablePercent(result.change_pct)}
-            </span>
-          </div>
-
-          <p className="ai-result-explanation">{getExplanationBody(result)}</p>
-
-          {visibleSources.length ? (
-            <div className="ai-source-grid">
-              {visibleSources.map((source) => (
-                <a
-                  key={`${source.url}-${source.title}`}
-                  className="ai-source-card"
-                  href={source.url}
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  <div className="ai-source-card-top">
-                    <span className="ai-source-publisher">
-                      {normalizePublisherName(source.publisher)}
-                    </span>
-                    <span className="ai-source-date">
-                      {formatRelativeDate(source.published_at)}
-                    </span>
-                  </div>
-                  <strong className="ai-source-card-title">{truncateTitle(source.title)}</strong>
-                </a>
-              ))}
+              {relativePerf != null ? (
+                <p className="relative-perf">
+                  vs Nifty:{" "}
+                  <span className={relativePerf >= 0 ? "outperform" : "underperform"}>
+                    {relativePerf >= 0 ? "outperforming" : "underperforming"}
+                  </span>{" "}
+                  by {Math.abs(relativePerf).toFixed(1)}%
+                </p>
+              ) : null}
             </div>
           ) : null}
+
+          <div className="ai-result-explanation">
+            <p className="ai-explanation-headline">{splitExplanation.headline}</p>
+            {splitExplanation.detail ? (
+              <p className="ai-explanation-detail">{splitExplanation.detail}</p>
+            ) : null}
+          </div>
+
+          <div className={`conviction-meter ${convictionClass}`}>
+            <div className="conviction-label">
+              Move Conviction: {conviction.level} ({conviction.score}%)
+            </div>
+            <div className="conviction-bar-track" aria-hidden="true">
+              <div className="conviction-bar-fill" style={{ width: `${conviction.score}%` }} />
+            </div>
+            {conviction.reasons.length ? (
+              <div className="conviction-reasons">
+                {conviction.reasons.slice(0, 3).map((reason) => (
+                  <span key={reason} className="conviction-reason-pill">
+                    {reason}
+                  </span>
+                ))}
+              </div>
+            ) : null}
+          </div>
 
           {personalHistory ? (
             <section className="ai-history-card">
@@ -433,6 +564,42 @@ export default function AiTab({ isSignedIn }: { isSignedIn: boolean }) {
                 Last P&amp;L: {formatPnl(personalHistory.lastTrade.pnl)}
               </div>
             </section>
+          ) : null}
+
+          {visibleSources.length ? (
+            <div className="ai-source-panel">
+              <button
+                type="button"
+                className="sources-toggle"
+                onClick={() => setSourcesOpen((current) => !current)}
+              >
+                <span className={`chevron${sourcesOpen ? " open" : ""}`}>▶</span>
+                <span>Sources ({visibleSources.length})</span>
+              </button>
+              {sourcesOpen ? (
+                <div className="ai-source-grid">
+                  {visibleSources.map((source) => (
+                    <a
+                      key={`${source.url}-${source.title}`}
+                      className="ai-source-card"
+                      href={source.url}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      <div className="ai-source-card-top">
+                        <span className="ai-source-publisher">
+                          {normalizePublisherName(source.publisher)}
+                        </span>
+                        <span className="ai-source-date">
+                          {formatRelativeDate(source.published_at)}
+                        </span>
+                      </div>
+                      <strong className="ai-source-card-title">{truncateTitle(source.title)}</strong>
+                    </a>
+                  ))}
+                </div>
+              ) : null}
+            </div>
           ) : null}
 
           <div className="ai-quota-copy">

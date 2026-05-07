@@ -26,8 +26,6 @@ body {
   display: grid;
   gap: 6px;
   padding: 10px 12px;
-  max-height: 70px;
-  overflow: hidden;
   border-radius: 14px;
   background: linear-gradient(135deg, #f8fafc, #f1f5f9);
   border: 1px solid rgba(148, 163, 184, 0.15);
@@ -59,6 +57,16 @@ body {
   line-height: 1.5;
   color: #475569;
 }
+
+.pulse-action-line {
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.4;
+  margin: 0;
+}
+
+.pulse-action-line.pulse-warning { color: #d97706; }
+.pulse-action-line.pulse-positive { color: #059669; }
 
 .pulse-metrics {
   display: flex;
@@ -175,27 +183,33 @@ body {
   font-size: 13px;
 }
 
+.tabs-wrapper {
+  position: relative;
+}
+
 .tabs-row {
   display: flex;
-  gap: 8px;
+  gap: 2px;
   overflow-x: auto;
   scrollbar-width: none;
-  -webkit-overflow-scrolling: touch;
+  -ms-overflow-style: none;
+  position: relative;
+  padding-right: 30px;
   padding-bottom: 2px;
+  -webkit-overflow-scrolling: touch;
 }
 
-.tabs-row::-webkit-scrollbar {
-  display: none;
-}
+.tabs-row::-webkit-scrollbar { display: none; }
 
-.tabs-row::after {
-  content: "";
-  position: sticky;
+.tabs-fade-hint {
+  position: absolute;
+  top: 0;
   right: 0;
-  width: 30px;
+  bottom: 0;
+  width: 40px;
   background: linear-gradient(to right, transparent, white);
   pointer-events: none;
-  flex-shrink: 0;
+  z-index: 1;
 }
 
 .tab-button,
@@ -916,17 +930,6 @@ body {
   color: #334155;
 }
 
-.mkt-stale-banner {
-  background: #fef3c7;
-  border: 1px solid #f59e0b;
-  border-radius: 10px;
-  padding: 8px 12px;
-  margin-bottom: 12px;
-  font-size: 12px;
-  color: #92400e;
-  line-height: 1.4;
-}
-
 .mkt-regime-bar {
   min-height: 36px;
   display: flex;
@@ -1388,6 +1391,12 @@ body {
   font-weight: 600;
 }
 
+.mkt-footer-cache-label {
+  color: #94a3b8;
+  font-size: 11px;
+  font-weight: 500;
+}
+
 .mkt-skeleton-bar {
   display: block;
   width: 100%;
@@ -1606,6 +1615,33 @@ body {
 
 .ai-momentum-line strong { color: #0f172a; }
 
+.move-type-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  margin: 6px 0;
+  width: fit-content;
+}
+
+.move-type-earnings { background: #eff6ff; color: #1e40af; }
+.move-type-corporate { background: #f5f3ff; color: #5b21b6; }
+.move-type-sector { background: #ecfdf5; color: #065f46; }
+.move-type-breakout { background: #fef3c7; color: #92400e; }
+.move-type-selling { background: #fef2f2; color: #991b1b; }
+.move-type-technical { background: #f1f5f9; color: #334155; }
+.move-type-macro { background: #fff7ed; color: #9a3412; }
+.move-type-momentum { background: #ecfdf5; color: #065f46; }
+.move-type-general { background: #f1f5f9; color: #475569; }
+
+.ai-context-lines {
+  display: grid;
+  gap: 2px;
+}
+
 .ai-result-change {
   border-radius: 999px;
   padding: 7px 10px;
@@ -1630,6 +1666,93 @@ body {
   line-height: 1.55;
   white-space: pre-line;
 }
+
+.ai-explanation-headline {
+  font-size: 14px;
+  font-weight: 700;
+  color: #0f172a;
+  line-height: 1.4;
+  margin: 0;
+}
+
+.ai-explanation-detail {
+  font-size: 13px;
+  color: #475569;
+  line-height: 1.5;
+  margin: 4px 0 0;
+}
+
+.conviction-meter {
+  display: grid;
+  gap: 4px;
+  padding: 8px 0;
+}
+
+.conviction-bar-track {
+  height: 6px;
+  border-radius: 3px;
+  background: #e2e8f0;
+  overflow: hidden;
+}
+
+.conviction-bar-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.3s ease;
+}
+
+.conviction-high .conviction-bar-fill { background: #059669; }
+.conviction-moderate .conviction-bar-fill { background: #d97706; }
+.conviction-low .conviction-bar-fill { background: #94a3b8; }
+
+.conviction-label {
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.conviction-reasons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.conviction-reason-pill {
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 10px;
+  background: #f1f5f9;
+  color: #475569;
+}
+
+.relative-perf {
+  font-size: 12px;
+  color: #64748b;
+  margin-top: 2px;
+  margin-bottom: 0;
+}
+
+.relative-perf .outperform { color: #059669; font-weight: 600; }
+.relative-perf .underperform { color: #dc2626; font-weight: 600; }
+
+.sources-toggle {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 0 4px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #64748b;
+  cursor: pointer;
+  border: none;
+  background: none;
+}
+
+.sources-toggle .chevron {
+  transition: transform 0.2s;
+  font-size: 10px;
+}
+
+.sources-toggle .chevron.open { transform: rotate(90deg); }
 
 .ai-source-panel {
   display: grid;

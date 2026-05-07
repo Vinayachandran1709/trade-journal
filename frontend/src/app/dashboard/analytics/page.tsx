@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import AuthGuard from "@/components/AuthGuard";
 import { getMe } from "@/lib/auth";
@@ -50,6 +51,43 @@ function sortPatterns(patterns: PatternResponse[]): PatternResponse[] {
   return [...patterns].sort((a, b) => (order[a.severity] ?? 99) - (order[b.severity] ?? 99));
 }
 
+function getConfidenceExplanation(pattern: PatternResponse) {
+  const sampleSize = Number(pattern.data?.sample_size ?? pattern.data?.trade_count ?? 0);
+  if (sampleSize >= 30 || pattern.severity === "high") {
+    return `Strong statistical evidence across ${sampleSize || "multiple"} trades.`;
+  }
+  if (sampleSize >= 12 || pattern.severity === "medium") {
+    return "Pattern emerging, needs more trades for strong conclusion.";
+  }
+  return "Early signal — may change as more data comes in.";
+}
+
+function getPatternRecommendation(pattern: PatternResponse) {
+  const current = getRecommendation(pattern);
+  if (current) return current;
+
+  switch (pattern.pattern_type) {
+    case "time_of_day":
+      return "Consider reducing activity during your weak hours.";
+    case "day_of_week":
+      return "Be more selective on your weakest trading day.";
+    case "holding_period":
+      return "Align your trade targets with your optimal holding period.";
+    case "revenge_trading":
+      return "After a loss, wait at least 30 minutes before the next entry.";
+    case "overtrading":
+      return "Set a maximum daily trade count based on your data.";
+    case "sector_concentration":
+      return "Explore setups in other sectors to reduce concentration risk.";
+    case "winning_streak_tilt":
+      return "After 3+ wins, maintain your normal position sizing.";
+    case "losing_streak_tilt":
+      return "After consecutive losses, consider halving your next position size.";
+    default:
+      return "Your data shows a repeatable pattern here. Consider tracking it closely next week.";
+  }
+}
+
 function EquityCurve({ summary }: { summary: AnalyticsSummaryResponse }) {
   const points = useMemo(() => {
     const monthly = summary.monthly_pnl.length ? summary.monthly_pnl : [{ month: "Start", pnl: 0 }];
@@ -89,7 +127,14 @@ function EquityCurve({ summary }: { summary: AnalyticsSummaryResponse }) {
         {[20, 40, 60, 80].map((y) => (
           <line key={y} x1="0" x2="100" y1={y} y2={y} stroke="#e5e7eb" strokeWidth="0.5" />
         ))}
-        <path d={path} fill="none" stroke="url(#equity)" strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" />
+        <path
+          d={path}
+          fill="none"
+          stroke="url(#equity)"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth="3"
+        />
         {points.map((point) => (
           <circle key={`${point.label}-${point.x}`} cx={point.x} cy={point.y} r="2" fill="#4f46e5" />
         ))}
@@ -104,6 +149,7 @@ function AnalyticsContent() {
   const [patterns, setPatterns] = useState<PatternsEnvelope | null>(null);
   const [trades, setTrades] = useState<Trade[]>([]);
   const [completedTrades, setCompletedTrades] = useState<CompletedTrade[]>([]);
+  const [trackedPatterns, setTrackedPatterns] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -125,6 +171,30 @@ function AnalyticsContent() {
       .catch((err) => setError(err instanceof Error ? err.message : "Failed to load analytics"))
       .finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const stored = JSON.parse(window.localStorage.getItem("trackedPatterns") ?? "[]");
+      if (Array.isArray(stored)) {
+        setTrackedPatterns(stored.filter((value): value is string => typeof value === "string"));
+      }
+    } catch {
+      setTrackedPatterns([]);
+    }
+  }, []);
+
+  function toggleTrackedPattern(patternType: string) {
+    setTrackedPatterns((current) => {
+      const next = current.includes(patternType)
+        ? current.filter((value) => value !== patternType)
+        : [...current, patternType];
+      if (typeof window !== "undefined") {
+        window.localStorage.setItem("trackedPatterns", JSON.stringify(next));
+      }
+      return next;
+    });
+  }
 
   if (loading) {
     return (
@@ -165,6 +235,22 @@ function AnalyticsContent() {
   return (
     <div className="min-h-screen bg-gray-50 px-4 pb-16 pt-28 sm:px-6 lg:px-8">
       <div className="section-container">
+        <div className="mb-6 flex flex-wrap gap-3 text-sm font-semibold text-slate-600">
+          <Link href="/dashboard" className="hover:text-indigo-600">
+            Dashboard
+          </Link>
+          <span>•</span>
+          <Link href="/dashboard/trades" className="hover:text-indigo-600">
+            Trades
+          </Link>
+          <span>•</span>
+          <span className="text-indigo-600">Patterns</span>
+          <span>•</span>
+          <Link href="/dashboard/mistakes" className="hover:text-indigo-600">
+            Mistakes
+          </Link>
+        </div>
+
         <div className="flex flex-col gap-6 rounded-[2rem] bg-white p-8 shadow-sm">
           <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
             <div>
@@ -251,7 +337,9 @@ function AnalyticsContent() {
             </div>
             <div className="analytics-profile-stat">
               <span>Member Since</span>
-              <strong>{profile.memberSince ? DATE_FORMATTER.format(new Date(profile.memberSince)) : "Recently joined"}</strong>
+              <strong>
+                {profile.memberSince ? DATE_FORMATTER.format(new Date(profile.memberSince)) : "Recently joined"}
+              </strong>
             </div>
           </div>
         </section>
@@ -266,7 +354,11 @@ function AnalyticsContent() {
                   Comparing the first 50% of your completed trades with the most recent 50%.
                 </p>
               </div>
-              <div className={`rounded-2xl px-4 py-3 text-sm font-semibold ${beforeAfter.improved ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"}`}>
+              <div
+                className={`rounded-2xl px-4 py-3 text-sm font-semibold ${
+                  beforeAfter.improved ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"
+                }`}
+              >
                 {beforeAfter.improved ? "↗ Improving trend" : "↘ Mixed recent trend"}
               </div>
             </div>
@@ -274,17 +366,35 @@ function AnalyticsContent() {
               <div className="rounded-3xl bg-slate-50 p-5">
                 <div className="text-xs font-black uppercase tracking-[0.2em] text-slate-500">First 50%</div>
                 <div className="mt-4 grid gap-3 text-sm text-slate-600">
-                  <div className="flex justify-between gap-4"><span>Win rate</span><strong className="text-slate-950">{formatPercent(beforeAfter.earlierStats.winRate)}</strong></div>
-                  <div className="flex justify-between gap-4"><span>Avg P&amp;L</span><strong className="text-slate-950">{formatCurrency(beforeAfter.earlierStats.avgPnl)}</strong></div>
-                  <div className="flex justify-between gap-4"><span>Avg holding period</span><strong className="text-slate-950">{beforeAfter.earlierStats.avgHolding.toFixed(1)} days</strong></div>
+                  <div className="flex justify-between gap-4">
+                    <span>Win rate</span>
+                    <strong className="text-slate-950">{formatPercent(beforeAfter.earlierStats.winRate)}</strong>
+                  </div>
+                  <div className="flex justify-between gap-4">
+                    <span>Avg P&amp;L</span>
+                    <strong className="text-slate-950">{formatCurrency(beforeAfter.earlierStats.avgPnl)}</strong>
+                  </div>
+                  <div className="flex justify-between gap-4">
+                    <span>Avg holding period</span>
+                    <strong className="text-slate-950">{beforeAfter.earlierStats.avgHolding.toFixed(1)} days</strong>
+                  </div>
                 </div>
               </div>
               <div className="rounded-3xl bg-indigo-50 p-5">
                 <div className="text-xs font-black uppercase tracking-[0.2em] text-indigo-500">Recent 50%</div>
                 <div className="mt-4 grid gap-3 text-sm text-slate-600">
-                  <div className="flex justify-between gap-4"><span>Win rate</span><strong className="text-slate-950">{formatPercent(beforeAfter.recentStats.winRate)}</strong></div>
-                  <div className="flex justify-between gap-4"><span>Avg P&amp;L</span><strong className="text-slate-950">{formatCurrency(beforeAfter.recentStats.avgPnl)}</strong></div>
-                  <div className="flex justify-between gap-4"><span>Avg holding period</span><strong className="text-slate-950">{beforeAfter.recentStats.avgHolding.toFixed(1)} days</strong></div>
+                  <div className="flex justify-between gap-4">
+                    <span>Win rate</span>
+                    <strong className="text-slate-950">{formatPercent(beforeAfter.recentStats.winRate)}</strong>
+                  </div>
+                  <div className="flex justify-between gap-4">
+                    <span>Avg P&amp;L</span>
+                    <strong className="text-slate-950">{formatCurrency(beforeAfter.recentStats.avgPnl)}</strong>
+                  </div>
+                  <div className="flex justify-between gap-4">
+                    <span>Avg holding period</span>
+                    <strong className="text-slate-950">{beforeAfter.recentStats.avgHolding.toFixed(1)} days</strong>
+                  </div>
                 </div>
               </div>
             </div>
@@ -299,25 +409,33 @@ function AnalyticsContent() {
             <div className="mt-6 grid gap-4 text-sm">
               <div className="rounded-2xl bg-slate-50 p-4">
                 <div className="font-semibold text-slate-500">Win rate contribution</div>
-                <div className="mt-2 text-2xl font-black text-slate-950">{performanceScore.winRateScore.toFixed(1)}/30</div>
+                <div className="mt-2 text-2xl font-black text-slate-950">
+                  {performanceScore.winRateScore.toFixed(1)}/30
+                </div>
               </div>
               <div className="rounded-2xl bg-slate-50 p-4">
                 <div className="font-semibold text-slate-500">Consistency</div>
-                <div className="mt-2 text-2xl font-black text-slate-950">{performanceScore.consistencyScore.toFixed(1)}/20</div>
+                <div className="mt-2 text-2xl font-black text-slate-950">
+                  {performanceScore.consistencyScore.toFixed(1)}/20
+                </div>
               </div>
               <div className="rounded-2xl bg-slate-50 p-4">
                 <div className="font-semibold text-slate-500">Risk discipline</div>
-                <div className="mt-2 text-2xl font-black text-slate-950">{performanceScore.riskDisciplineScore.toFixed(1)}/25</div>
+                <div className="mt-2 text-2xl font-black text-slate-950">
+                  {performanceScore.riskDisciplineScore.toFixed(1)}/25
+                </div>
               </div>
               <div className="rounded-2xl bg-slate-50 p-4">
                 <div className="font-semibold text-slate-500">Emotional awareness</div>
-                <div className="mt-2 text-2xl font-black text-slate-950">{performanceScore.emotionalAwarenessScore.toFixed(1)}/25</div>
+                <div className="mt-2 text-2xl font-black text-slate-950">
+                  {performanceScore.emotionalAwarenessScore.toFixed(1)}/25
+                </div>
               </div>
             </div>
           </div>
         </div>
 
-        <section className="mt-8 rounded-[2rem] border border-gray-100 bg-white p-8 shadow-sm">
+        <section id="patterns" className="mt-8 rounded-[2rem] border border-gray-100 bg-white p-8 shadow-sm">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
             <div>
               <div className="analytics-section-kicker">Behavioral Patterns</div>
@@ -329,51 +447,81 @@ function AnalyticsContent() {
           </div>
 
           <div className="mt-8 grid gap-5">
-            {sortedPatterns.length ? sortedPatterns.map((pattern) => {
-              const confidence = getConfidenceMeta(pattern);
-              const impact = estimatePatternImpact(pattern, summary);
-              return (
-                <article
-                  key={pattern.pattern_type}
-                  className="rounded-[1.5rem] border border-gray-100 bg-white p-6 shadow-sm"
-                  style={{ borderLeft: `4px solid ${severityBorderColor(pattern.severity)}` }}
-                >
-                  <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                    <div className="max-w-3xl">
-                      <div className="flex flex-wrap items-center gap-3">
-                        <span className={`badge ${severityBadgeClass(pattern.severity)}`}>{pattern.severity}</span>
-                        <span className={`insight-confidence ${confidence.className}`}>{confidence.text}</span>
+            {sortedPatterns.length ? (
+              sortedPatterns.map((pattern) => {
+                const confidence = getConfidenceMeta(pattern);
+                const impact = estimatePatternImpact(pattern, summary);
+                const tracked = trackedPatterns.includes(pattern.pattern_type);
+                const sampleSize = Number(pattern.data?.sample_size ?? pattern.data?.trade_count ?? 0);
+
+                return (
+                  <article
+                    key={pattern.pattern_type}
+                    className="rounded-[1.5rem] border border-gray-100 bg-white p-6 shadow-sm"
+                    style={{ borderLeft: `4px solid ${severityBorderColor(pattern.severity)}` }}
+                  >
+                    <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                      <div className="max-w-3xl">
+                        <div className="flex flex-wrap items-center gap-3">
+                          <span className={`badge ${severityBadgeClass(pattern.severity)}`}>{pattern.severity}</span>
+                          <span className={`insight-confidence ${confidence.className}`}>
+                            {confidence.text}
+                          </span>
+                          <span className="text-xs font-semibold text-slate-500">
+                            {sampleSize || 0} trades
+                          </span>
+                        </div>
+                        <h3 className="mt-4 text-2xl font-black text-slate-950">{pattern.title}</h3>
+                        <p className="mt-3 text-sm leading-7 text-slate-600">{pattern.description}</p>
+                        <p className="confidence-explanation">{getConfidenceExplanation(pattern)}</p>
                       </div>
-                      <h3 className="mt-4 text-2xl font-black text-slate-950">{pattern.title}</h3>
-                      <p className="mt-3 text-sm leading-7 text-slate-600">{pattern.description}</p>
+                      <div className="flex min-w-[220px] flex-col items-start gap-3">
+                        {impact ? (
+                          <div
+                            className={`w-full rounded-3xl px-5 py-4 text-lg font-black ${
+                              impact.amount >= 0
+                                ? "bg-emerald-50 text-emerald-700"
+                                : "bg-rose-50 text-rose-700"
+                            }`}
+                          >
+                            {impact.text}
+                          </div>
+                        ) : null}
+                        <button
+                          type="button"
+                          onClick={() => toggleTrackedPattern(pattern.pattern_type)}
+                          className={`rounded-xl px-3 py-2 text-sm font-semibold transition ${
+                            tracked
+                              ? "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200"
+                              : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                          }`}
+                        >
+                          {tracked ? "Tracking ✓" : "📌 Track this"}
+                        </button>
+                      </div>
                     </div>
-                    {impact ? (
-                      <div className={`min-w-[260px] rounded-3xl px-5 py-4 text-lg font-black ${impact.amount >= 0 ? "bg-emerald-50 text-emerald-700" : "bg-rose-50 text-rose-700"}`}>
-                        {impact.text}
-                      </div>
-                    ) : null}
-                  </div>
 
-                  <div className="mt-5 insight-recommendation">
-                    <span>💡</span>
-                    <span>{getRecommendation(pattern)}</span>
-                  </div>
+                    <div className="pattern-action-card">
+                      <span className="mr-2">💡</span>
+                      {getPatternRecommendation(pattern)}
+                    </div>
 
-                  <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-                    {Object.entries(pattern.data ?? {}).map(([key, value]) => (
-                      <div key={key} className="rounded-2xl bg-slate-50 px-4 py-3 text-sm">
-                        <div className="text-xs font-bold uppercase tracking-[0.14em] text-slate-500">
-                          {key.replace(/_/g, " ")}
+                    <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                      {Object.entries(pattern.data ?? {}).map(([key, value]) => (
+                        <div key={key} className="rounded-2xl bg-slate-50 px-4 py-3 text-sm">
+                          <div className="text-xs font-bold uppercase tracking-[0.14em] text-slate-500">
+                            {key.replace(/_/g, " ")}
+                          </div>
+                          <div className="mt-2 font-bold text-slate-950">
+                            {formatPatternStat(key, value)}
+                          </div>
                         </div>
-                        <div className="mt-2 font-bold text-slate-950">
-                          {formatPatternStat(key, value)}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </article>
-              );
-            }) : (
+                      ))}
+                    </div>
+                  </article>
+                );
+              })
+            ) : (
               <p className="rounded-2xl bg-gray-50 p-6 text-sm font-semibold text-gray-500">
                 No patterns detected yet. Keep journaling completed trades.
               </p>
