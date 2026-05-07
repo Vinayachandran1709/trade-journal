@@ -762,6 +762,7 @@ function DashboardContent() {
         </article>
       </section>
 
+
       {needsAttention.length ? (
         <section className="needs-attention-card mt-6">
           <div className="text-lg font-black text-slate-950">⚡ Needs Attention</div>
@@ -783,8 +784,7 @@ function DashboardContent() {
         </section>
       ) : null}
 
-      <div className="mt-6 grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
-        <section className="glass-card p-6">
+      <section className="mt-6 glass-card p-6">
           <h2 className="text-xl font-black text-slate-950">{weekSummary.title}</h2>
           <div className="mt-4 grid gap-3">
             <div className="rounded-2xl bg-slate-50 p-4 text-sm font-semibold text-slate-700">
@@ -797,9 +797,9 @@ function DashboardContent() {
               {weekSummary.focus}
             </div>
           </div>
-        </section>
+      </section>
 
-        <section className="glass-card border-l-4 border-l-indigo-500 p-6">
+      <section className="mt-6 glass-card border-l-4 border-l-indigo-500 p-6">
           <h2 className="text-xl font-black text-slate-950">This Week&apos;s Focus</h2>
           <div className="mt-4 grid gap-3">
             {trackedFocus.length ? (
@@ -819,8 +819,7 @@ function DashboardContent() {
               <span className="text-sm leading-6 text-slate-700">{weekSummary.focus}</span>
             </div>
           </div>
-        </section>
-      </div>
+      </section>
 
       <section className="mt-6">
         {tradeCountForDna >= 20 ? (
@@ -917,9 +916,12 @@ function DashboardContent() {
                   <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                     <div className="flex flex-wrap items-center gap-3 text-sm">
                       <span className="font-black text-slate-950">{trade.stock_symbol}</span>
-                      <span className="text-slate-500">
+                      <span className="hidden text-slate-500">
                         ₹{trade.entry_price.toLocaleString("en-IN")} → ₹
-                        {formatCurrency(trade.exit_price)}
+                        {formatCurrency(trade.entry_price)} â†’ {formatCurrency(trade.exit_price)}
+                      </span>
+                      <span className="text-slate-500">
+                        {formatCurrency(trade.entry_price)} to {formatCurrency(trade.exit_price)}
                       </span>
                       <span className={`font-bold ${pnlClass(trade.pnl)}`}>
                         {formatSignedCurrency(trade.pnl)}

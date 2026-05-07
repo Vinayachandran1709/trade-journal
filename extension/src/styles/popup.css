@@ -17,6 +17,12 @@ body {
     linear-gradient(180deg, #0b1220 0%, #020617 100%);
 }
 
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
 button,
 input {
   font: inherit;
@@ -172,7 +178,10 @@ input {
 
 .primary-button,
 .secondary-button,
-.upgrade-button {
+.upgrade-button,
+.create-account-link,
+.secondary-action,
+.sign-in-button {
   border: 0;
   border-radius: 14px;
   padding: 12px 14px;
@@ -186,9 +195,26 @@ input {
   font-weight: 700;
 }
 
-.primary-button:disabled {
+.primary-button:disabled,
+.sign-in-button:disabled {
   cursor: wait;
   opacity: 0.86;
+}
+
+.sign-in-button {
+  width: 100%;
+  padding: 12px;
+  border-radius: 10px;
+  background: #4f46e5;
+  color: white;
+  font-size: 14px;
+  font-weight: 700;
+  border: none;
+  transition: all 0.15s;
+}
+
+.sign-in-button:hover {
+  background: #4338ca;
 }
 
 .footer-actions {
@@ -219,6 +245,30 @@ input {
   gap: 6px;
   font-size: 14px;
   color: #dbeafe;
+}
+
+.create-account-link,
+.secondary-action {
+  display: block;
+  width: 100%;
+  text-align: center;
+  padding: 10px;
+  margin-top: 8px;
+  border-radius: 10px;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  background: rgba(255, 255, 255, 0.06);
+  color: #94a3b8;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.create-account-link:hover,
+.secondary-action:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #e2e8f0;
+  border-color: rgba(148, 163, 184, 0.5);
 }
 
 .error-text {
