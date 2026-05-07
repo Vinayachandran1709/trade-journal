@@ -16,6 +16,7 @@ if str(BACKEND_DIR) not in sys.path:
 os.environ["DATABASE_URL"] = "sqlite:///./test_release_1a.sqlite3"
 os.environ["SECRET_KEY"] = "test-secret-key"
 
+from app.config import settings  # noqa: E402
 from app.database import Base, get_db  # noqa: E402
 from app.main import app  # noqa: E402
 from app.models.completed_trade import CompletedTrade  # noqa: E402
@@ -193,3 +194,8 @@ def test_login_with_malformed_stored_hash_returns_401(client: TestClient):
 
     assert response.status_code == 401
     assert response.json()["detail"] == "Invalid email or password"
+
+
+def test_cors_defaults_always_include_production_domains():
+    assert "https://indiacircle.in" in settings.CORS_ALLOW_ORIGINS
+    assert "https://www.indiacircle.in" in settings.CORS_ALLOW_ORIGINS
