@@ -33,20 +33,32 @@ const DAY_FORMATTER = new Intl.DateTimeFormat("en-IN", {
 const PRIORITY_ORDER = { high: 0, medium: 1, low: 2 } as const;
 const SEVERITY_ORDER = { high: 0, medium: 1, low: 2 } as const;
 
+function toNumber(value: unknown): number | null {
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? value : null;
+  }
+  if (typeof value === "string" && value.trim()) {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+  return null;
+}
+
 function formatCurrency(value: number | null | undefined): string {
-  const amount = value ?? 0;
+  const amount = toNumber(value) ?? 0;
   return `₹${amount.toLocaleString("en-IN", { maximumFractionDigits: 0 })}`;
 }
 
 function formatPercent(value: number | null | undefined): string {
-  if (value == null || !Number.isFinite(value)) {
+  const amount = toNumber(value);
+  if (amount == null) {
     return "0.0%";
   }
-  return `${(value * 100).toFixed(1)}%`;
+  return `${(amount * 100).toFixed(1)}%`;
 }
 
 function formatSignedCurrency(value: number | null | undefined): string {
-  const amount = value ?? 0;
+  const amount = toNumber(value) ?? 0;
   return `${amount >= 0 ? "+" : "-"}${formatCurrency(Math.abs(amount))}`;
 }
 
@@ -78,7 +90,7 @@ function emotionLabel(emotion?: string | null) {
 }
 
 function pnlClass(value: number) {
-  return value >= 0 ? "text-emerald-600" : "text-rose-600";
+  return (toNumber(value) ?? 0) >= 0 ? "text-emerald-600" : "text-rose-600";
 }
 
 function getPattern(patterns: PatternResponse[], patternType: string): PatternResponse | null {
@@ -428,30 +440,38 @@ function calculateRiskReward(setup: TradeSetup) {
     return null;
   }
 
-  const risk = Math.abs(setup.entry_price - setup.stop_loss_price);
-  const reward = Math.abs(setup.target_price - setup.entry_price);
+  const entryPrice = toNumber(setup.entry_price);
+  const stopLossPrice = toNumber(setup.stop_loss_price);
+  const targetPrice = toNumber(setup.target_price);
+  if (entryPrice == null || stopLossPrice == null || targetPrice == null) {
+    return null;
+  }
+
+  const risk = Math.abs(entryPrice - stopLossPrice);
+  const reward = Math.abs(targetPrice - entryPrice);
   if (!risk) return null;
   return reward / risk;
 }
 
 function getTradeRMultiple(trade: CompletedTrade, linkedSetup: TradeSetup | null) {
-  if (linkedSetup?.risk_amount && linkedSetup.risk_amount > 0) {
-    return trade.pnl / linkedSetup.risk_amount;
+  const tradePnl = toNumber(trade.pnl);
+  const linkedRiskAmount = toNumber(linkedSetup?.risk_amount);
+  if (tradePnl != null && linkedRiskAmount != null && linkedRiskAmount > 0) {
+    return tradePnl / linkedRiskAmount;
   }
 
-  if (
-    linkedSetup?.entry_price != null &&
-    linkedSetup.stop_loss_price != null &&
-    trade.quantity > 0
-  ) {
-    const riskPerUnit = Math.abs(linkedSetup.entry_price - linkedSetup.stop_loss_price);
-    const totalRisk = riskPerUnit * trade.quantity;
+  const linkedEntryPrice = toNumber(linkedSetup?.entry_price);
+  const linkedStopLossPrice = toNumber(linkedSetup?.stop_loss_price);
+  const tradeQuantity = toNumber(trade.quantity);
+  if (linkedEntryPrice != null && linkedStopLossPrice != null && tradeQuantity != null && tradeQuantity > 0) {
+    const riskPerUnit = Math.abs(linkedEntryPrice - linkedStopLossPrice);
+    const totalRisk = riskPerUnit * tradeQuantity;
     if (totalRisk > 0) {
-      return trade.pnl / totalRisk;
+      return (tradePnl ?? 0) / totalRisk;
     }
   }
 
-  return trade.return_pct;
+  return toNumber(trade.return_pct);
 }
 
 function getSetupOutcomeLabel(setup: TradeSetup, trade: CompletedTrade | null) {
@@ -899,7 +919,7 @@ function DashboardContent() {
                       <span className="font-black text-slate-950">{trade.stock_symbol}</span>
                       <span className="text-slate-500">
                         ₹{trade.entry_price.toLocaleString("en-IN")} → ₹
-                        {trade.exit_price.toLocaleString("en-IN")}
+                        {formatCurrency(trade.exit_price)}
                       </span>
                       <span className={`font-bold ${pnlClass(trade.pnl)}`}>
                         {formatSignedCurrency(trade.pnl)}
@@ -919,7 +939,8 @@ function DashboardContent() {
                       </span>
                     </div>
                     <div className="text-xs text-gray-500">
-                      Holding {trade.holding_days} day{trade.holding_days === 1 ? "" : "s"}
+                      Holding {toNumber(trade.holding_days) ?? 0} day
+                      {(toNumber(trade.holding_days) ?? 0) === 1 ? "" : "s"}
                     </div>
                   </div>
                 </article>

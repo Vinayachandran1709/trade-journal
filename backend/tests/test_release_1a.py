@@ -1,6 +1,7 @@
 import os
 import sys
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 from fastapi.testclient import TestClient
@@ -199,3 +200,18 @@ def test_login_with_malformed_stored_hash_returns_401(client: TestClient):
 def test_cors_defaults_always_include_production_domains():
     assert "https://indiacircle.in" in settings.CORS_ALLOW_ORIGINS
     assert "https://www.indiacircle.in" in settings.CORS_ALLOW_ORIGINS
+
+
+def test_health_check_returns_200_when_database_is_available(client: TestClient):
+    response = client.get("/health")
+
+    assert response.status_code == 200
+    assert response.json() == {"status": "healthy"}
+
+
+def test_health_check_returns_503_when_database_is_unavailable(client: TestClient):
+    with patch("app.routes.health.engine.connect", side_effect=Exception("db down")):
+        response = client.get("/health")
+
+    assert response.status_code == 503
+    assert response.json()["detail"] == "Database unavailable"
