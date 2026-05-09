@@ -369,6 +369,69 @@ def _build_regime(indices: dict, vix_context: str, breadth: dict[str, int], nift
     }
 
 
+def _calculate_market_confidence(indices: dict, vix: dict, breadth: dict, fii_dii: dict | None) -> dict:
+    """Calculate a 0-100 market confidence score."""
+    score = 50
+    reasons: list[str] = []
+    fii_dii = fii_dii or {}
+
+    vix_val = vix.get("value")
+    if vix_val and vix_val < 14:
+        score += 15
+        reasons.append("Low volatility (VIX < 14)")
+    elif vix_val and vix_val > 22:
+        score -= 20
+        reasons.append("High volatility (VIX > 22)")
+    elif vix_val and vix_val > 18:
+        score -= 10
+        reasons.append("Elevated volatility")
+
+    adv_pct = breadth.get("pct_advancing", 50)
+    if adv_pct > 60:
+        score += 15
+        reasons.append(f"Strong breadth ({adv_pct}% advancing)")
+    elif adv_pct < 35:
+        score -= 15
+        reasons.append(f"Weak breadth ({adv_pct}% advancing)")
+
+    nifty_change = indices.get("nifty_50", {}).get("change_pct", 0) or 0
+    if nifty_change > 1:
+        score += 10
+        reasons.append("Strong uptrend")
+    elif nifty_change < -1:
+        score -= 10
+        reasons.append("Downtrend")
+
+    fii_net = fii_dii.get("fii_net")
+    if fii_net and fii_net > 500:
+        score += 10
+        reasons.append("FII inflows")
+    elif fii_net and fii_net < -500:
+        score -= 10
+        reasons.append("FII outflows")
+
+    score = max(5, min(95, score))
+    level = "HIGH" if score >= 65 else "MODERATE" if score >= 40 else "LOW"
+    return {
+        "score": score,
+        "level": level,
+        "reasons": reasons[:4],
+    }
+
+
+def _ensure_confidence(payload: dict) -> dict:
+    if payload.get("confidence"):
+        return payload
+    regime = payload.get("regime") or {}
+    payload["confidence"] = _calculate_market_confidence(
+        payload.get("indices") or {},
+        payload.get("vix") or {},
+        regime.get("breadth") or {"advancing": 0, "declining": 0, "pct_advancing": 0},
+        payload.get("fii_dii") or {},
+    )
+    return payload
+
+
 def _normalize_preferred_sectors(user: User | None) -> list[str]:
     raw = ((user.preferences or {}).get("sectors") if user else None) or []
     normalized: list[str] = []
@@ -538,18 +601,30 @@ def _build_dashboard() -> dict:
         d = ticker_data.get(key) or {}
         return {"value": d.get("value"), "change_pct": d.get("change_pct")}
 
+    indices = {
+        "nifty_50":   _idx("nifty_50"),
+        "bank_nifty": _idx("bank_nifty"),
+        "nifty_it":   _idx("nifty_it"),
+    }
+    vix = {
+        "value":   vix_val,
+        "change":  vix_raw.get("change"),
+        "context": vix_context,
+    }
+    fii_dii = None
+    regime = _build_regime(
+        {
+            "nifty_50": _idx("nifty_50"),
+        },
+        vix_context,
+        breadth,
+        nifty_vs_vwap,
+    )
+
     return {
-        "indices": {
-            "nifty_50":   _idx("nifty_50"),
-            "bank_nifty": _idx("bank_nifty"),
-            "nifty_it":   _idx("nifty_it"),
-        },
-        "vix": {
-            "value":   vix_val,
-            "change":  vix_raw.get("change"),
-            "context": vix_context,
-        },
-        "fii_dii": None,
+        "indices": indices,
+        "vix": vix,
+        "fii_dii": fii_dii,
         "top_gainers": gainers,
         "top_losers":  losers,
         "global_cues": {
@@ -560,14 +635,8 @@ def _build_dashboard() -> dict:
             "usd_inr":        _gcue("usd_inr"),
         },
         "sector_performance": sector_performance,
-        "regime": _build_regime(
-            {
-                "nifty_50": _idx("nifty_50"),
-            },
-            vix_context,
-            breadth,
-            nifty_vs_vwap,
-        ),
+        "regime": regime,
+        "confidence": _calculate_market_confidence(indices, vix, breadth, fii_dii),
         "personalized": None,
         "market_status": status,
         "last_updated":  _now_ist_str(),
@@ -579,7 +648,7 @@ def _empty_dashboard() -> dict:
     """Returned when both fresh fetch and stale cache are unavailable."""
     empty_idx  = {"value": None, "change": None, "change_pct": None}
     empty_gcue = {"value": None, "change_pct": None}
-    return {
+    payload = {
         "indices": {k: empty_idx for k in ("nifty_50", "bank_nifty", "nifty_it")},
         "vix": {"value": None, "change": None, "context": "Unknown"},
         "fii_dii": None,
@@ -598,6 +667,7 @@ def _empty_dashboard() -> dict:
         "last_updated":  _now_ist_str(),
         "is_stale":      True,
     }
+    return _ensure_confidence(payload)
 
 
 # ---------------------------------------------------------------------------
@@ -608,7 +678,7 @@ def get_market_dashboard(db: Session, user: User | None = None) -> dict:
 
     fresh = _cache_get(db, cache_key)
     if fresh is not None:
-        payload = dict(fresh)
+        payload = _ensure_confidence(dict(fresh))
         if user is not None:
             payload["personalized"] = _build_personalized_section(
                 user,
@@ -622,7 +692,7 @@ def get_market_dashboard(db: Session, user: User | None = None) -> dict:
     if not acquired:
         stale = _cache_get_stale(db, cache_key)
         if stale is not None:
-            payload = {**stale, "is_stale": True}
+            payload = _ensure_confidence({**stale, "is_stale": True})
         else:
             payload = _empty_dashboard()
         if user is not None:
@@ -637,7 +707,7 @@ def get_market_dashboard(db: Session, user: User | None = None) -> dict:
         # Re-check: a previous waiter may have just populated the cache.
         fresh = _cache_get(db, cache_key)
         if fresh is not None:
-            payload = dict(fresh)
+            payload = _ensure_confidence(dict(fresh))
             if user is not None:
                 payload["personalized"] = _build_personalized_section(
                     user,
@@ -651,7 +721,7 @@ def get_market_dashboard(db: Session, user: User | None = None) -> dict:
     except FuturesTimeoutError:
         logger.warning("Dashboard build timed out after %ds", _FETCH_TIMEOUT)
         stale = _cache_get_stale(db, cache_key)
-        payload = ({**stale, "is_stale": True} if stale else _empty_dashboard())
+        payload = (_ensure_confidence({**stale, "is_stale": True}) if stale else _empty_dashboard())
         if user is not None:
             payload["personalized"] = _build_personalized_section(
                 user,
@@ -662,7 +732,7 @@ def get_market_dashboard(db: Session, user: User | None = None) -> dict:
     except Exception as exc:
         logger.warning("Dashboard build failed: %s", exc)
         stale = _cache_get_stale(db, cache_key)
-        payload = ({**stale, "is_stale": True} if stale else _empty_dashboard())
+        payload = (_ensure_confidence({**stale, "is_stale": True}) if stale else _empty_dashboard())
         if user is not None:
             payload["personalized"] = _build_personalized_section(
                 user,
@@ -674,7 +744,7 @@ def get_market_dashboard(db: Session, user: User | None = None) -> dict:
         _build_lock.release()
 
     _cache_set(db, cache_key, "market_dashboard", payload)
-    result = dict(payload)
+    result = _ensure_confidence(dict(payload))
     if user is not None:
         result["personalized"] = _build_personalized_section(
             user,

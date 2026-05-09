@@ -86,6 +86,12 @@ body {
 
 .pulse-action .warning { color: #d97706; }
 
+.pulse-earnings-alert {
+  font-size: 12px;
+  font-weight: 700;
+  color: #d97706;
+}
+
 .hero-card,
 .placeholder-card {
   border-radius: 20px;
@@ -962,6 +968,21 @@ body {
   margin: -4px 0 0;
 }
 
+.confidence-meter { padding: 8px 0; }
+.confidence-header { display: flex; justify-content: space-between; align-items: center; }
+.confidence-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: #64748b; }
+.confidence-score { font-size: 14px; font-weight: 800; }
+.confidence-high { color: #059669; }
+.confidence-moderate { color: #d97706; }
+.confidence-low { color: #94a3b8; }
+.confidence-bar-track { height: 6px; border-radius: 3px; background: #e2e8f0; margin: 6px 0; overflow: hidden; }
+.confidence-bar-fill { height: 100%; border-radius: 3px; transition: width 0.5s ease; }
+.confidence-fill-high { background: #059669; }
+.confidence-fill-moderate { background: #d97706; }
+.confidence-fill-low { background: #94a3b8; }
+.confidence-reasons { display: flex; flex-wrap: wrap; gap: 4px; }
+.confidence-reason-pill { padding: 2px 6px; border-radius: 4px; font-size: 10px; background: #f1f5f9; color: #475569; }
+
 .market-narrative {
   padding: 10px 14px;
   border-radius: 12px;
@@ -1516,6 +1537,11 @@ body {
   gap: 8px;
 }
 
+.ai-quick-block {
+  display: grid;
+  gap: 8px;
+}
+
 .ai-recent-title {
   font-size: 12px;
   font-weight: 600;
@@ -1621,6 +1647,17 @@ body {
 .ai-result-change.negative {
   background: rgba(220, 38, 38, 0.12);
   color: #b91c1c;
+}
+
+.ai-category-badge {
+  align-self: flex-start;
+  border-radius: 999px;
+  padding: 7px 10px;
+  background: rgba(79, 70, 229, 0.1);
+  color: #4338ca;
+  font-size: 11px;
+  font-weight: 800;
+  white-space: nowrap;
 }
 
 .ai-result-explanation {

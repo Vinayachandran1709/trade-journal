@@ -29,3 +29,4 @@ class User(Base):
     trade_checklists = relationship("TradeChecklist", back_populates="user")
     payment_events = relationship("PaymentEvent", back_populates="user")
     ai_query_logs = relationship("AIQueryLog", back_populates="user")
+    watchlist_items = relationship("WatchlistItem", back_populates="user")

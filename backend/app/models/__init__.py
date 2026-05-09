@@ -10,6 +10,7 @@ from app.models.stock import Stock
 from app.models.ai_query_log import AIQueryLog
 from app.models.payment_event import PaymentEvent
 from app.models.coupon import Coupon
+from app.models.watchlist import WatchlistItem
 
 __all__ = [
     "User",
@@ -24,4 +25,5 @@ __all__ = [
     "AIQueryLog",
     "PaymentEvent",
     "Coupon",
+    "WatchlistItem",
 ]

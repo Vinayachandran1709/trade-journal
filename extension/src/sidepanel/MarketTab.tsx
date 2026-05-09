@@ -157,6 +157,39 @@ function regimeSummary(data: MarketDashboardData["regime"]): string {
   return `Sideways · Range-bound · ${breadth}`;
 }
 
+function MarketConfidence({ confidence }: { confidence: MarketDashboardData["confidence"] }) {
+  if (!confidence) {
+    return null;
+  }
+
+  const level = (confidence.level || "low").toLowerCase();
+  const score = Math.max(0, Math.min(100, confidence.score ?? 0));
+
+  return (
+    <div className="confidence-meter">
+      <div className="confidence-header">
+        <span className="confidence-label">Market Confidence</span>
+        <span className={`confidence-score confidence-${level}`}>
+          {score}/100
+        </span>
+      </div>
+      <div className="confidence-bar-track">
+        <div
+          className={`confidence-bar-fill confidence-fill-${level}`}
+          style={{ width: `${score}%` }}
+        />
+      </div>
+      <div className="confidence-reasons">
+        {(confidence.reasons ?? []).map((reason, index) => (
+          <span key={`${reason}-${index}`} className="confidence-reason-pill">
+            {reason}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function getRegimeInterpretation(data: MarketDashboardData): string {
   const advPct = data.regime?.breadth?.pct_advancing ?? 50;
   const vix = data.vix?.value ?? 15;
@@ -880,6 +913,8 @@ export default function MarketTab({
           <p className="regime-interpretation">{getRegimeInterpretation(data)}</p>
         </>
       ) : null}
+
+      <MarketConfidence confidence={data.confidence} />
 
       <div className="market-narrative">
         <div className="narrative-header">

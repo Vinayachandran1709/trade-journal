@@ -305,6 +305,11 @@ export interface MarketDashboardData {
   market_status: string;
   last_updated: string;
   is_stale: boolean;
+  confidence?: {
+    score: number;
+    level: "HIGH" | "MODERATE" | "LOW" | string;
+    reasons: string[];
+  } | null;
 }
 
 export interface WatchlistResponse {
@@ -408,6 +413,50 @@ export async function fetchTickerIntel(
   return request<TickerIntelResponse>(
     `/api/market/ticker-intel/${encodeURIComponent(symbol)}`
   );
+}
+
+export interface EarningsEvent {
+  title: string;
+  date: string;
+  link: string;
+  symbol: string | null;
+  event_type: string;
+  relevant_to_user?: boolean;
+  user_traded?: boolean;
+}
+
+export interface EarningsCalendarResponse {
+  upcoming: EarningsEvent[];
+  source: string;
+  fetched_at: string;
+}
+
+export async function fetchMarketEarnings(): Promise<EarningsCalendarResponse> {
+  return request<EarningsCalendarResponse>("/api/market/earnings");
+}
+
+export interface ResearchAskResponse {
+  category: "my_trades" | "stock_research" | "market_context" | "strategy_check" | string;
+  query: string;
+  response: string;
+  context_used?: string[];
+  queries_remaining: number;
+  queries_limit: number;
+  cached?: boolean;
+  model_used?: string;
+}
+
+export async function askResearch(
+  token: string,
+  query: string
+): Promise<ResearchAskResponse> {
+  return request<ResearchAskResponse>("/api/research/ask", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ query }),
+  });
 }
 
 export interface PatternResponse {

@@ -2,10 +2,12 @@ import { useEffect, useMemo, useState } from "react";
 
 import {
   APIError,
+  askResearch,
   fetchCompletedTrades,
   fetchTickerIntel,
   fetchWhyMoving,
   type CompletedTradeListItem,
+  type ResearchAskResponse,
   type TickerIntelResponse,
   type WhyMovingResponse,
 } from "../shared/api";
@@ -23,6 +25,10 @@ interface AiQueryItem {
   symbol: string;
   date: string;
 }
+
+type AiResult =
+  | { kind: "stock"; data: WhyMovingResponse }
+  | { kind: "research"; data: ResearchAskResponse };
 
 function toFiniteNumber(value: unknown): number | null {
   return typeof value === "number" && Number.isFinite(value) ? value : null;
@@ -136,11 +142,40 @@ function formatRelativeDate(value?: string | null): string {
   return `${diffDays} days ago`;
 }
 
+function isStockSymbolQuery(value: string): boolean {
+  return /^[A-Z0-9&-]{2,15}$/.test(value.trim());
+}
+
+function shouldUseStockAnalysis(value: string): boolean {
+  const normalized = value.trim();
+  const lower = normalized.toLowerCase();
+  if (/[?]/.test(normalized) || /\b(how|what|why|am i|should)\b/i.test(lower)) {
+    return false;
+  }
+  return isStockSymbolQuery(normalized);
+}
+
+function getCategoryLabel(category: string): string {
+  return category
+    .split("_")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
+function getMostTradedSymbol(trades: CompletedTradeListItem[]): string | null {
+  const counts = new Map<string, number>();
+  for (const trade of trades) {
+    const symbol = trade.stock_symbol.toUpperCase();
+    counts.set(symbol, (counts.get(symbol) ?? 0) + 1);
+  }
+  return [...counts.entries()].sort((left, right) => right[1] - left[1])[0]?.[0] ?? null;
+}
+
 export default function AiTab({ isSignedIn }: { isSignedIn: boolean }) {
   const [symbol, setSymbol] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [result, setResult] = useState<WhyMovingResponse | null>(null);
+  const [result, setResult] = useState<AiResult | null>(null);
   const [recentQueries, setRecentQueries] = useState<AiQueryItem[]>([]);
   const [resultIntel, setResultIntel] = useState<TickerIntelResponse | null>(null);
   const [personalTrades, setPersonalTrades] = useState<CompletedTradeListItem[]>([]);
@@ -180,7 +215,7 @@ export default function AiTab({ isSignedIn }: { isSignedIn: boolean }) {
   );
 
   const visibleSources = useMemo(() => {
-    const sources = Array.isArray(result?.sources) ? result.sources : [];
+    const sources = result?.kind === "stock" && Array.isArray(result.data.sources) ? result.data.sources : [];
     return [...sources]
       .sort((left, right) => {
         const priorityGap =
@@ -212,6 +247,16 @@ export default function AiTab({ isSignedIn }: { isSignedIn: boolean }) {
     };
   }, [personalTrades]);
 
+  const quickSuggestions = useMemo(() => {
+    const lastSymbol = todaysQueries[0]?.symbol || recentQueries[0]?.symbol || getMostTradedSymbol(completedTradeCache) || "TCS";
+    return [
+      "How am I doing this week?",
+      "What sectors are strong?",
+      "Am I overtrading?",
+      `${lastSymbol} outlook`,
+    ];
+  }, [completedTradeCache, recentQueries, todaysQueries]);
+
   async function saveRecentQuery(nextSymbol: string) {
     const today = getIstDateKey();
     const normalized = nextSymbol.toUpperCase();
@@ -225,18 +270,18 @@ export default function AiTab({ isSignedIn }: { isSignedIn: boolean }) {
   }
 
   async function runQuery(nextSymbol?: string) {
-    const normalizedSymbol = (nextSymbol ?? symbol).trim();
-    if (!normalizedSymbol) {
-      setError("Enter a stock symbol first.");
+    const query = (nextSymbol ?? symbol).trim();
+    if (!query) {
+      setError("Enter a question or stock symbol first.");
       return;
     }
 
     if (!isSignedIn) {
-      setError("Sign in to use AI market explanations.");
+      setError("Sign in to use IndiaCircle research.");
       return;
     }
 
-    setSymbol(normalizedSymbol);
+    setSymbol(query);
     setLoading(true);
     setError(null);
     setResult(null);
@@ -246,37 +291,43 @@ export default function AiTab({ isSignedIn }: { isSignedIn: boolean }) {
     try {
       const token = await getAuthToken();
       if (!token) {
-        throw new Error("Sign in to use AI market explanations.");
+        throw new Error("Sign in to use IndiaCircle research.");
       }
 
-      const [response, tickerIntel] = await Promise.all([
-        fetchWhyMoving(token, normalizedSymbol),
-        fetchTickerIntel(normalizedSymbol).catch(() => null),
-      ]);
-      if (tickerIntel) {
-        setResultIntel(tickerIntel);
-      }
-      setResult(response);
+      if (shouldUseStockAnalysis(query)) {
+        const normalizedSymbol = query.toUpperCase();
+        const [response, tickerIntel] = await Promise.all([
+          fetchWhyMoving(token, normalizedSymbol),
+          fetchTickerIntel(normalizedSymbol).catch(() => null),
+        ]);
+        if (tickerIntel) {
+          setResultIntel(tickerIntel);
+        }
+        setResult({ kind: "stock", data: response });
 
-      const completedTrades = completedTradeCache.length
-        ? completedTradeCache
-        : await fetchCompletedTrades(token, { limit: 200, offset: 0 }).catch(() => []);
-      if (!completedTradeCache.length && completedTrades.length) {
-        setCompletedTradeCache(completedTrades);
-        void storageSet(CACHED_AI_COMPLETED_TRADES_KEY, completedTrades).catch(() => undefined);
-      }
-      setPersonalTrades(
-        completedTrades
-          .filter(
-            (trade) => trade.stock_symbol.toUpperCase() === normalizedSymbol.toUpperCase()
-          )
-          .sort(
-            (left, right) =>
-              new Date(right.exit_date).getTime() - new Date(left.exit_date).getTime()
-          )
-      );
+        const completedTrades = completedTradeCache.length
+          ? completedTradeCache
+          : await fetchCompletedTrades(token, { limit: 200, offset: 0 }).catch(() => []);
+        if (!completedTradeCache.length && completedTrades.length) {
+          setCompletedTradeCache(completedTrades);
+          void storageSet(CACHED_AI_COMPLETED_TRADES_KEY, completedTrades).catch(() => undefined);
+        }
+        setPersonalTrades(
+          completedTrades
+            .filter(
+              (trade) => trade.stock_symbol.toUpperCase() === normalizedSymbol
+            )
+            .sort(
+              (left, right) =>
+                new Date(right.exit_date).getTime() - new Date(left.exit_date).getTime()
+            )
+        );
 
-      await saveRecentQuery(normalizedSymbol);
+        await saveRecentQuery(normalizedSymbol);
+      } else {
+        const response = await askResearch(token, query);
+        setResult({ kind: "research", data: response });
+      }
     } catch (queryError) {
       setResult(null);
       setResultIntel(null);
@@ -287,7 +338,7 @@ export default function AiTab({ isSignedIn }: { isSignedIn: boolean }) {
         setError(
           queryError instanceof Error
             ? queryError.message
-            : "Unable to analyze this symbol right now."
+            : "Unable to run this research query right now."
         );
       }
     } finally {
@@ -302,7 +353,7 @@ export default function AiTab({ isSignedIn }: { isSignedIn: boolean }) {
           <input
             id="ai-symbol-input"
             className="ai-input"
-            placeholder="TCS, RELIANCE, VEDL..."
+            placeholder="Ask research or type TCS..."
             value={symbol}
             onChange={(event) => setSymbol(event.target.value)}
             onKeyDown={(event) => {
@@ -317,6 +368,24 @@ export default function AiTab({ isSignedIn }: { isSignedIn: boolean }) {
             {loading ? "Thinking..." : "Why moving?"}
           </button>
         </div>
+
+        {!result ? (
+          <div className="ai-quick-block">
+            <div className="ai-recent-title">Quick research</div>
+            <div className="ai-today-queries">
+              {quickSuggestions.map((suggestion) => (
+                <button
+                  key={suggestion}
+                  className="ai-recent-pill"
+                  disabled={loading}
+                  onClick={() => void runQuery(suggestion)}
+                >
+                  {suggestion}
+                </button>
+              ))}
+            </div>
+          </div>
+        ) : null}
 
         <div className="ai-recent-block">
           <div className="ai-recent-title">Today's queries</div>
@@ -346,7 +415,7 @@ export default function AiTab({ isSignedIn }: { isSignedIn: boolean }) {
           <div className="ai-loading-pulse" />
           <div className="ai-result-header">
             <div>
-              <h2>Analyzing {symbol.toUpperCase()}...</h2>
+              <h2>Researching...</h2>
               <SkeletonLine width="70%" height="12px" />
               <SkeletonLine width="48%" height="16px" />
             </div>
@@ -358,15 +427,15 @@ export default function AiTab({ isSignedIn }: { isSignedIn: boolean }) {
         </article>
       ) : null}
 
-      {result ? (
+      {result?.kind === "stock" ? (
         <article className="ai-result-card">
           <div className="ai-result-header">
             <div>
-              <h2>{result.symbol}</h2>
-              {result.company_name ? (
-                <p className="ai-result-company">{result.company_name}</p>
+              <h2>{result.data.symbol}</h2>
+              {result.data.company_name ? (
+                <p className="ai-result-company">{result.data.company_name}</p>
               ) : null}
-              <p className="ai-result-price">₹{formatPrice(result.price)}</p>
+              <p className="ai-result-price">₹{formatPrice(result.data.price)}</p>
               {resultIntel ? (
                 <p className="ai-momentum-line">
                   Vol:{" "}
@@ -381,14 +450,14 @@ export default function AiTab({ isSignedIn }: { isSignedIn: boolean }) {
             </div>
             <span
               className={`ai-result-change${
-                (toFiniteNumber(result.change_pct) ?? 0) >= 0 ? " positive" : " negative"
+                (toFiniteNumber(result.data.change_pct) ?? 0) >= 0 ? " positive" : " negative"
               }`}
             >
-              {formatNullablePercent(result.change_pct)}
+              {formatNullablePercent(result.data.change_pct)}
             </span>
           </div>
 
-          <p className="ai-result-explanation">{getExplanationBody(result)}</p>
+          <p className="ai-result-explanation">{getExplanationBody(result.data)}</p>
 
           {visibleSources.length ? (
             <div className="ai-source-grid">
@@ -416,7 +485,7 @@ export default function AiTab({ isSignedIn }: { isSignedIn: boolean }) {
 
           {personalHistory ? (
             <section className="ai-history-card">
-              <div className="ai-history-title">Your history with {result.symbol}</div>
+              <div className="ai-history-title">Your history with {result.data.symbol}</div>
               <div className="ai-history-stats">
                 {personalHistory.count} trades · Win rate:{" "}
                 <strong>{formatPercent(personalHistory.winRate)}</strong> · Last:{" "}
@@ -436,7 +505,25 @@ export default function AiTab({ isSignedIn }: { isSignedIn: boolean }) {
           ) : null}
 
           <div className="ai-quota-copy">
-            Queries remaining: {result.queries_remaining}/{result.queries_limit} today
+            Queries remaining: {result.data.queries_remaining}/{result.data.queries_limit} today
+          </div>
+        </article>
+      ) : null}
+
+      {result?.kind === "research" ? (
+        <article className="ai-result-card">
+          <div className="ai-result-header">
+            <div>
+              <h2>IndiaCircle Research</h2>
+              <p className="ai-result-company">{result.data.query}</p>
+            </div>
+            <span className="ai-category-badge">{getCategoryLabel(result.data.category)}</span>
+          </div>
+
+          <p className="ai-result-explanation">{result.data.response}</p>
+
+          <div className="ai-quota-copy">
+            Queries remaining: {result.data.queries_remaining}/{result.data.queries_limit} today
           </div>
         </article>
       ) : null}

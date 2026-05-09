@@ -45,6 +45,12 @@ class RegimeData(BaseModel):
     interpretation: str
 
 
+class MarketConfidenceData(BaseModel):
+    score: int
+    level: str
+    reasons: list[str]
+
+
 class SectorPerformanceData(BaseModel):
     index: str
     value: Optional[float] = None
@@ -79,6 +85,7 @@ class MarketDashboardResponse(BaseModel):
     global_cues: dict[str, Optional[GlobalCue]]
     sector_performance: dict[str, SectorPerformanceData]
     regime: RegimeData
+    confidence: MarketConfidenceData
     personalized: Optional[PersonalizedMarketData] = None
     market_status: str
     last_updated: str

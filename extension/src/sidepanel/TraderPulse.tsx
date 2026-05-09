@@ -1,4 +1,12 @@
-import type { AnalyticsSummaryResponse, MarketDashboardData, PatternsEnvelope } from "../shared/api";
+import { useEffect, useMemo, useState } from "react";
+
+import {
+  fetchMarketEarnings,
+  type AnalyticsSummaryResponse,
+  type EarningsEvent,
+  type MarketDashboardData,
+  type PatternsEnvelope,
+} from "../shared/api";
 import type { CaptureState } from "../shared/captures";
 import type { User } from "../shared/types";
 import {
@@ -208,6 +216,29 @@ function getAction(args: {
   return null;
 }
 
+function parseEventDate(value: string): number {
+  const parsed = new Date(value).getTime();
+  return Number.isFinite(parsed) ? parsed : Number.MAX_SAFE_INTEGER;
+}
+
+function getRecentSymbols(args: {
+  captureState: CaptureState | null;
+  marketData: MarketDashboardData | null;
+  analyticsSummary: AnalyticsSummaryResponse | null | undefined;
+}): Set<string> {
+  const symbols = new Set<string>();
+  for (const trade of args.captureState?.trades ?? []) {
+    symbols.add(trade.stock_symbol.toUpperCase());
+  }
+  for (const symbol of args.marketData?.personalized?.recent_symbols ?? []) {
+    symbols.add(symbol.toUpperCase());
+  }
+  if (args.analyticsSummary?.most_traded_symbol) {
+    symbols.add(args.analyticsSummary.most_traded_symbol.toUpperCase());
+  }
+  return symbols;
+}
+
 export default function TraderPulse({
   user,
   marketData,
@@ -221,6 +252,7 @@ export default function TraderPulse({
   patternsEnvelope?: PatternsEnvelope | null;
   analyticsSummary?: AnalyticsSummaryResponse | null;
 }) {
+  const [earningsEvents, setEarningsEvents] = useState<EarningsEvent[]>([]);
   const captureStats = getCapturePerformanceStats(captureState);
   const badge = getBadge(user, captureStats.tradeCount);
   const metrics = getMetricsLine({ captureState, summary: analyticsSummary });
@@ -230,6 +262,31 @@ export default function TraderPulse({
     captureState,
     summary: analyticsSummary,
   });
+  const recentSymbols = useMemo(
+    () => getRecentSymbols({ captureState, marketData, analyticsSummary }),
+    [analyticsSummary, captureState, marketData]
+  );
+  const earningsAlert = useMemo(
+    () =>
+      earningsEvents
+        .filter((event) => event.symbol && recentSymbols.has(event.symbol.toUpperCase()))
+        .sort((left, right) => parseEventDate(left.date) - parseEventDate(right.date))[0] ?? null,
+    [earningsEvents, recentSymbols]
+  );
+
+  useEffect(() => {
+    let active = true;
+    fetchMarketEarnings()
+      .then((response) => {
+        if (active) {
+          setEarningsEvents(response.upcoming ?? []);
+        }
+      })
+      .catch(() => undefined);
+    return () => {
+      active = false;
+    };
+  }, []);
 
   return (
     <section className="trader-pulse">
@@ -253,6 +310,12 @@ export default function TraderPulse({
               {index < metrics.length - 1 ? <span className="sep"> · </span> : null}
             </span>
           ))}
+        </div>
+      ) : null}
+
+      {earningsAlert?.symbol ? (
+        <div className="pulse-earnings-alert">
+          📅 {earningsAlert.symbol} results expected soon
         </div>
       ) : null}
 

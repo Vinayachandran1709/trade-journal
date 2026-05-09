@@ -13,6 +13,7 @@ from app.services.market_data_service import (
     get_ticker_quote,
     get_watchlist_data,
 )
+from app.services.earnings_service import get_upcoming_earnings
 from app.utils.dependencies import get_current_user, get_optional_current_user
 
 router = APIRouter(prefix="/api/market", tags=["market"])
@@ -39,3 +40,12 @@ def watchlist(
 def quote(symbol: str, db: Session = Depends(get_db)):
     """Single stock/index quote. Pass bare NSE symbol (e.g. TCS) or suffixed (TCS.NS). Public endpoint."""
     return get_ticker_quote(symbol, db)
+
+
+@router.get("/earnings")
+async def upcoming_earnings(
+    current_user: User | None = Depends(get_optional_current_user),
+    db: Session = Depends(get_db),
+):
+    user_id = current_user.id if current_user else None
+    return await get_upcoming_earnings(db, user_id)

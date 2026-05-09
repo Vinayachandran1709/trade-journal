@@ -47,6 +47,7 @@ export default function Navbar() {
 
   const navLinks = [
     { href: "/pricing", label: "Pricing" },
+    { href: "/research", label: "Research" },
     { href: "/download", label: "Download" },
     ...(loggedIn ? [{ href: "/dashboard", label: "Dashboard" }] : []),
   ];

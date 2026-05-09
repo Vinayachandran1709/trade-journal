@@ -163,7 +163,7 @@ export default function App() {
         {(
           [
             ["market", "Market"],
-            ["ai", "AI"],
+            ["ai", "Research"],
             ["insights", "Insights"],
             ["captures", "Journal"],
             ["calculators", "Calculators"],
