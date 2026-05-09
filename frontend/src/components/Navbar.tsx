@@ -49,7 +49,14 @@ export default function Navbar() {
     { href: "/pricing", label: "Pricing" },
     { href: "/research", label: "Research" },
     { href: "/download", label: "Download" },
-    ...(loggedIn ? [{ href: "/dashboard", label: "Dashboard" }] : []),
+    ...(loggedIn
+      ? [
+          { href: "/dashboard", label: "Dashboard" },
+          { href: "/dashboard/trades", label: "Trades" },
+          { href: "/dashboard/analytics", label: "Patterns" },
+          { href: "/dashboard/mistakes", label: "Mistakes" },
+        ]
+      : []),
   ];
 
   const onDarkHero = pathname === "/" || pathname === "/download";

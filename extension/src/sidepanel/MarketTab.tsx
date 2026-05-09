@@ -25,10 +25,11 @@ import {
   type RealtimeRiskAlert,
 } from "./behavioral";
 
-const FAST_REFRESH_MS = 15_000;
-const SLOW_REFRESH_MS = 60_000;
-const LAST_MARKET_DATA_KEY = "lastMarketData";
+const REFRESH_INTERVAL_MARKET = 30_000;
+const REFRESH_INTERVAL_OFF = 120_000;
+const LAST_MARKET_DATA_KEY = "cachedMarketDashboard";
 const LAST_MARKET_WATCHLIST_KEY = "lastMarketWatchlist";
+const LEGACY_MARKET_DATA_KEY = "lastMarketData";
 const DISMISSED_ALERTS_KEY_PREFIX = "riskAlertDismissed";
 const SEEN_ALERTS_KEY_PREFIX = "riskAlertSeen";
 const NUMBER_FORMATTER = new Intl.NumberFormat("en-IN", { maximumFractionDigits: 2 });
@@ -126,7 +127,7 @@ function isMarketHours(now: Date): boolean {
 }
 
 function getRefreshIntervalMs(now = new Date()): number {
-  return isMarketHours(now) ? FAST_REFRESH_MS : SLOW_REFRESH_MS;
+  return isMarketHours(now) ? REFRESH_INTERVAL_MARKET : REFRESH_INTERVAL_OFF;
 }
 
 function getFetchedTimeLabel(valueMs: number | null): string {
@@ -678,7 +679,9 @@ export default function MarketTab({
 
     async function hydrate() {
       const [cachedDashboard, cachedWatchlist] = await Promise.all([
-        storageGet<MarketDashboardData>(LAST_MARKET_DATA_KEY).catch(() => null),
+        storageGet<MarketDashboardData>(LAST_MARKET_DATA_KEY)
+          .catch(() => null)
+          .then(async (current) => current ?? storageGet<MarketDashboardData>(LEGACY_MARKET_DATA_KEY).catch(() => null)),
         storageGet<WatchlistResponse>(LAST_MARKET_WATCHLIST_KEY).catch(() => null),
       ]);
 
@@ -885,10 +888,6 @@ export default function MarketTab({
         </div>
       ) : null}
 
-      {data.is_stale ? (
-        <div className="mkt-stale-banner">Data may be delayed. Showing the latest saved snapshot.</div>
-      ) : null}
-
       {error ? (
         <div className="mkt-inline-note">Showing cached market context while a refresh retries.</div>
       ) : null}
@@ -1050,7 +1049,10 @@ export default function MarketTab({
       <FiiDiiSection data={data.fii_dii} />
 
       <div className="mkt-footer-bar">
-        <span className="mkt-footer-time">{getFetchedTimeLabel(lastFetchedAtMs)}</span>
+        <span className="mkt-footer-time">
+          {getFetchedTimeLabel(lastFetchedAtMs)}
+          {data.is_stale ? <span className="mkt-footer-cache-label"> (cached)</span> : null}
+        </span>
         <button
           aria-label="Refresh market data"
           className="mkt-refresh-button"

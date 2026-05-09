@@ -1,4 +1,17 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
+function resolveApiUrl(): string {
+  const configured = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api").replace(
+    /\/$/,
+    ""
+  );
+
+  if (typeof window !== "undefined" && window.location.protocol === "https:") {
+    return configured.replace(/^http:\/\//i, "https://");
+  }
+
+  return configured;
+}
+
+export const API_URL = resolveApiUrl();
 
 export async function apiFetch<T>(
   endpoint: string,

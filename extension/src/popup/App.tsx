@@ -1,12 +1,12 @@
 import { FormEvent, useEffect, useState } from "react";
 
 import { fetchCurrentUser, loginWithPassword } from "../shared/api";
-import { clearAuthToken, getAuthToken, setAuthToken } from "../shared/auth";
+import { AUTH_TOKEN_KEY, clearAuthToken, setAuthToken } from "../shared/auth";
 import type { User } from "../shared/types";
 
 const WEB_APP_URL = (import.meta.env.VITE_WEB_APP_URL || "https://indiacircle.in").replace(/\/$/, "");
 
-type ViewState = "loading" | "ready" | "submitting";
+type ViewState = "ready" | "submitting";
 
 function getPlanBadge(user: User): "Free" | "Pro" {
   if (user.subscription_plan === "pro_founding") {
@@ -19,46 +19,62 @@ function getPlanBadge(user: User): "Free" | "Pro" {
 export default function App() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [status, setStatus] = useState<ViewState>("loading");
+  const [status, setStatus] = useState<ViewState>("ready");
   const [user, setUser] = useState<User | null>(null);
+  const [isSignedIn, setIsSignedIn] = useState(false);
+  const [cachedEmail, setCachedEmail] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const isFreeUser = user ? getPlanBadge(user) === "Free" : false;
+  const displayEmail = user?.email ?? cachedEmail ?? "your account";
 
   useEffect(() => {
     let active = true;
 
-    async function loadSession() {
+    async function verifyToken(token: string) {
       try {
-        const token = await getAuthToken();
-        if (!token) {
-          if (active) {
-            setStatus("ready");
-          }
-          return;
-        }
-
         const currentUser = await fetchCurrentUser(token);
-        if (active) {
-          setUser(currentUser);
-        }
+        if (!active) return;
+        setUser(currentUser);
+        setIsSignedIn(true);
+        setCachedEmail(currentUser.email);
+        setError(null);
+        await chrome.storage.local.set({ cached_email: currentUser.email });
       } catch (sessionError) {
         await clearAuthToken();
-        if (active) {
-          setError(
-            sessionError instanceof Error
-              ? sessionError.message
-              : "Session expired. Please log in again."
-          );
-        }
-      } finally {
-        if (active) {
-          setStatus("ready");
-        }
+        await chrome.storage.local.remove("cached_email");
+        if (!active) return;
+        setUser(null);
+        setIsSignedIn(false);
+        setCachedEmail(null);
+        setError(
+          sessionError instanceof Error
+            ? sessionError.message
+            : "Session expired. Please log in again."
+        );
       }
     }
 
-    void loadSession();
+    chrome.storage.local.get([AUTH_TOKEN_KEY, "auth_token", "cached_email"], (result) => {
+      if (!active) return;
+
+      const token =
+        typeof result[AUTH_TOKEN_KEY] === "string"
+          ? (result[AUTH_TOKEN_KEY] as string)
+          : typeof result.auth_token === "string"
+            ? (result.auth_token as string)
+            : null;
+
+      if (!token) {
+        setIsSignedIn(false);
+        setCachedEmail(null);
+        return;
+      }
+
+      setIsSignedIn(true);
+      setCachedEmail(typeof result.cached_email === "string" ? result.cached_email : null);
+      void verifyToken(token);
+    });
 
     return () => {
       active = false;
@@ -74,12 +90,18 @@ export default function App() {
       const tokenResponse = await loginWithPassword({ email, password });
       await setAuthToken(tokenResponse.access_token);
       const currentUser = await fetchCurrentUser(tokenResponse.access_token);
+      await chrome.storage.local.set({ cached_email: currentUser.email });
       setUser(currentUser);
+      setIsSignedIn(true);
+      setCachedEmail(currentUser.email);
       setPassword("");
     } catch (submitError) {
       await clearAuthToken();
+      await chrome.storage.local.remove("cached_email");
       setError(submitError instanceof Error ? submitError.message : "Unable to log in.");
       setUser(null);
+      setIsSignedIn(false);
+      setCachedEmail(null);
     } finally {
       setStatus("ready");
     }
@@ -87,7 +109,10 @@ export default function App() {
 
   async function handleLogout() {
     await clearAuthToken();
+    await chrome.storage.local.remove("cached_email");
     setUser(null);
+    setIsSignedIn(false);
+    setCachedEmail(null);
     setPassword("");
     setError(null);
   }
@@ -110,8 +135,8 @@ export default function App() {
     window.close();
   }
 
-  function handleCreateAccount() {
-    void chrome.tabs.create({ url: `${WEB_APP_URL}/signup` });
+  function openWebPath(path: string) {
+    void chrome.tabs.create({ url: `${WEB_APP_URL}${path}` });
     window.close();
   }
 
@@ -126,21 +151,19 @@ export default function App() {
           </p>
         </div>
 
-        {status === "loading" ? (
-          <div className="status-card">Checking saved session...</div>
-        ) : user ? (
+        {isSignedIn ? (
           <div className="popup-stack">
             <div className="account-strip">
               <div>
                 <span className="account-strip-label">Account</span>
                 <strong>
                   {"\u2713 Signed in as "}
-                  {user.email}
+                  {displayEmail}
                 </strong>
               </div>
               <div className="account-strip-actions">
                 <span className={`plan-badge${isFreeUser ? "" : " plan-badge--pro"}`}>
-                  {getPlanBadge(user)}
+                  {user ? getPlanBadge(user) : "Free"}
                 </span>
                 <button className="ghost-link" onClick={handleLogout}>
                   Log out
@@ -189,7 +212,7 @@ export default function App() {
             </label>
 
             <button
-              className="primary-button"
+              className="primary-button sign-in-button"
               disabled={status === "submitting"}
               type="submit"
             >
@@ -197,11 +220,11 @@ export default function App() {
             </button>
 
             <button
-              className="secondary-button"
-              onClick={handleCreateAccount}
+              className="create-account-link secondary-action"
+              onClick={() => openWebPath("/signup")}
               type="button"
             >
-              Create Account
+              Create Free Account
             </button>
           </form>
         )}

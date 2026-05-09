@@ -1,6 +1,7 @@
 import os
 import sys
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 from fastapi.testclient import TestClient
@@ -16,6 +17,7 @@ if str(BACKEND_DIR) not in sys.path:
 os.environ["DATABASE_URL"] = "sqlite:///./test_release_1a.sqlite3"
 os.environ["SECRET_KEY"] = "test-secret-key"
 
+from app.config import settings  # noqa: E402
 from app.database import Base, get_db  # noqa: E402
 from app.main import app  # noqa: E402
 from app.models.completed_trade import CompletedTrade  # noqa: E402
@@ -173,3 +175,43 @@ def test_repeated_extension_capture_is_idempotent(
     assert first.json()["imported_count"] == 1
     assert second.json()["imported_count"] == 0
     assert second.json()["duplicate_count"] == 1
+
+
+def test_login_with_malformed_stored_hash_returns_401(client: TestClient):
+    db = TestingSessionLocal()
+    user = User(
+        email="legacy-hash@example.com",
+        hashed_password="not-a-valid-bcrypt-hash",
+        name="Legacy User",
+    )
+    db.add(user)
+    db.commit()
+    db.close()
+
+    response = client.post(
+        "/api/auth/login",
+        json={"email": "legacy-hash@example.com", "password": "password123"},
+    )
+
+    assert response.status_code == 401
+    assert response.json()["detail"] == "Invalid email or password"
+
+
+def test_cors_defaults_always_include_production_domains():
+    assert "https://indiacircle.in" in settings.CORS_ALLOW_ORIGINS
+    assert "https://www.indiacircle.in" in settings.CORS_ALLOW_ORIGINS
+
+
+def test_health_check_returns_200_when_database_is_available(client: TestClient):
+    response = client.get("/health")
+
+    assert response.status_code == 200
+    assert response.json() == {"status": "healthy"}
+
+
+def test_health_check_returns_503_when_database_is_unavailable(client: TestClient):
+    with patch("app.routes.health.engine.connect", side_effect=Exception("db down")):
+        response = client.get("/health")
+
+    assert response.status_code == 503
+    assert response.json()["detail"] == "Database unavailable"

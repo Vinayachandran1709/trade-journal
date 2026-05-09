@@ -1,3 +1,5 @@
+"use client";
+
 import Link from "next/link";
 
 const brokers = [
@@ -15,35 +17,53 @@ const brokers = [
 
 const features = [
   {
-    icon: "📝",
-    title: "Auto Trade Journal",
-    desc: "Every trade auto-captured from your broker. Zero typing, zero effort. Works with Zerodha, Groww, and 8 more.",
+    icon: "Journal",
+    title: "Auto-Journal",
+    desc: "Never lose track of a trade again. Open your broker - IndiaCircle silently logs everything.",
   },
   {
-    icon: "🤖",
-    title: "AI Market Intelligence",
-    desc: "Ask 'Why is TCS moving?' and get a 3-sentence answer citing real news. Hover any stock name for instant data.",
+    icon: "Research",
+    title: "AI Research",
+    desc: "Ask 'Why is VEDL moving?' and get the answer in 3 seconds - not 30 tabs of searching.",
   },
   {
-    icon: "📊",
+    icon: "Patterns",
     title: "Behavioral Patterns",
-    desc: "Discover hidden patterns: 'Your win rate drops 40% after 2 PM' or 'Revenge trades cost you ₹8,400/month.'",
+    desc: "Discover why your profitable setups suddenly fail after lunch. See the patterns costing you money.",
   },
   {
-    icon: "🛡️",
+    icon: "Guard",
     title: "Trade Guard",
-    desc: "Before you trade, see your risk score based on your history. Not advice, just data from your own execution.",
+    desc: "Before you click Buy, see your risk score based on YOUR history. Not advice - your own data talking back.",
   },
   {
-    icon: "📈",
+    icon: "Market",
     title: "Market Dashboard",
-    desc: "Nifty, Bank Nifty, VIX, FII/DII flows, global cues, and movers in one sidebar. Stop juggling 10 tabs.",
+    desc: "Stop juggling 10 tabs. Nifty, sectors, global cues, and YOUR stocks - one sidebar.",
   },
   {
-    icon: "🧮",
-    title: "Smart Calculators",
-    desc: "Position sizing, R:R ratio, exact brokerage breakdown with STT, GST, and stamp duty for 7 Indian brokers.",
+    icon: "Math",
+    title: "Calculators",
+    desc: "Exact position size, R:R ratio, and brokerage breakdown for every Indian broker. No more guessing.",
   },
+];
+
+const howItWorks = [
+  [
+    "01",
+    "Trade Normally",
+    "Open Zerodha, Groww, or any Indian broker. IndiaCircle silently captures every trade, emotion, and mistake.",
+  ],
+  [
+    "02",
+    "Patterns Emerge",
+    "After 20 trades, the behavioral engine reveals what's silently hurting your performance - timing, sizing, emotion, discipline.",
+  ],
+  [
+    "03",
+    "Trade Better",
+    "Pre-trade risk scores. Real-time behavioral warnings. Weekly correction plans. Your own data becomes your coach.",
+  ],
 ];
 
 const faqs = [
@@ -126,6 +146,29 @@ function ExtensionMockup() {
   );
 }
 
+function FeatureCard({
+  icon,
+  title,
+  desc,
+}: {
+  icon: string;
+  title: string;
+  desc: string;
+}) {
+  return (
+    <div className="feature-card fade-in">
+      <div className="inline-flex rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-bold uppercase tracking-[0.14em] text-slate-500">
+        {icon}
+      </div>
+      <h3 className="mt-5 text-xl font-black text-slate-950">{title}</h3>
+      <p className="mt-3 text-sm leading-6 text-gray-600">{desc}</p>
+      <Link href="/download" className="mt-5 inline-block text-sm font-bold text-indigo-600">
+        Learn more {"->"}
+      </Link>
+    </div>
+  );
+}
+
 export default function Home() {
   return (
     <div className="overflow-hidden bg-white">
@@ -134,7 +177,7 @@ export default function Home() {
         <div className="absolute inset-x-0 top-0 h-80 bg-[radial-gradient(circle_at_50%_0%,rgba(79,70,229,0.38),transparent_60%)]" />
         <div className="section-container relative text-center">
           <div className="fade-in inline-flex items-center rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-indigo-100 shadow-sm backdrop-blur">
-            🚀 First 100 users get 3 months Pro free · Code: FOUNDING
+            First 100 users get 3 months Pro free · Code: FOUNDING
           </div>
           <h1 className="fade-in fade-in-delay-1 mx-auto mt-8 max-w-4xl text-5xl font-black tracking-tight sm:text-6xl lg:text-7xl">
             Your AI copilot for the Indian stock market
@@ -151,7 +194,7 @@ export default function Home() {
           </p>
           <div className="fade-in fade-in-delay-4 mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">
             <Link href="/signup" className="btn-primary w-full sm:w-auto">
-              Get Started Free →
+              Get Started Free {"->"}
             </Link>
             <Link
               href="#how-it-works"
@@ -203,12 +246,12 @@ export default function Home() {
             <span className="badge badge-rose">Behavior is the hidden cost</span>
             <h2 className="mt-5 text-4xl font-black tracking-tight text-slate-950 sm:text-5xl">
               93% of Indian F&O traders lose money. The #1 reason? Behavioral
-              mistakes they don&apos;t even see.
+              mistakes they do not even see.
             </h2>
           </div>
           <div className="grid gap-4">
             {[
-              ["₹51,689 Cr", "Lost by retail F&O traders in FY24 (SEBI data)"],
+              ["Rs51,689 Cr", "Lost by retail F&O traders in FY24 (SEBI data)"],
               ["95%", "of traders never review their past trades"],
               ["3x", "more losses from afternoon trading vs morning (avg pattern)"],
             ].map(([value, label]) => (
@@ -217,6 +260,35 @@ export default function Home() {
                 <p className="mt-2 text-sm leading-6 text-gray-500">{label}</p>
               </div>
             ))}
+          </div>
+        </div>
+        <div className="section-container mt-12 grid gap-4 sm:grid-cols-3">
+          <div className="rounded-xl border border-rose-200 bg-rose-50/50 p-4">
+            <span className="text-xs font-bold text-rose-600">WARNING REAL INSIGHT</span>
+            <p className="mt-2 text-sm font-semibold text-rose-900">
+              Your revenge trades cost Rs8,240 this month.
+            </p>
+            <p className="mt-1 text-xs text-rose-600">
+              Detected from 4 trades entered within 15 min of a loss.
+            </p>
+          </div>
+          <div className="rounded-xl border border-amber-200 bg-amber-50/50 p-4">
+            <span className="text-xs font-bold text-amber-600">WARNING REAL INSIGHT</span>
+            <p className="mt-2 text-sm font-semibold text-amber-900">
+              Win rate drops from 62% to 28% after 2 PM.
+            </p>
+            <p className="mt-1 text-xs text-amber-600">
+              Based on 3 months of your trading data.
+            </p>
+          </div>
+          <div className="rounded-xl border border-emerald-200 bg-emerald-50/50 p-4">
+            <span className="text-xs font-bold text-emerald-600">GOOD REAL INSIGHT</span>
+            <p className="mt-2 text-sm font-semibold text-emerald-900">
+              Your Banking momentum setups win 68% of the time.
+            </p>
+            <p className="mt-1 text-xs text-emerald-600">
+              Your strongest edge - focus here.
+            </p>
           </div>
         </div>
       </section>
@@ -231,16 +303,7 @@ export default function Home() {
           </div>
           <div className="mt-12 grid gap-6 lg:grid-cols-2">
             {features.map((feature) => (
-              <div key={feature.title} className="feature-card fade-in">
-                <div className="text-3xl">{feature.icon}</div>
-                <h3 className="mt-5 text-xl font-black text-slate-950">
-                  {feature.title}
-                </h3>
-                <p className="mt-3 text-sm leading-6 text-gray-600">{feature.desc}</p>
-                <Link href="/download" className="mt-5 inline-block text-sm font-bold text-indigo-600">
-                  Learn more →
-                </Link>
-              </div>
+              <FeatureCard key={feature.title} {...feature} />
             ))}
           </div>
         </div>
@@ -255,11 +318,7 @@ export default function Home() {
             </h2>
           </div>
           <div className="mt-12 grid gap-6 md:grid-cols-3">
-            {[
-              ["01", "Install the Extension", "One click from Chrome Web Store. Works on Chrome, Edge, Brave."],
-              ["02", "Trade Normally", "Open your broker as usual. IndiaCircle captures everything in the background."],
-              ["03", "Get Smarter", "Review patterns, check risk scores, and make data-backed decisions."],
-            ].map(([num, title, desc]) => (
+            {howItWorks.map(([num, title, desc]) => (
               <div key={num} className="relative rounded-2xl border border-gray-100 bg-white p-8 shadow-sm">
                 <span className="absolute right-6 top-4 bg-gradient-to-r from-indigo-100 to-violet-100 bg-clip-text text-7xl font-black text-transparent">
                   {num}
@@ -268,6 +327,77 @@ export default function Home() {
                 <p className="relative mt-3 text-sm leading-6 text-gray-600">{desc}</p>
               </div>
             ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="section-padding bg-slate-950 text-white">
+        <div className="section-container text-center">
+          <h2 className="text-3xl font-black">What traders discover about themselves</h2>
+          <p className="mt-4 text-lg text-slate-400">
+            Real patterns detected by IndiaCircle&apos;s behavioral engine
+          </p>
+
+          <div className="mt-12 grid gap-6 text-left sm:grid-cols-2">
+            <div className="rounded-xl border border-slate-700 bg-slate-900 p-6">
+              <p className="text-sm text-slate-400">Pattern detected</p>
+              <p className="mt-2 text-lg font-bold">"I overtrade on volatile days"</p>
+              <p className="mt-2 text-sm text-slate-400">
+                Average day: 3 trades. High-VIX days: 7 trades. Win rate drops from 55% to 22%.
+              </p>
+            </div>
+            <div className="rounded-xl border border-slate-700 bg-slate-900 p-6">
+              <p className="text-sm text-slate-400">Pattern detected</p>
+              <p className="mt-2 text-lg font-bold">"My revenge trades cost me Rs15,000/month"</p>
+              <p className="mt-2 text-sm text-slate-400">
+                Trades entered within 15 minutes of a loss have 18% win rate vs normal 52%.
+              </p>
+            </div>
+            <div className="rounded-xl border border-slate-700 bg-slate-900 p-6">
+              <p className="text-sm text-slate-400">Pattern detected</p>
+              <p className="mt-2 text-lg font-bold">"My best edge is Banking momentum"</p>
+              <p className="mt-2 text-sm text-slate-400">
+                Banking sector trades held 2-5 days: 68% win rate, 1.8 average R.
+              </p>
+            </div>
+            <div className="rounded-xl border border-slate-700 bg-slate-900 p-6">
+              <p className="text-sm text-slate-400">Pattern detected</p>
+              <p className="mt-2 text-lg font-bold">"I lose more after 2 PM"</p>
+              <p className="mt-2 text-sm text-slate-400">
+                Morning win rate: 62%. Afternoon: 28%. Estimated monthly cost: Rs4,800.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="section-padding">
+        <div className="section-container">
+          <h2 className="text-center text-3xl font-black text-slate-950">
+            The difference IndiaCircle makes
+          </h2>
+
+          <div className="mt-12 grid gap-8 sm:grid-cols-2">
+            <div className="rounded-2xl border border-rose-200 bg-rose-50/30 p-8">
+              <h3 className="text-lg font-bold text-rose-700">Without IndiaCircle</h3>
+              <ul className="mt-4 space-y-3 text-sm text-rose-800">
+                <li>No real warning before revenge trades after a loss</li>
+                <li>Oversized positions when emotions take over</li>
+                <li>No clarity on which setups actually work</li>
+                <li>The same mistakes repeated every week</li>
+                <li>Trading based on gut feeling instead of review</li>
+              </ul>
+            </div>
+            <div className="rounded-2xl border border-emerald-200 bg-emerald-50/30 p-8">
+              <h3 className="text-lg font-bold text-emerald-700">With IndiaCircle</h3>
+              <ul className="mt-4 space-y-3 text-sm text-emerald-800">
+                <li>Real-time warning before revenge entries</li>
+                <li>Position sizing based on your own risk data</li>
+                <li>Know exactly which setups win and lose</li>
+                <li>Weekly correction plan from your patterns</li>
+                <li>Every trade scored against your history</li>
+              </ul>
+            </div>
           </div>
         </div>
       </section>
@@ -283,7 +413,7 @@ export default function Home() {
           <div className="mt-12 grid gap-6 lg:grid-cols-2">
             <div className="rounded-2xl border border-gray-100 bg-white p-8 shadow-sm">
               <h3 className="text-xl font-black">Free</h3>
-              <p className="mt-4 text-5xl font-black">₹0</p>
+              <p className="mt-4 text-5xl font-black">Rs0</p>
               <p className="mt-2 text-sm text-gray-500">forever</p>
               <ul className="mt-8 space-y-3 text-sm text-gray-600">
                 {["Import up to 100 trades", "CSV imports", "P&L summary", "Basic trade history"].map((item) => (
@@ -298,9 +428,9 @@ export default function Home() {
               <div className="p-8">
                 <div className="flex items-center justify-between">
                   <h3 className="text-xl font-black">Pro</h3>
-                  <span className="badge badge-indigo">Annual ₹4,999/year · save 30%</span>
+                  <span className="badge badge-indigo">Annual Rs4,999/year · save 30%</span>
                 </div>
-                <p className="mt-4 text-5xl font-black">₹599</p>
+                <p className="mt-4 text-5xl font-black">Rs599</p>
                 <p className="mt-2 text-sm text-gray-500">per month</p>
                 <ul className="mt-8 space-y-3 text-sm text-gray-600">
                   {["Unlimited trade imports", "Auto-capture from 10+ brokers", "AI pattern analysis", "Trade Guard risk context"].map((item) => (
@@ -340,13 +470,13 @@ export default function Home() {
       <section className="bg-slate-950 px-4 py-20 text-center text-white sm:px-6 lg:px-8">
         <div className="section-container">
           <h2 className="text-4xl font-black tracking-tight sm:text-5xl">
-            Stop losing money to patterns you can&apos;t see
+            Stop losing money to patterns you cannot see
           </h2>
           <p className="mt-4 text-lg text-slate-300">
-            Join IndiaCircle — your AI trading copilot
+            Join IndiaCircle - your AI trading copilot
           </p>
           <Link href="/signup" className="btn-primary mt-8">
-            Get Started Free →
+            Get Started Free {"->"}
           </Link>
           <p className="mt-4 text-sm text-slate-400">
             No credit card required · Works with all Indian brokers
@@ -358,7 +488,7 @@ export default function Home() {
         <div className="section-container flex flex-col gap-8 md:flex-row md:items-start md:justify-between">
           <div>
             <p className="text-xl font-black text-slate-950">IndiaCircle</p>
-            <p className="mt-3 text-sm text-gray-500">Made in India 🇮🇳 for Indian traders</p>
+            <p className="mt-3 text-sm text-gray-500">Made in India for Indian traders</p>
             <p className="mt-2 text-xs text-gray-400">
               © 2026 IndiaCircle. Not a SEBI-registered investment advisor.
             </p>

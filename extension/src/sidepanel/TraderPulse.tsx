@@ -31,28 +31,66 @@ function openWebPath(path: string) {
   void chrome.tabs.create({ url: `${WEB_APP_URL}${path}` });
 }
 
-function getBadge(user: User | null, tradeCount: number): { text: string; tone: PulseBadgeTone } {
-  if (!user) {
-    return { text: "INDIACIRCLE", tone: "neutral" };
-  }
+function getBadge(
+  user: User | null,
+  tradeCount: number,
+  marketData: MarketDashboardData | null,
+  patterns: PatternsEnvelope | null | undefined,
+  captureState: CaptureState | null
+): { text: string; tone: PulseBadgeTone } {
+  if (!user) return { text: "INDIACIRCLE", tone: "neutral" };
 
   const session = getSessionContext();
-  if (session.kind === "weekend") {
-    return { text: "WEEKEND · Review your week", tone: "neutral" };
+  if (session.kind === "weekend") return { text: "WEEKEND · Review your week", tone: "neutral" };
+  if (session.kind === "post-market") return { text: "SESSION CLOSED · Review your day", tone: "neutral" };
+
+  const activePatterns = patterns?.unlocked ? patterns.patterns : [];
+  const overtradingPattern = findPattern(activePatterns, "overtrading");
+  const threshold = getOvertradingThreshold(overtradingPattern);
+  if (threshold && tradeCount >= threshold + 2) {
+    return { text: "TILT RISK DETECTED", tone: "red" };
   }
+  if (threshold && tradeCount >= threshold) {
+    return { text: "OVERTRADING RISK", tone: "amber" };
+  }
+
+  const captureStats = getCapturePerformanceStats(captureState);
+  if (captureStats.losingStreakCount >= 3) {
+    return { text: "TILT RISK · LOSING STREAK", tone: "red" };
+  }
+  if (captureStats.losingStreakCount >= 2) {
+    return { text: "CAUTION · CONSECUTIVE LOSSES", tone: "amber" };
+  }
+
   if (session.kind === "pre-market") {
-    return { text: "PRE-MARKET · Preparing for open", tone: "amber" };
+    return { text: "PRE-MARKET · PREPARING FOR OPEN", tone: "amber" };
   }
-  if (session.kind === "post-market") {
-    return { text: "MARKET CLOSED · Review your day", tone: "neutral" };
+
+  if (marketData?.regime) {
+    const vix = marketData.vix?.value ?? 15;
+    const advPct = marketData.regime.breadth?.pct_advancing ?? 50;
+    const niftyChange = Math.abs(marketData.indices?.nifty_50?.change_pct ?? 0);
+
+    if (vix > 22) return { text: "HIGH VOLATILITY SESSION", tone: "amber" };
+    if (niftyChange > 1.2 && advPct > 55) return { text: "STRONG TREND DAY", tone: "green" };
+    if (niftyChange > 0.5 && advPct > 50) return { text: "MOMENTUM SESSION", tone: "green" };
+    if (niftyChange < 0.3 && advPct > 40 && advPct < 60) {
+      return { text: "RANGE-BOUND · LOW CONVICTION", tone: "amber" };
+    }
+    if (advPct < 35) return { text: "WEAK BREADTH · SELECTIVE MARKET", tone: "amber" };
+    if (niftyChange > 0.8 && advPct < 40) {
+      return { text: "NARROW RALLY · FEW STOCKS DRIVING", tone: "amber" };
+    }
   }
-  if (tradeCount === 0) {
-    return { text: "MARKET OPEN · Ready to trade", tone: "green" };
+
+  if (tradeCount > 0 && captureStats.winRate != null && captureStats.winRate > 0.7) {
+    return { text: "CONTROLLED SESSION", tone: "green" };
   }
-  if (tradeCount > 4) {
-    return { text: `HIGH ACTIVITY · ${tradeCount} trades today`, tone: "amber" };
+  if (tradeCount > 0) {
+    return { text: `ACTIVE · ${tradeCount} TRADES TODAY`, tone: "green" };
   }
-  return { text: `ACTIVE SESSION · ${tradeCount} trades today`, tone: "green" };
+
+  return { text: "MARKET OPEN · SCANNING", tone: "green" };
 }
 
 function parsePatternPercent(value: unknown): number {
@@ -83,22 +121,19 @@ function generatePulseInsight(
     const sorted = [...sectors].sort(
       (left, right) => (right[1]?.change_pct ?? 0) - (left[1]?.change_pct ?? 0)
     );
-    const strongest = sorted[0];
-    const weakest = sorted[sorted.length - 1];
+    const leadingSectors = [sorted[0]?.[0], sorted[1]?.[0]].filter(Boolean).join(" and ");
 
     if (nifty_trend === "Bullish" && advPct > 50) {
       lines.push(
-        `${strongest?.[0] ?? "Financials"} leading with broad participation. Momentum setups may get follow-through.`
+        `${leadingSectors || "Financials and IT"} driving momentum. Trend-continuation setups have room.`
       );
     } else if (nifty_trend === "Bullish" && advPct <= 40) {
       lines.push(`Index is green but only ${advPct}% stocks advancing. Narrow rally — be selective.`);
     } else if (nifty_trend === "Bearish") {
-      lines.push(
-        `Weakness in ${weakest?.[0] ?? "broader market"}. Breadth is poor at ${advPct}% advancing.`
-      );
+      lines.push("Selling pressure building. Your data shows tighter stops help on weak-breadth days.");
     } else {
       lines.push(
-        `Rangebound session. ${strongest?.[0] ?? "Select sectors"} showing relative strength.`
+        "Rangebound conditions. Your breakout setups historically underperform in chop — favor mean-reversion."
       );
     }
   }
@@ -129,7 +164,58 @@ function generatePulseInsight(
 
   const warningLines = lines.filter((line) => line.startsWith("⚠️"));
   if (warningLines.length > 0) return warningLines[0];
-  return lines[0] ?? "Extension is tracking your trades automatically.";
+  return lines[0] ?? "Your market context is ready. Watch for where your behavior and the tape line up.";
+}
+
+function generatePulseAction(
+  marketData: MarketDashboardData | null,
+  patterns: PatternsEnvelope | null | undefined,
+  captureState: CaptureState | null
+): string | null {
+  const activePatterns = patterns?.unlocked ? patterns.patterns : [];
+  const captureStats = getCapturePerformanceStats(captureState);
+  const session = getSessionContext();
+  const hour = new Date().getHours();
+
+  const todPattern = findPattern(activePatterns, "time_of_day");
+  if (todPattern?.data) {
+    const bucketHour = parseBucketHour(todPattern.data.worst_bucket);
+    if (bucketHour != null && Math.abs(hour - bucketHour) <= 1) {
+      return `⚠️ Reduce activity during ${String(todPattern.data.worst_bucket)} — your weakest window.`;
+    }
+  }
+
+  if (captureStats.losingStreakCount >= 2) {
+    return "⚠️ Pause before the next entry. Losses tend to compound during streaks.";
+  }
+
+  const threshold = getOvertradingThreshold(findPattern(activePatterns, "overtrading"));
+  if (threshold && captureStats.tradeCount >= threshold) {
+    return `⚠️ Consider stopping at ${threshold} trades. Win rate drops sharply beyond this.`;
+  }
+
+  if (marketData?.vix?.value && marketData.vix.value > 20) {
+    return "⚠️ Elevated volatility — prefer smaller positions today.";
+  }
+
+  const advPct = marketData?.regime?.breadth?.pct_advancing ?? 50;
+  if (advPct < 35) {
+    return "⚠️ Weak breadth — avoid chasing breakouts in thin participation.";
+  }
+
+  if (session.kind === "post-market") {
+    return "📊 Review today's trades in the Journal tab.";
+  }
+
+  const sectors = Object.entries(marketData?.sector_performance ?? {}).sort(
+    (a, b) => (b[1]?.change_pct ?? 0) - (a[1]?.change_pct ?? 0)
+  );
+  const leading = sectors[0];
+  if (leading && (leading[1]?.change_pct ?? 0) > 1) {
+    return `✅ ${leading[0]} showing strength. Momentum setups may get follow-through.`;
+  }
+
+  return null;
 }
 
 function getMetricsLine(args: {
@@ -155,7 +241,11 @@ function getMetricsLine(args: {
 
   if (args.summary && args.summary.total_trades > 0) {
     return [
-      { label: "Total P&L", value: `₹${formatCurrency(args.summary.total_pnl)}`, tone: args.summary.total_pnl >= 0 ? "positive" : "negative" },
+      {
+        label: "Total P&L",
+        value: `₹${formatCurrency(args.summary.total_pnl)}`,
+        tone: args.summary.total_pnl >= 0 ? "positive" : "negative",
+      },
       { label: "Win Rate", value: formatPercent(args.summary.win_rate, 0) },
       { label: "Trades", value: String(args.summary.total_trades) },
     ];
@@ -189,7 +279,10 @@ function getAction(args: {
   const overtradingPattern = findPattern(patterns, "overtrading");
   const losingPattern = findPattern(patterns, "losing_streak_tilt");
   const threshold = getOvertradingThreshold(overtradingPattern);
-  if ((threshold && captureStats.tradeCount > threshold) || (losingPattern && captureStats.losingStreakCount >= 2)) {
+  if (
+    (threshold && captureStats.tradeCount > threshold) ||
+    (losingPattern && captureStats.losingStreakCount >= 2)
+  ) {
     return {
       kind: "warning",
       text: "Check Insights tab for risk alerts",
@@ -254,8 +347,9 @@ export default function TraderPulse({
 }) {
   const [earningsEvents, setEarningsEvents] = useState<EarningsEvent[]>([]);
   const captureStats = getCapturePerformanceStats(captureState);
-  const badge = getBadge(user, captureStats.tradeCount);
+  const badge = getBadge(user, captureStats.tradeCount, marketData, patternsEnvelope, captureState);
   const metrics = getMetricsLine({ captureState, summary: analyticsSummary });
+  const pulseAction = generatePulseAction(marketData, patternsEnvelope, captureState);
   const action = getAction({
     user,
     patternsEnvelope,
@@ -293,13 +387,16 @@ export default function TraderPulse({
       <div className={`pulse-state-badge state-${badge.tone}`}>{badge.text}</div>
 
       <p className="pulse-insight">
-        {generatePulseInsight(
-          marketData,
-          patternsEnvelope,
-          captureState,
-          new Date().getHours()
-        )}
+        {generatePulseInsight(marketData, patternsEnvelope, captureState, new Date().getHours())}
       </p>
+
+      {pulseAction ? (
+        <p
+          className={`pulse-action-line ${pulseAction.startsWith("⚠️") ? "pulse-warning" : "pulse-positive"}`}
+        >
+          {pulseAction}
+        </p>
+      ) : null}
 
       {metrics.length > 0 ? (
         <div className="pulse-metrics">

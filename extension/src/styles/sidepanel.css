@@ -16,18 +16,44 @@ body {
     linear-gradient(180deg, #f8fbff 0%, #eef4fb 100%);
 }
 
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
 .sidepanel-shell {
-  padding: 20px;
+  padding: 14px;
   display: grid;
-  gap: 16px;
+  gap: 12px;
+  max-width: 100vw;
+  overflow-x: hidden;
+}
+
+.trader-pulse,
+.placeholder-card,
+.hero-card,
+.market-narrative,
+.regime-interpretation,
+.behavioral-warning,
+.session-summary,
+.journal-trade-card,
+.setup-card-v2,
+.ai-card,
+.mkt-index-card,
+.mkt-section,
+.sector-box,
+.weekly-focus-card {
+  max-width: 100%;
+  overflow: hidden;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
 }
 
 .trader-pulse {
   display: grid;
   gap: 6px;
   padding: 10px 12px;
-  max-height: 70px;
-  overflow: hidden;
   border-radius: 14px;
   background: linear-gradient(135deg, #f8fafc, #f1f5f9);
   border: 1px solid rgba(148, 163, 184, 0.15);
@@ -55,10 +81,24 @@ body {
 
 .pulse-insight {
   margin: 0;
-  font-size: 13px;
-  line-height: 1.5;
+  font-size: 12px;
+  line-height: 1.45;
   color: #475569;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
 }
+
+.pulse-action-line {
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.4;
+  margin: 0;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+.pulse-action-line.pulse-warning { color: #d97706; }
+.pulse-action-line.pulse-positive { color: #059669; }
 
 .pulse-metrics {
   display: flex;
@@ -181,34 +221,40 @@ body {
   font-size: 13px;
 }
 
+.tabs-wrapper {
+  position: relative;
+}
+
 .tabs-row {
   display: flex;
-  gap: 8px;
+  gap: 2px;
   overflow-x: auto;
   scrollbar-width: none;
-  -webkit-overflow-scrolling: touch;
+  -ms-overflow-style: none;
+  position: relative;
+  padding-right: 30px;
   padding-bottom: 2px;
+  -webkit-overflow-scrolling: touch;
 }
 
-.tabs-row::-webkit-scrollbar {
-  display: none;
-}
+.tabs-row::-webkit-scrollbar { display: none; }
 
-.tabs-row::after {
-  content: "";
-  position: sticky;
+.tabs-fade-hint {
+  position: absolute;
+  top: 0;
   right: 0;
-  width: 30px;
+  bottom: 0;
+  width: 40px;
   background: linear-gradient(to right, transparent, white);
   pointer-events: none;
-  flex-shrink: 0;
+  z-index: 1;
 }
 
 .tab-button,
 .save-button {
   border: 0;
   border-radius: 999px;
-  padding: 8px 14px;
+  padding: 7px 14px;
   font: inherit;
   font-size: 13px;
   cursor: pointer;
@@ -605,13 +651,18 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: baseline;
-  gap: 10px;
+  gap: 8px;
+  min-width: 0;
 }
 
 .journal-symbol {
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 700;
   color: #0f172a;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .journal-pnl {
@@ -624,12 +675,13 @@ body {
 .journal-pnl.negative { color: #dc2626; }
 
 .journal-trade-meta {
-  font-size: 12px;
+  font-size: 11px;
   color: #64748b;
   display: flex;
+  flex-wrap: wrap;
   gap: 4px;
   align-items: center;
-  flex-wrap: wrap;
+  line-height: 1.4;
 }
 
 .journal-trade-meta .arrow { color: #94a3b8; }
@@ -665,6 +717,7 @@ body {
   border-radius: 12px;
   background: #f8fafc;
   border: 1px solid rgba(148, 163, 184, 0.1);
+  min-width: 0;
 }
 
 .session-summary h3 {
@@ -688,6 +741,7 @@ body {
   border-radius: 12px;
   border: 1px solid rgba(148, 163, 184, 0.12);
   background: white;
+  min-width: 0;
 }
 
 .setup-card-v2 .setup-header-v2 {
@@ -922,17 +976,6 @@ body {
   color: #334155;
 }
 
-.mkt-stale-banner {
-  background: #fef3c7;
-  border: 1px solid #f59e0b;
-  border-radius: 10px;
-  padding: 8px 12px;
-  margin-bottom: 12px;
-  font-size: 12px;
-  color: #92400e;
-  line-height: 1.4;
-}
-
 .mkt-regime-bar {
   min-height: 36px;
   display: flex;
@@ -960,12 +1003,14 @@ body {
 }
 
 .regime-interpretation {
-  font-size: 12px;
+  font-size: 11px;
   color: #475569;
-  padding: 0 14px 8px;
+  padding: 0 0 6px;
   line-height: 1.4;
   font-style: italic;
   margin: -4px 0 0;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
 }
 
 .confidence-meter { padding: 8px 0; }
@@ -984,10 +1029,12 @@ body {
 .confidence-reason-pill { padding: 2px 6px; border-radius: 4px; font-size: 10px; background: #f1f5f9; color: #475569; }
 
 .market-narrative {
-  padding: 10px 14px;
+  padding: 10px 12px;
   border-radius: 12px;
   background: linear-gradient(135deg, #f0f9ff, #eff6ff);
   border: 1px solid rgba(59, 130, 246, 0.1);
+  max-width: 100%;
+  overflow: hidden;
 }
 
 .narrative-header {
@@ -1008,10 +1055,12 @@ body {
 }
 
 .narrative-text {
-  font-size: 13px;
-  line-height: 1.5;
+  font-size: 12px;
+  line-height: 1.45;
   color: #1e3a5f;
   margin: 0;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
 }
 
 .mkt-refresh-button {
@@ -1054,6 +1103,15 @@ body {
   border: 1px solid rgba(148, 163, 184, 0.28);
   border-radius: 14px;
   padding: 12px;
+  min-width: 0;
+}
+
+.mkt-section h2 {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #475569;
 }
 
 .mkt-section-heading-row {
@@ -1130,7 +1188,8 @@ body {
 .mkt-sector-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
+  gap: 6px;
+  max-width: 100%;
 }
 
 .mkt-sector-box {
@@ -1141,6 +1200,8 @@ body {
   display: grid;
   align-content: space-between;
   position: relative;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .mkt-sector-box-top {
@@ -1188,12 +1249,13 @@ body {
 }
 
 .mkt-your-stock-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  display: flex;
+  justify-content: space-between;
   gap: 8px;
   align-items: center;
   border-radius: 10px;
-  padding: 8px 10px;
+  padding: 8px 0;
+  min-width: 0;
 }
 
 .mkt-your-stock-row.alt {
@@ -1202,8 +1264,13 @@ body {
 
 .mkt-your-stock-symbol {
   color: #0f172a;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 700;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex-shrink: 1;
 }
 
 .mkt-your-stock-price {
@@ -1219,11 +1286,11 @@ body {
 }
 
 .mkt-your-stock-data {
-  display: inline-flex;
+  display: flex;
   align-items: center;
-  justify-content: flex-end;
-  gap: 8px;
-  min-width: 0;
+  gap: 6px;
+  flex-shrink: 0;
+  font-feature-settings: "tnum";
 }
 
 .your-stocks-insight {
@@ -1407,6 +1474,12 @@ body {
   color: #64748b;
   font-size: 12px;
   font-weight: 600;
+}
+
+.mkt-footer-cache-label {
+  color: #94a3b8;
+  font-size: 11px;
+  font-weight: 500;
 }
 
 .mkt-skeleton-bar {
@@ -1632,6 +1705,33 @@ body {
 
 .ai-momentum-line strong { color: #0f172a; }
 
+.move-type-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  margin: 6px 0;
+  width: fit-content;
+}
+
+.move-type-earnings { background: #eff6ff; color: #1e40af; }
+.move-type-corporate { background: #f5f3ff; color: #5b21b6; }
+.move-type-sector { background: #ecfdf5; color: #065f46; }
+.move-type-breakout { background: #fef3c7; color: #92400e; }
+.move-type-selling { background: #fef2f2; color: #991b1b; }
+.move-type-technical { background: #f1f5f9; color: #334155; }
+.move-type-macro { background: #fff7ed; color: #9a3412; }
+.move-type-momentum { background: #ecfdf5; color: #065f46; }
+.move-type-general { background: #f1f5f9; color: #475569; }
+
+.ai-context-lines {
+  display: grid;
+  gap: 2px;
+}
+
 .ai-result-change {
   border-radius: 999px;
   padding: 7px 10px;
@@ -1667,6 +1767,93 @@ body {
   line-height: 1.55;
   white-space: pre-line;
 }
+
+.ai-explanation-headline {
+  font-size: 14px;
+  font-weight: 700;
+  color: #0f172a;
+  line-height: 1.4;
+  margin: 0;
+}
+
+.ai-explanation-detail {
+  font-size: 13px;
+  color: #475569;
+  line-height: 1.5;
+  margin: 4px 0 0;
+}
+
+.conviction-meter {
+  display: grid;
+  gap: 4px;
+  padding: 8px 0;
+}
+
+.conviction-bar-track {
+  height: 6px;
+  border-radius: 3px;
+  background: #e2e8f0;
+  overflow: hidden;
+}
+
+.conviction-bar-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.3s ease;
+}
+
+.conviction-high .conviction-bar-fill { background: #059669; }
+.conviction-moderate .conviction-bar-fill { background: #d97706; }
+.conviction-low .conviction-bar-fill { background: #94a3b8; }
+
+.conviction-label {
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.conviction-reasons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.conviction-reason-pill {
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 10px;
+  background: #f1f5f9;
+  color: #475569;
+}
+
+.relative-perf {
+  font-size: 12px;
+  color: #64748b;
+  margin-top: 2px;
+  margin-bottom: 0;
+}
+
+.relative-perf .outperform { color: #059669; font-weight: 600; }
+.relative-perf .underperform { color: #dc2626; font-weight: 600; }
+
+.sources-toggle {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 0 4px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #64748b;
+  cursor: pointer;
+  border: none;
+  background: none;
+}
+
+.sources-toggle .chevron {
+  transition: transform 0.2s;
+  font-size: 10px;
+}
+
+.sources-toggle .chevron.open { transform: rotate(90deg); }
 
 .ai-source-panel {
   display: grid;

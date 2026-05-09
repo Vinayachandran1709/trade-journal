@@ -181,6 +181,95 @@
     @apply rounded-2xl border border-rose-100 bg-rose-50/30 p-6;
   }
 
+  .needs-attention-card {
+    @apply rounded-2xl border border-amber-200 bg-amber-50/50 p-5;
+  }
+
+  .needs-attention-item {
+    @apply flex items-center gap-3 py-2 text-sm;
+  }
+
+  .needs-attention-item .priority-high {
+    @apply font-semibold text-rose-600;
+  }
+
+  .needs-attention-item .priority-medium {
+    @apply text-amber-600;
+  }
+
+  .needs-attention-item .priority-low {
+    @apply text-gray-500;
+  }
+
+  .mistake-summary-card {
+    @apply rounded-2xl border border-rose-100 bg-rose-50/30 p-5;
+  }
+
+  .mistake-category-table {
+    @apply w-full text-sm;
+  }
+
+  .mistake-category-table th {
+    @apply pb-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500;
+  }
+
+  .mistake-category-table td {
+    @apply border-t border-gray-100 py-3;
+  }
+
+  .worst-trade-card {
+    @apply rounded-xl border border-rose-100 bg-rose-50/20 p-4;
+    border-left: 4px solid #f43f5e;
+  }
+
+  .plan-comparison-card {
+    @apply rounded-xl border border-gray-100 bg-white p-4 shadow-sm;
+  }
+
+  .plan-comparison-table {
+    @apply mt-3 w-full text-sm;
+  }
+
+  .plan-comparison-table th {
+    @apply pb-2 text-left text-xs font-semibold uppercase text-gray-400;
+  }
+
+  .plan-comparison-table td {
+    @apply border-t border-gray-50 py-2 font-mono text-sm;
+  }
+
+  .correction-plan-card {
+    @apply rounded-2xl border border-indigo-100 bg-indigo-50/30 p-5;
+  }
+
+  .correction-item {
+    @apply flex items-start gap-3 border-b border-indigo-100/50 py-2.5 text-sm text-indigo-900 last:border-0;
+  }
+
+  .correction-number {
+    @apply flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-indigo-600 text-xs font-bold text-white;
+  }
+
+  .confidence-explanation {
+    @apply mt-1 text-xs italic text-gray-400;
+  }
+
+  .pattern-action-card {
+    @apply mt-3 rounded-lg border border-blue-100 bg-blue-50 p-3 text-sm text-blue-800;
+  }
+
+  .score-explanation {
+    @apply mt-2 grid gap-1 text-xs text-gray-500;
+  }
+
+  .score-drag {
+    @apply font-medium text-rose-500;
+  }
+
+  .score-strength {
+    @apply font-medium text-emerald-500;
+  }
+
   .improvement-item {
     @apply flex items-start gap-3 border-b border-gray-100 py-3 last:border-0;
   }

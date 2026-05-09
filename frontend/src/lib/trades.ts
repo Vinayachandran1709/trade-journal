@@ -1,4 +1,4 @@
-import { apiFetch } from "@/lib/api";
+import { API_URL, apiFetch } from "@/lib/api";
 import type {
   Trade,
   TradeImportResponse,
@@ -6,9 +6,6 @@ import type {
   CompletedTrade,
   TradeSetup,
 } from "@/types/trade";
-
-const API_URL =
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
 
 export async function importZerodhaEmail(
   emailContent: string
