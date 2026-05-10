@@ -7,11 +7,8 @@ import {
   fetchTickerIntel,
   fetchWhyMoving,
   type CompletedTradeListItem,
-<<<<<<< HEAD
-  type ResearchAskResponse,
-=======
   type MarketDashboardData,
->>>>>>> ade3e49525193660fdb457ec3ddbd6a5d666e89c
+  type ResearchAskResponse,
   type TickerIntelResponse,
   type WhyMovingResponse,
 } from "../shared/api";
@@ -85,8 +82,8 @@ function classifyMoveType(
 ): { type: string; className: string } {
   const changePct = Math.abs(result.change_pct ?? 0);
   const explanation = (result.explanation ?? "").toLowerCase();
-  const volAboveAvg = intel?.volume_vs_avg?.toLowerCase().includes("above") ?? false;
-  const volRatio = parseFloat(intel?.volume_vs_avg?.match(/(\d+)/)?.[1] ?? "0");
+  const volRatio = parseVolumeAboveAvg(intel?.volume_vs_avg);
+  const volAboveAvg = volRatio > 0;
 
   if (/earnings|results|q[1-4]|quarter|revenue|profit|loss narrow|pat/i.test(explanation)) {
     return { type: "📊 Earnings Reaction", className: "move-type-earnings" };
@@ -97,7 +94,7 @@ function classifyMoveType(
   if (/sector|industry|peer|sympathy|broad|across/i.test(explanation)) {
     return { type: "🔗 Sector Sympathy", className: "move-type-sector" };
   }
-  if (changePct > 3 && volAboveAvg && volRatio > 50) {
+  if (changePct > 3 && volRatio > 40) {
     return { type: "🔥 Volume Breakout", className: "move-type-breakout" };
   }
   if ((result.change_pct ?? 0) < -3 && volAboveAvg) {
@@ -113,6 +110,24 @@ function classifyMoveType(
     return { type: "📈 Momentum Move", className: "move-type-momentum" };
   }
   return { type: "📋 Market Activity", className: "move-type-general" };
+}
+
+function parseVolumeAboveAvg(volText: string | undefined): number {
+  if (!volText) return 0;
+
+  const pctMatch = volText.match(/(\d+(?:\.\d+)?)\s*%\s*above/i);
+  if (pctMatch) return parseFloat(pctMatch[1]);
+
+  const multMatch = volText.match(/(\d+(?:\.\d+)?)\s*x/i);
+  if (multMatch) {
+    const mult = parseFloat(multMatch[1]);
+    return (mult - 1) * 100;
+  }
+
+  const belowMatch = volText.match(/(\d+(?:\.\d+)?)\s*%\s*below/i);
+  if (belowMatch) return -parseFloat(belowMatch[1]);
+
+  return 0;
 }
 
 function getMoveConviction(
@@ -248,9 +263,8 @@ function formatRelativeDate(value?: string | null): string {
   return `${diffDays} days ago`;
 }
 
-<<<<<<< HEAD
 function isStockSymbolQuery(value: string): boolean {
-  return /^[A-Z0-9&-]{2,15}$/.test(value.trim());
+  return /^[A-Z0-9&-]{2,15}$/i.test(value.trim().toUpperCase());
 }
 
 function shouldUseStockAnalysis(value: string): boolean {
@@ -259,7 +273,7 @@ function shouldUseStockAnalysis(value: string): boolean {
   if (/[?]/.test(normalized) || /\b(how|what|why|am i|should)\b/i.test(lower)) {
     return false;
   }
-  return isStockSymbolQuery(normalized);
+  return isStockSymbolQuery(normalized.toUpperCase());
 }
 
 function getCategoryLabel(category: string): string {
@@ -278,8 +292,6 @@ function getMostTradedSymbol(trades: CompletedTradeListItem[]): string | null {
   return [...counts.entries()].sort((left, right) => right[1] - left[1])[0]?.[0] ?? null;
 }
 
-export default function AiTab({ isSignedIn }: { isSignedIn: boolean }) {
-=======
 export default function AiTab({
   isSignedIn,
   marketData,
@@ -287,7 +299,6 @@ export default function AiTab({
   isSignedIn: boolean;
   marketData: MarketDashboardData | null;
 }) {
->>>>>>> ade3e49525193660fdb457ec3ddbd6a5d666e89c
   const [symbol, setSymbol] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -325,6 +336,29 @@ export default function AiTab({
       active = false;
     };
   }, []);
+
+  useEffect(() => {
+    if (!isSignedIn) return;
+    if (completedTradeCache.length > 0) return;
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const token = await getAuthToken();
+        if (!token || cancelled) return;
+        const trades = await fetchCompletedTrades(token, { limit: 200, offset: 0 });
+        if (!cancelled && trades.length > 0) {
+          setCompletedTradeCache(trades);
+          void storageSet(CACHED_AI_COMPLETED_TRADES_KEY, trades).catch(() => undefined);
+        }
+      } catch {
+        // Suggestions can fall back to defaults when history is unavailable.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [isSignedIn, completedTradeCache.length]);
 
   const todaysQueries = useMemo(
     () => recentQueries.filter((item) => item.date === getIstDateKey()).slice(0, MAX_RECENT_QUERIES),
@@ -422,7 +456,6 @@ export default function AiTab({
         }
         setResult({ kind: "stock", data: response });
 
-<<<<<<< HEAD
         const completedTrades = completedTradeCache.length
           ? completedTradeCache
           : await fetchCompletedTrades(token, { limit: 200, offset: 0 }).catch(() => []);
@@ -440,23 +473,6 @@ export default function AiTab({
                 new Date(right.exit_date).getTime() - new Date(left.exit_date).getTime()
             )
         );
-=======
-      const completedTrades = completedTradeCache.length
-        ? completedTradeCache
-        : await fetchCompletedTrades(token, { limit: 200, offset: 0 }).catch(() => []);
-      if (!completedTradeCache.length && completedTrades.length) {
-        setCompletedTradeCache(completedTrades);
-        void storageSet(CACHED_AI_COMPLETED_TRADES_KEY, completedTrades).catch(() => undefined);
-      }
-      setPersonalTrades(
-        completedTrades
-          .filter((trade) => trade.stock_symbol.toUpperCase() === normalizedSymbol.toUpperCase())
-          .sort(
-            (left, right) =>
-              new Date(right.exit_date).getTime() - new Date(left.exit_date).getTime()
-          )
-      );
->>>>>>> ade3e49525193660fdb457ec3ddbd6a5d666e89c
 
         await saveRecentQuery(normalizedSymbol);
       } else {
@@ -481,15 +497,21 @@ export default function AiTab({
     }
   }
 
-  const moveType = result ? classifyMoveType(result, resultIntel) : null;
-  const conviction = result ? getMoveConviction(result, resultIntel) : null;
+  const stockResult = result?.kind === "stock" ? result.data : null;
+  const moveType = stockResult ? classifyMoveType(stockResult, resultIntel) : null;
+  const conviction = stockResult ? getMoveConviction(stockResult, resultIntel) : null;
   const convictionClass = conviction ? `conviction-${conviction.level.toLowerCase()}` : null;
+  const niftyChange = marketData?.indices?.nifty_50?.change_pct;
+  const stockChange = result?.kind === "stock" ? result.data.change_pct : null;
   const relativePerf =
-    result && marketData
-      ? (result.change_pct ?? 0) - (marketData.indices?.nifty_50?.change_pct ?? 0)
+    niftyChange != null &&
+    stockChange != null &&
+    Number.isFinite(niftyChange) &&
+    Number.isFinite(stockChange)
+      ? stockChange - niftyChange
       : null;
-  const cleanExplanation = result ? getCleanExplanation(result) : "";
-  const splitExplanation = result ? splitExplanationText(cleanExplanation) : null;
+  const cleanExplanation = stockResult ? getCleanExplanation(stockResult) : "";
+  const splitExplanation = stockResult ? splitExplanationText(cleanExplanation) : null;
 
   return (
     <section className="ai-root">
@@ -509,8 +531,12 @@ export default function AiTab({
             }}
           />
 
-          <button className="ai-submit" disabled={loading} onClick={() => void runQuery()}>
-            {loading ? "Thinking..." : "Why moving?"}
+          <button
+            className="ai-submit"
+            disabled={loading || !symbol.trim()}
+            onClick={() => void runQuery(symbol)}
+          >
+            {loading ? "Analyzing..." : shouldUseStockAnalysis(symbol) ? "Why moving?" : "Ask"}
           </button>
         </div>
 
@@ -572,39 +598,31 @@ export default function AiTab({
         </article>
       ) : null}
 
-<<<<<<< HEAD
-      {result?.kind === "stock" ? (
+      {result?.kind === "stock" && stockResult ? (
         <article className="ai-result-card">
           <div className="ai-result-header">
             <div>
-              <h2>{result.data.symbol}</h2>
-              {result.data.company_name ? (
-                <p className="ai-result-company">{result.data.company_name}</p>
+              <h2>{stockResult.symbol}</h2>
+              {stockResult.company_name ? (
+                <p className="ai-result-company">{stockResult.company_name}</p>
               ) : null}
-              <p className="ai-result-price">₹{formatPrice(result.data.price)}</p>
-=======
-      {result && moveType && conviction && convictionClass && splitExplanation ? (
-        <article className="ai-result-card">
-          <div className="ai-result-header">
-            <div>
-              <h2>{result.symbol}</h2>
-              {result.company_name ? <p className="ai-result-company">{result.company_name}</p> : null}
-              <p className="ai-result-price">₹{formatPrice(result.price)}</p>
+              <p className="ai-result-price">₹{formatPrice(stockResult.price)}</p>
             </div>
             <span
               className={`ai-result-change${
-                (toFiniteNumber(result.change_pct) ?? 0) >= 0 ? " positive" : " negative"
+                (toFiniteNumber(stockResult.change_pct) ?? 0) >= 0 ? " positive" : " negative"
               }`}
             >
-              {formatNullablePercent(result.change_pct)}
+              {formatNullablePercent(stockResult.change_pct)}
             </span>
           </div>
 
-          <div className={`move-type-badge ${moveType.className}`}>{moveType.type}</div>
+          {moveType ? (
+            <div className={`move-type-badge ${moveType.className}`}>{moveType.type}</div>
+          ) : null}
 
           {(resultIntel || relativePerf != null) ? (
             <div className="ai-context-lines">
->>>>>>> ade3e49525193660fdb457ec3ddbd6a5d666e89c
               {resultIntel ? (
                 <p className="ai-momentum-line">
                   Vol:{" "}
@@ -616,41 +634,6 @@ export default function AiTab({
                   · {resultIntel.sentiment_line}
                 </p>
               ) : null}
-<<<<<<< HEAD
-            </div>
-            <span
-              className={`ai-result-change${
-                (toFiniteNumber(result.data.change_pct) ?? 0) >= 0 ? " positive" : " negative"
-              }`}
-            >
-              {formatNullablePercent(result.data.change_pct)}
-            </span>
-          </div>
-
-          <p className="ai-result-explanation">{getExplanationBody(result.data)}</p>
-
-          {visibleSources.length ? (
-            <div className="ai-source-grid">
-              {visibleSources.map((source) => (
-                <a
-                  key={`${source.url}-${source.title}`}
-                  className="ai-source-card"
-                  href={source.url}
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  <div className="ai-source-card-top">
-                    <span className="ai-source-publisher">
-                      {normalizePublisherName(source.publisher)}
-                    </span>
-                    <span className="ai-source-date">
-                      {formatRelativeDate(source.published_at)}
-                    </span>
-                  </div>
-                  <strong className="ai-source-card-title">{truncateTitle(source.title)}</strong>
-                </a>
-              ))}
-=======
               {relativePerf != null ? (
                 <p className="relative-perf">
                   vs Nifty:{" "}
@@ -660,38 +643,43 @@ export default function AiTab({
                   by {Math.abs(relativePerf).toFixed(1)}%
                 </p>
               ) : null}
->>>>>>> ade3e49525193660fdb457ec3ddbd6a5d666e89c
             </div>
           ) : null}
 
-          <div className="ai-result-explanation">
+          {splitExplanation ? (
+            <div className="ai-result-explanation">
             <p className="ai-explanation-headline">{splitExplanation.headline}</p>
             {splitExplanation.detail ? (
               <p className="ai-explanation-detail">{splitExplanation.detail}</p>
             ) : null}
-          </div>
+            </div>
+          ) : null}
 
-          <div className={`conviction-meter ${convictionClass}`}>
-            <div className="conviction-label">
-              Move Conviction: {conviction.level} ({conviction.score}%)
-            </div>
-            <div className="conviction-bar-track" aria-hidden="true">
-              <div className="conviction-bar-fill" style={{ width: `${conviction.score}%` }} />
-            </div>
-            {conviction.reasons.length ? (
-              <div className="conviction-reasons">
-                {conviction.reasons.slice(0, 3).map((reason) => (
-                  <span key={reason} className="conviction-reason-pill">
-                    {reason}
-                  </span>
-                ))}
+          {conviction && convictionClass ? (
+            <div className={`conviction-meter ${convictionClass}`}>
+              <div className="conviction-header">
+                <span className="conviction-label">
+                  Move Conviction: {conviction.level} ({conviction.score}%)
+                </span>
               </div>
-            ) : null}
-          </div>
+              <div className="conviction-bar-track" aria-hidden="true">
+                <div className="conviction-bar-fill" style={{ width: `${conviction.score}%` }} />
+              </div>
+              {conviction.reasons.length ? (
+                <div className="conviction-reasons">
+                  {conviction.reasons.map((reason, index) => (
+                    <span key={`${reason}-${index}`} className="conviction-reason-pill">
+                      {reason}
+                    </span>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+          ) : null}
 
           {personalHistory ? (
             <section className="ai-history-card">
-              <div className="ai-history-title">Your history with {result.data.symbol}</div>
+              <div className="ai-history-title">Your history with {stockResult.symbol}</div>
               <div className="ai-history-stats">
                 {personalHistory.count} trades · Win rate:{" "}
                 <strong>{formatPercent(personalHistory.winRate)}</strong> · Last:{" "}
@@ -759,10 +747,38 @@ export default function AiTab({
               <h2>IndiaCircle Research</h2>
               <p className="ai-result-company">{result.data.query}</p>
             </div>
-            <span className="ai-category-badge">{getCategoryLabel(result.data.category)}</span>
+            <span className="research-category-badge">{getCategoryLabel(result.data.category)}</span>
           </div>
 
-          <p className="ai-result-explanation">{result.data.response}</p>
+          <div className="ai-result-explanation research-response">
+            {result.data.response.split("\n").map((line, index) => {
+              const boldProcessed = line.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
+              const isBullet = /^\s*[-•]\s/.test(line);
+              const cleanLine = isBullet ? line.replace(/^\s*[-•]\s*/, "") : line;
+              const processedLine = isBullet
+                ? cleanLine.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
+                : boldProcessed;
+
+              if (!line.trim()) return <br key={index} />;
+
+              if (isBullet) {
+                return (
+                  <div key={index} className="research-bullet">
+                    <span className="bullet-dot">•</span>
+                    <span dangerouslySetInnerHTML={{ __html: processedLine }} />
+                  </div>
+                );
+              }
+
+              return (
+                <p
+                  key={index}
+                  dangerouslySetInnerHTML={{ __html: processedLine }}
+                  style={{ margin: "4px 0" }}
+                />
+              );
+            })}
+          </div>
 
           <div className="ai-quota-copy">
             Queries remaining: {result.data.queries_remaining}/{result.data.queries_limit} today

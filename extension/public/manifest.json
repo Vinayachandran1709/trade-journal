@@ -2,11 +2,7 @@
   "manifest_version": 3,
   "name": "IndiaCircle - AI Trading Copilot",
   "description": "Auto-journal every trade across 10+ Indian brokers. AI-powered analysis, behavioral insights & smart calculators.",
-<<<<<<< HEAD
   "version": "1.8.0",
-=======
-  "version": "1.7.0",
->>>>>>> ade3e49525193660fdb457ec3ddbd6a5d666e89c
   "permissions": ["storage", "sidePanel", "tabs"],
   "host_permissions": [
     "https://*/*",

@@ -317,19 +317,29 @@ function parseEventDate(value: string): number {
 function getRecentSymbols(args: {
   captureState: CaptureState | null;
   marketData: MarketDashboardData | null;
-  analyticsSummary: AnalyticsSummaryResponse | null | undefined;
 }): Set<string> {
+  if (args.marketData?.personalized?.recent_symbols) {
+    return new Set(args.marketData.personalized.recent_symbols.map((symbol) => symbol.toUpperCase()));
+  }
+
   const symbols = new Set<string>();
   for (const trade of args.captureState?.trades ?? []) {
-    symbols.add(trade.stock_symbol.toUpperCase());
-  }
-  for (const symbol of args.marketData?.personalized?.recent_symbols ?? []) {
-    symbols.add(symbol.toUpperCase());
-  }
-  if (args.analyticsSummary?.most_traded_symbol) {
-    symbols.add(args.analyticsSummary.most_traded_symbol.toUpperCase());
+    if (trade.stock_symbol) {
+      symbols.add(trade.stock_symbol.toUpperCase());
+    }
   }
   return symbols;
+}
+
+function isFutureEarningsEvent(value: string): boolean {
+  if (!value) return false;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const eventDate = new Date(value);
+  if (!Number.isFinite(eventDate.getTime())) {
+    return false;
+  }
+  return eventDate >= today;
 }
 
 export default function TraderPulse({
@@ -357,13 +367,18 @@ export default function TraderPulse({
     summary: analyticsSummary,
   });
   const recentSymbols = useMemo(
-    () => getRecentSymbols({ captureState, marketData, analyticsSummary }),
-    [analyticsSummary, captureState, marketData]
+    () => getRecentSymbols({ captureState, marketData }),
+    [captureState, marketData]
   );
   const earningsAlert = useMemo(
     () =>
       earningsEvents
-        .filter((event) => event.symbol && recentSymbols.has(event.symbol.toUpperCase()))
+        .filter(
+          (event) =>
+            event.symbol &&
+            isFutureEarningsEvent(event.date) &&
+            recentSymbols.has(event.symbol.toUpperCase())
+        )
         .sort((left, right) => parseEventDate(left.date) - parseEventDate(right.date))[0] ?? null,
     [earningsEvents, recentSymbols]
   );

@@ -159,28 +159,6 @@ export default function App() {
 
       {bannerError ? <div className="connection-error-banner">{bannerError}</div> : null}
 
-<<<<<<< HEAD
-      <nav className="tabs-row">
-        {(
-          [
-            ["market", "Market"],
-            ["ai", "Research"],
-            ["insights", "Insights"],
-            ["captures", "Journal"],
-            ["calculators", "Calculators"],
-            ["account", "Account"],
-          ] as Array<[TabId, string]>
-        ).map(([id, label]) => (
-          <button
-            key={id}
-            className={`tab-button${activeTab === id ? " active" : ""}`}
-            onClick={() => setActiveTab(id)}
-          >
-            {label}
-          </button>
-        ))}
-      </nav>
-=======
       <div className="tabs-wrapper">
         <nav className="tabs-row">
           {(
@@ -204,7 +182,6 @@ export default function App() {
         </nav>
         <div className="tabs-fade-hint" aria-hidden="true" />
       </div>
->>>>>>> ade3e49525193660fdb457ec3ddbd6a5d666e89c
 
       {activeTab === "market" && (
         <MarketTab

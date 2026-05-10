@@ -1760,6 +1760,36 @@ body {
   white-space: nowrap;
 }
 
+.research-category-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  background: #eff6ff;
+  color: #1e40af;
+  margin-bottom: 8px;
+}
+
+.research-response { line-height: 1.6; }
+
+.research-bullet {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  padding: 2px 0;
+}
+
+.research-bullet .bullet-dot {
+  color: #6366f1;
+  font-weight: 700;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.research-response strong { font-weight: 700; color: #0f172a; }
+
 .ai-result-explanation {
   margin: 0;
   color: #1f2937;
