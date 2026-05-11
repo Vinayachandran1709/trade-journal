@@ -106,3 +106,17 @@ class CompletedTradeResponse(BaseModel):
     created_at: datetime
 
     model_config = {"from_attributes": True}
+
+
+class PaginatedTradesResponse(BaseModel):
+    trades: list[TradeResponse]
+    total: int
+    hidden_trade_count: int
+    is_limited: bool
+
+
+class PaginatedCompletedTradesResponse(BaseModel):
+    trades: list[CompletedTradeResponse]
+    total: int
+    hidden_trade_count: int
+    is_limited: bool

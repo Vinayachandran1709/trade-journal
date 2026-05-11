@@ -16,6 +16,8 @@ from app.schemas.trade import (
     TradeAnnotationUpdateRequest,
     TradeResponse,
     TradesSummary,
+    PaginatedTradesResponse,
+    PaginatedCompletedTradesResponse,
 )
 from app.services.csv_parser import parse_groww_csv
 from app.services.email_parser import parse_zerodha_contract_note
@@ -214,7 +216,7 @@ def _is_pro_active(user: User) -> bool:
     return expires > datetime.now(timezone.utc)
 
 
-@router.get("/", response_model=list[TradeResponse])
+@router.get("/", response_model=PaginatedTradesResponse)
 def get_trades(
     symbol: str | None = Query(None),
     start_date: date | None = Query(None),
@@ -224,7 +226,7 @@ def get_trades(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
     response: Response = None,
-) -> list[TradeResponse]:
+) -> PaginatedTradesResponse:
     query = db.query(Trade).filter(Trade.user_id == current_user.id)
 
     if symbol:
@@ -233,6 +235,10 @@ def get_trades(
         query = query.filter(Trade.trade_date >= start_date)
     if end_date:
         query = query.filter(Trade.trade_date <= end_date)
+
+    total = query.count()
+    hidden_count = 0
+    is_limited = False
 
     if not _is_pro_active(current_user):
         free_cutoff = (datetime.now(timezone.utc) - timedelta(days=30)).date()
@@ -258,6 +264,7 @@ def get_trades(
             )
 
         query = query.filter(Trade.trade_date >= effective_cutoff)
+        is_limited = True
 
         if response is not None:
             response.headers["X-Hidden-Trade-Count"] = str(hidden_count)
@@ -265,7 +272,12 @@ def get_trades(
     query = query.order_by(Trade.trade_date.desc())
     trades = query.limit(limit).offset(offset).all()
 
-    return trades
+    return PaginatedTradesResponse(
+        trades=trades,
+        total=total,
+        hidden_trade_count=hidden_count,
+        is_limited=is_limited,
+    )
 
 
 @router.post("/process")
@@ -295,22 +307,48 @@ def process_trades(
     }
 
 
-@router.get("/completed", response_model=list[CompletedTradeResponse])
+@router.get("/completed", response_model=PaginatedCompletedTradesResponse)
 def get_completed_trades(
     limit: int = Query(100, ge=1, le=500),
     offset: int = Query(0, ge=0),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
-) -> list[CompletedTradeResponse]:
+) -> PaginatedCompletedTradesResponse:
+    query = db.query(CompletedTrade).filter(CompletedTrade.user_id == current_user.id)
+    
+    total = query.count()
+    hidden_count = 0
+    is_limited = False
+    
+    if not _is_pro_active(current_user):
+        free_cutoff = (datetime.now(timezone.utc) - timedelta(days=30)).date()
+        
+        hidden_count = (
+            db.query(CompletedTrade)
+            .filter(
+                CompletedTrade.user_id == current_user.id,
+                CompletedTrade.exit_date < free_cutoff,
+            )
+            .count()
+        )
+        
+        query = query.filter(CompletedTrade.exit_date >= free_cutoff)
+        is_limited = True
+
     trades = (
-        db.query(CompletedTrade)
-        .filter(CompletedTrade.user_id == current_user.id)
+        query
         .order_by(CompletedTrade.exit_date.desc())
         .limit(limit)
         .offset(offset)
         .all()
     )
-    return trades
+    
+    return PaginatedCompletedTradesResponse(
+        trades=trades,
+        total=total,
+        hidden_trade_count=hidden_count,
+        is_limited=is_limited,
+    )
 
 
 @router.patch("/{trade_id}", response_model=TradeResponse)
