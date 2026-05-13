@@ -5,14 +5,24 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { isAuthenticated, logout } from "@/lib/auth";
 
-function Logo() {
+function Logo({ light = false }: { light?: boolean }) {
   return (
     <span className="inline-flex items-center gap-2">
-      <span className="relative flex h-9 w-9 items-center justify-center rounded-xl bg-slate-950 shadow-sm">
+      <span
+        className={`relative flex h-9 w-9 items-center justify-center rounded-xl shadow-sm ${
+          light ? "border border-white/20 bg-white/10" : "bg-slate-950"
+        }`}
+      >
         <span className="absolute h-4 w-4 rotate-45 rounded-[5px] bg-gradient-to-br from-indigo-500 to-emerald-400" />
         <span className="relative h-2 w-2 rounded-full bg-white" />
       </span>
-      <span className="bg-gradient-to-r from-slate-950 via-indigo-700 to-slate-800 bg-clip-text text-xl font-black text-transparent">
+      <span
+        className={`text-xl font-black ${
+          light
+            ? "text-white"
+            : "bg-gradient-to-r from-slate-950 via-indigo-700 to-slate-800 bg-clip-text text-transparent"
+        }`}
+      >
         IndiaCircle
       </span>
     </span>
@@ -75,7 +85,7 @@ export default function Navbar() {
     >
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6 lg:px-8">
         <Link href="/" aria-label="IndiaCircle home" onClick={() => setMobileOpen(false)}>
-          <Logo />
+          <Logo light={!solid} />
         </Link>
 
         <div className="hidden items-center gap-7 md:flex">

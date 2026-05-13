@@ -7,6 +7,20 @@ import type {
   TradeSetup,
 } from "@/types/trade";
 
+interface PaginatedTradesResponse {
+  trades: Trade[];
+  total: number;
+  hidden_trade_count: number;
+  is_limited: boolean;
+}
+
+interface PaginatedCompletedTradesResponse {
+  trades: CompletedTrade[];
+  total: number;
+  hidden_trade_count: number;
+  is_limited: boolean;
+}
+
 export async function importZerodhaEmail(
   emailContent: string
 ): Promise<TradeImportResponse> {
@@ -88,7 +102,10 @@ export async function getTrades(filters?: {
     params.set("offset", String(filters.offset));
 
   const query = params.toString();
-  return apiFetch<Trade[]>(`/trades${query ? `?${query}` : ""}`);
+  const response = await apiFetch<PaginatedTradesResponse>(
+    `/trades${query ? `?${query}` : ""}`
+  );
+  return response.trades;
 }
 
 export async function getTradesSummary(): Promise<TradesSummary> {
@@ -116,9 +133,10 @@ export async function getCompletedTrades(
   if (offset !== undefined) params.set("offset", String(offset));
 
   const query = params.toString();
-  return apiFetch<CompletedTrade[]>(
+  const response = await apiFetch<PaginatedCompletedTradesResponse>(
     `/trades/completed${query ? `?${query}` : ""}`
   );
+  return response.trades;
 }
 
 export async function getTradeSetups(
