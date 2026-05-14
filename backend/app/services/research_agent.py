@@ -15,6 +15,7 @@ from app.config import settings
 from app.models.ai_query_log import AIQueryLog
 from app.models.market_data_cache import MarketDataCache
 from app.models.user import User
+from app.utils.datetime import utcnow_naive
 
 IST = timezone(timedelta(hours=5, minutes=30))
 DISCLAIMER = "This is data analysis, not investment advice."
@@ -32,7 +33,7 @@ def _today_ist() -> str:
 
 
 def _now_utc() -> datetime:
-    return datetime.utcnow()
+    return utcnow_naive()
 
 
 def _is_pro_active(user: User) -> bool:

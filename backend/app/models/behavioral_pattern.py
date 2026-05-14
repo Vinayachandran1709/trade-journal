@@ -1,9 +1,8 @@
-from datetime import datetime
-
 from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, JSON, String, Text, UniqueConstraint
 from sqlalchemy.orm import relationship
 
 from app.database import Base
+from app.utils.datetime import utcnow_naive
 
 
 class BehavioralPattern(Base):
@@ -21,7 +20,7 @@ class BehavioralPattern(Base):
     pattern_data = Column(JSON, nullable=False)
     trade_count_snapshot = Column(Integer, nullable=False, default=0)
     is_active = Column(Boolean, default=True, nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=utcnow_naive)
+    updated_at = Column(DateTime, default=utcnow_naive, onupdate=utcnow_naive)
 
     user = relationship("User", back_populates="behavioral_patterns")

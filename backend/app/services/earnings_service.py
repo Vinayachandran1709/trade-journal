@@ -5,6 +5,7 @@ import httpx
 from sqlalchemy.orm import Session
 
 from app.models.market_data_cache import MarketDataCache
+from app.utils.datetime import utcnow_naive
 
 
 def _get_cache_entry(db: Session, cache_key: str) -> dict | None:
@@ -12,7 +13,7 @@ def _get_cache_entry(db: Session, cache_key: str) -> dict | None:
         db.query(MarketDataCache)
         .filter(
             MarketDataCache.cache_key == cache_key,
-            MarketDataCache.expires_at > datetime.utcnow(),
+            MarketDataCache.expires_at > utcnow_naive(),
         )
         .first()
     )
@@ -20,7 +21,7 @@ def _get_cache_entry(db: Session, cache_key: str) -> dict | None:
 
 
 def _set_cache(db: Session, cache_key: str, symbol: str, payload: dict, ttl_minutes: int) -> None:
-    now = datetime.utcnow()
+    now = utcnow_naive()
     expires_at = now + timedelta(minutes=ttl_minutes)
     entry = db.query(MarketDataCache).filter(MarketDataCache.cache_key == cache_key).first()
     if entry:
@@ -45,7 +46,7 @@ def _set_cache(db: Session, cache_key: str, symbol: str, payload: dict, ttl_minu
 
 async def get_upcoming_earnings(db: Session, user_id: int | None = None) -> dict:
     """Get upcoming earnings and mark events relevant to the user's history."""
-    cache_key = f"earnings_calendar:{datetime.utcnow().strftime('%Y-%m-%d')}"
+    cache_key = f"earnings_calendar:{utcnow_naive().strftime('%Y-%m-%d')}"
     cached = _get_cache_entry(db, cache_key)
     if cached:
         earnings = cached
@@ -120,13 +121,13 @@ async def _fetch_earnings_calendar() -> dict:
         return {
             "upcoming": upcoming,
             "source": "news",
-            "fetched_at": datetime.utcnow().isoformat(),
+            "fetched_at": utcnow_naive().isoformat(),
         }
     except Exception:
         return {
             "upcoming": [],
             "source": "unavailable",
-            "fetched_at": datetime.utcnow().isoformat(),
+            "fetched_at": utcnow_naive().isoformat(),
         }
 
 

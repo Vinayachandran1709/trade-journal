@@ -15,6 +15,7 @@ from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
 
 from app.models.stock import Stock
+from app.utils.datetime import utcnow_naive
 
 logger = logging.getLogger(__name__)
 
@@ -620,7 +621,7 @@ def upsert_stock_master(db: Session, records: list[NormalizedStockRecord]) -> di
 
     inserted = 0
     updated = 0
-    now = datetime.utcnow()
+    now = utcnow_naive()
 
     for record in records:
         stock = None

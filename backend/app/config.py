@@ -1,4 +1,5 @@
 import json
+from pathlib import Path
 
 from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -47,7 +48,10 @@ class Settings(BaseSettings):
                 merged_origins.append(origin)
         return merged_origins
 
-    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+    model_config = SettingsConfigDict(
+        env_file=str(Path(__file__).resolve().parents[1] / ".env"),
+        extra="ignore",
+    )
 
 
 settings = Settings()

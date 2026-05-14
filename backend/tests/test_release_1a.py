@@ -21,6 +21,7 @@ from app.config import settings  # noqa: E402
 from app.database import Base, get_db  # noqa: E402
 from app.main import app  # noqa: E402
 from app.models.completed_trade import CompletedTrade  # noqa: E402
+from app.models.payment_event import PaymentEvent  # noqa: E402
 from app.models.trade import Trade  # noqa: E402
 from app.models.trade_setup import TradeSetup  # noqa: E402
 from app.models.user import User  # noqa: E402
@@ -45,6 +46,7 @@ def client():
             Trade.__table__,
             CompletedTrade.__table__,
             TradeSetup.__table__,
+            PaymentEvent.__table__,
         ],
     )
 
@@ -64,6 +66,7 @@ def client():
     Base.metadata.drop_all(
         bind=engine,
         tables=[
+            PaymentEvent.__table__,
             TradeSetup.__table__,
             CompletedTrade.__table__,
             Trade.__table__,
@@ -215,3 +218,99 @@ def test_health_check_returns_503_when_database_is_unavailable(client: TestClien
 
     assert response.status_code == 503
     assert response.json()["detail"] == "Database unavailable"
+
+
+def test_verify_payment_rejects_order_owned_by_another_user(
+    client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+):
+    db = TestingSessionLocal()
+    owner = User(
+        email="owner@example.com",
+        hashed_password=hash_password("password123"),
+        name="Owner",
+    )
+    other_user = User(
+        email="other@example.com",
+        hashed_password=hash_password("password123"),
+        name="Other User",
+    )
+    db.add_all([owner, other_user])
+    db.commit()
+    db.refresh(owner)
+    db.refresh(other_user)
+    db.close()
+
+    other_user_token = create_access_token({"sub": other_user.email})
+    other_user_headers = {"Authorization": f"Bearer {other_user_token}"}
+
+    monkeypatch.setattr(
+        "app.routes.billing.razorpay_service.verify_payment_signature",
+        lambda order_id, payment_id, signature: True,
+    )
+    monkeypatch.setattr(
+        "app.routes.billing.razorpay_service.fetch_order",
+        lambda order_id: {
+            "id": order_id,
+            "notes": {"plan": "pro_monthly", "user_id": str(owner.id)},
+        },
+    )
+
+    response = client.post(
+        "/api/billing/verify-payment",
+        headers=other_user_headers,
+        json={
+            "order_id": "order_owner",
+            "payment_id": "pay_owner",
+            "signature": "valid-signature",
+        },
+    )
+
+    assert response.status_code == 403
+    assert response.json()["detail"] == "This payment does not belong to the current user"
+
+
+def test_verify_payment_is_idempotent_for_duplicate_retries(
+    client: TestClient,
+    auth_headers: dict[str, str],
+    monkeypatch: pytest.MonkeyPatch,
+):
+    db = TestingSessionLocal()
+    current_user = db.query(User).filter(User.email == "release1a@example.com").first()
+    current_user_id = current_user.id
+    db.close()
+
+    monkeypatch.setattr(
+        "app.routes.billing.razorpay_service.verify_payment_signature",
+        lambda order_id, payment_id, signature: True,
+    )
+    monkeypatch.setattr(
+        "app.routes.billing.razorpay_service.fetch_order",
+        lambda order_id, current_user_id=current_user_id: {
+            "id": order_id,
+            "notes": {"plan": "pro_monthly", "user_id": str(current_user_id)},
+        },
+    )
+
+    payload = {
+        "order_id": "order_repeat",
+        "payment_id": "pay_repeat",
+        "signature": "valid-signature",
+    }
+
+    first = client.post("/api/billing/verify-payment", headers=auth_headers, json=payload)
+    second = client.post("/api/billing/verify-payment", headers=auth_headers, json=payload)
+
+    assert first.status_code == 200
+    assert second.status_code == 200
+    assert first.json()["status"] == "success"
+    assert second.json()["status"] == "success"
+    assert first.json()["expires_at"] == second.json()["expires_at"]
+
+    db = TestingSessionLocal()
+    try:
+        assert db.query(PaymentEvent).filter(
+            PaymentEvent.provider_event_id == "pay_repeat"
+        ).count() == 1
+    finally:
+        db.close()

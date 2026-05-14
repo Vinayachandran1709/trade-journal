@@ -16,6 +16,7 @@ from app.models.market_data_cache import MarketDataCache
 from app.models.trade import Trade
 from app.models.user import User
 from app.services.stock_master_service import get_quote_symbol_for_stock_input
+from app.utils.datetime import utcnow_naive
 
 logger = logging.getLogger(__name__)
 
@@ -152,7 +153,7 @@ def _cache_get(db: Session, key: str) -> dict | None:
         db.query(MarketDataCache)
         .filter(
             MarketDataCache.cache_key == key,
-            MarketDataCache.expires_at > datetime.utcnow(),
+            MarketDataCache.expires_at > utcnow_naive(),
         )
         .first()
     )
@@ -170,7 +171,7 @@ def _cache_get_stale(db: Session, key: str) -> dict | None:
 
 
 def _cache_set(db: Session, key: str, symbol: str, payload: dict) -> None:
-    now = datetime.utcnow()
+    now = utcnow_naive()
     expires = now + timedelta(seconds=_cache_ttl())
     entry = (
         db.query(MarketDataCache)

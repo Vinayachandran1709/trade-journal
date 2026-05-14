@@ -1,9 +1,8 @@
-from datetime import datetime
-
 from sqlalchemy import Column, DateTime, ForeignKey, Integer, String
 from sqlalchemy.orm import relationship
 
 from app.database import Base
+from app.utils.datetime import utcnow_naive
 
 
 class WatchlistItem(Base):
@@ -12,7 +11,7 @@ class WatchlistItem(Base):
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
     symbol = Column(String(50), nullable=False, index=True)
-    added_at = Column(DateTime, default=datetime.utcnow)
+    added_at = Column(DateTime, default=utcnow_naive)
     notes = Column(String(500), nullable=True)
     alert_price_above = Column(String(20), nullable=True)
     alert_price_below = Column(String(20), nullable=True)

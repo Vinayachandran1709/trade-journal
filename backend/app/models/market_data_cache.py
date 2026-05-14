@@ -1,8 +1,7 @@
-from datetime import datetime
-
 from sqlalchemy import Column, DateTime, Integer, JSON, String, Text
 
 from app.database import Base
+from app.utils.datetime import utcnow_naive
 
 
 class MarketDataCache(Base):
@@ -15,6 +14,6 @@ class MarketDataCache(Base):
     provider = Column(String(50))
     payload = Column(JSON)
     source_url = Column(Text)
-    fetched_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    fetched_at = Column(DateTime, default=utcnow_naive, nullable=False)
     expires_at = Column(DateTime)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=utcnow_naive)

@@ -1,6 +1,6 @@
 import hashlib
 import hmac
-from datetime import datetime
+from datetime import datetime, timezone
 
 import razorpay
 
@@ -12,29 +12,33 @@ PLAN_AMOUNTS = {
 }
 
 PLAN_LABELS = {
-    "pro_monthly": "Pro Monthly — ₹599/month",
-    "pro_annual": "Pro Annual — ₹4,999/year",
+    "pro_monthly": "Pro Monthly - Rs 599/month",
+    "pro_annual": "Pro Annual - Rs 4,999/year",
 }
 
 
 def _client() -> razorpay.Client:
-    return razorpay.Client(auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_SECRET))
+    return razorpay.Client(
+        auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_SECRET)
+    )
 
 
 def create_razorpay_order(plan: str, user_id: int) -> dict:
     if plan not in PLAN_AMOUNTS:
         raise ValueError(f"Unknown plan '{plan}'. Valid: {list(PLAN_AMOUNTS)}")
 
-    receipt = f"rcpt_{user_id}_{plan}_{int(datetime.utcnow().timestamp())}"
-    order = _client().order.create({
-        "amount": PLAN_AMOUNTS[plan],
-        "currency": "INR",
-        "receipt": receipt,
-        "notes": {
-            "user_id": str(user_id),
-            "plan": plan,
-        },
-    })
+    receipt = f"rcpt_{user_id}_{plan}_{int(datetime.now(timezone.utc).timestamp())}"
+    order = _client().order.create(
+        {
+            "amount": PLAN_AMOUNTS[plan],
+            "currency": "INR",
+            "receipt": receipt,
+            "notes": {
+                "user_id": str(user_id),
+                "plan": plan,
+            },
+        }
+    )
     return order
 
 
@@ -44,11 +48,13 @@ def fetch_order(order_id: str) -> dict:
 
 def verify_payment_signature(order_id: str, payment_id: str, signature: str) -> bool:
     try:
-        _client().utility.verify_payment_signature({
-            "razorpay_order_id": order_id,
-            "razorpay_payment_id": payment_id,
-            "razorpay_signature": signature,
-        })
+        _client().utility.verify_payment_signature(
+            {
+                "razorpay_order_id": order_id,
+                "razorpay_payment_id": payment_id,
+                "razorpay_signature": signature,
+            }
+        )
         return True
     except Exception:
         return False

@@ -11,6 +11,7 @@ from app.models.trade import Trade
 from app.models.trade_setup import TradeSetup
 from app.models.user import User
 from app.services.checklist_service import compliance_check, is_pro_active
+from app.utils.datetime import utcnow_naive
 
 
 def _alert(alert_type: str, severity: str, title: str, message: str) -> dict:
@@ -20,7 +21,7 @@ def _alert(alert_type: str, severity: str, title: str, message: str) -> dict:
             "severity": severity,
             "title": title,
             "message": message,
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": utcnow_naive().isoformat(),
             "locked": False,
         }
     )

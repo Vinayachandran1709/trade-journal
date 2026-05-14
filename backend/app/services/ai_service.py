@@ -18,6 +18,7 @@ from app.models.market_data_cache import MarketDataCache
 from app.models.user import User
 from app.services.market_data_service import get_ticker_quote
 from app.services.stock_master_service import get_quote_symbol_for_stock_input, resolve_stock_lookup
+from app.utils.datetime import utcnow_naive
 
 DISCLAIMER_TEXT = (
     "This is data analysis, not investment advice. "
@@ -71,7 +72,7 @@ class AIServiceTimeoutError(Exception):
 
 
 def _now_utc() -> datetime:
-    return datetime.utcnow()
+    return utcnow_naive()
 
 
 def _today_ist() -> str:

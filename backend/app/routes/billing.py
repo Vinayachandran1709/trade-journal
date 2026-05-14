@@ -18,6 +18,7 @@ from app.schemas.billing import (
     VerifyPaymentResponse,
 )
 from app.services import razorpay_service
+from app.utils.datetime import utcnow_naive
 from app.utils.dependencies import get_current_user
 
 billing_router = APIRouter(prefix="/api/billing", tags=["billing"])
@@ -27,11 +28,9 @@ _PLAN_DURATIONS = {
     "pro_monthly": timedelta(days=30),
     "pro_annual": timedelta(days=365),
 }
-
-
 def _activate_subscription(user: User, plan: str, db: Session) -> datetime:
     duration = _PLAN_DURATIONS.get(plan, timedelta(days=30))
-    expires_at = datetime.utcnow() + duration
+    expires_at = utcnow_naive() + duration
     user.subscription_status = "pro"
     user.subscription_plan = plan
     user.subscription_expires_at = expires_at
@@ -52,7 +51,7 @@ def _record_event(
         event_type=event_type,
         provider_event_id=provider_event_id,
         payload=payload,
-        processed_at=datetime.utcnow(),
+        processed_at=utcnow_naive(),
     )
     db.add(event)
     db.commit()
@@ -102,9 +101,37 @@ def verify_payment(
 
     try:
         order = razorpay_service.fetch_order(request.order_id)
-        plan = order.get("notes", {}).get("plan", "pro_monthly")
     except Exception:
-        plan = "pro_monthly"
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Failed to verify Razorpay order. Please try again.",
+        )
+
+    order_notes = order.get("notes", {})
+    plan = order_notes.get("plan", "pro_monthly")
+    order_user_id = order_notes.get("user_id")
+    if order_user_id is None or str(order_user_id) != str(current_user.id):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="This payment does not belong to the current user",
+        )
+
+    existing_event = (
+        db.query(PaymentEvent)
+        .filter(PaymentEvent.provider_event_id == request.payment_id)
+        .first()
+    )
+    if existing_event:
+        return VerifyPaymentResponse(
+            status="success",
+            subscription_status=current_user.subscription_status or "pro",
+            plan=current_user.subscription_plan or plan,
+            expires_at=(
+                current_user.subscription_expires_at.isoformat()
+                if current_user.subscription_expires_at
+                else _utcnow_naive().isoformat()
+            ),
+        )
 
     expires_at = _activate_subscription(current_user, plan, db)
     _record_event(
@@ -179,7 +206,7 @@ def apply_coupon(
             detail="Invalid or inactive coupon code",
         )
 
-    if coupon.expires_at and coupon.expires_at < datetime.utcnow():
+    if coupon.expires_at and coupon.expires_at < utcnow_naive():
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail="Coupon has expired"
         )
@@ -199,7 +226,7 @@ def apply_coupon(
             detail="You already have an active Pro subscription",
         )
 
-    expires_at = datetime.utcnow() + timedelta(days=90)
+    expires_at = utcnow_naive() + timedelta(days=90)
     current_user.subscription_status = "pro"
     current_user.subscription_plan = "pro_founding"
     current_user.subscription_expires_at = expires_at
@@ -231,7 +258,7 @@ async def razorpay_webhook(request: Request, db: Session = Depends(get_db)):
 
     event_data: dict = json.loads(body)
     event_type: str = event_data.get("event", "unknown")
-    now = datetime.utcnow()
+    now = utcnow_naive()
 
     # Build a stable idempotency key
     payment_entity = (

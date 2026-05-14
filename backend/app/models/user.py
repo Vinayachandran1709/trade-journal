@@ -1,9 +1,8 @@
-from datetime import datetime
-
 from sqlalchemy import JSON, Column, DateTime, Integer, String
 from sqlalchemy.orm import relationship
 
 from app.database import Base
+from app.utils.datetime import utcnow_naive
 
 
 class User(Base):
@@ -19,7 +18,7 @@ class User(Base):
     razorpay_customer_id = Column(String(255))
     razorpay_subscription_id = Column(String(255))
     preferences = Column(JSON, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=utcnow_naive)
 
     trades = relationship("Trade", back_populates="user")
     pattern_analyses = relationship("PatternAnalysis", back_populates="user")

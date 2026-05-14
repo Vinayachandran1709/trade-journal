@@ -1,8 +1,7 @@
-from datetime import datetime
-
 from sqlalchemy import Column, DateTime, Integer, JSON, String, Text
 
 from app.database import Base
+from app.utils.datetime import utcnow_naive
 
 
 class Stock(Base):
@@ -19,6 +18,6 @@ class Stock(Base):
     aliases = Column(JSON, nullable=False, default=list)
     alias_blob = Column(Text, nullable=False, default="")
     status = Column(String(32), nullable=False, default="active")
-    last_updated = Column(DateTime, nullable=False, default=datetime.utcnow)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    last_updated = Column(DateTime, nullable=False, default=utcnow_naive)
+    created_at = Column(DateTime, default=utcnow_naive)
+    updated_at = Column(DateTime, default=utcnow_naive, onupdate=utcnow_naive)

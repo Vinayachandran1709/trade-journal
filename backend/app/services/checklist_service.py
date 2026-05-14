@@ -13,6 +13,7 @@ from app.models.trade import Trade
 from app.models.trade_checklist import TradeChecklist
 from app.models.trade_setup import TradeSetup
 from app.models.user import User
+from app.utils.datetime import utcnow_naive
 
 DEFAULT_CHECKLIST_ITEMS = [
     "Checked higher timeframe trend",
@@ -353,7 +354,7 @@ def link_setup_to_trade(user_id: int, trade_id: int, db: Session) -> bool:
     if not setup:
         return False
     setup.linked_trade_id = trade_id
-    setup.linked_at = datetime.utcnow()
+    setup.linked_at = utcnow_naive()
     db.commit()
     return True
 

@@ -1,9 +1,8 @@
-from datetime import datetime
-
 from sqlalchemy import Column, Date, DateTime, ForeignKey, Integer, Numeric, String
 from sqlalchemy.orm import relationship
 
 from app.database import Base
+from app.utils.datetime import utcnow_naive
 
 
 class CompletedTrade(Base):
@@ -20,6 +19,6 @@ class CompletedTrade(Base):
     pnl = Column(Numeric(12, 2), nullable=False)
     return_pct = Column(Numeric(6, 2), nullable=False)
     holding_days = Column(Integer, nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=utcnow_naive)
 
     user = relationship("User", back_populates="completed_trades")

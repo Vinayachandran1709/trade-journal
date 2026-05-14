@@ -1,9 +1,8 @@
-from datetime import datetime
-
 from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, JSON, Numeric, String, Text
 from sqlalchemy.orm import relationship
 
 from app.database import Base
+from app.utils.datetime import utcnow_naive
 
 
 class TradeSetup(Base):
@@ -29,8 +28,8 @@ class TradeSetup(Base):
     risk_level = Column(String(20))
     linked_trade_id = Column(Integer, ForeignKey("completed_trades.id"), nullable=True, index=True)
     linked_at = Column(DateTime)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=utcnow_naive)
+    updated_at = Column(DateTime, default=utcnow_naive, onupdate=utcnow_naive)
 
     user = relationship("User", back_populates="trade_setups")
     trade_checklists = relationship("TradeChecklist", back_populates="trade_setup")

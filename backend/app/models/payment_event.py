@@ -1,9 +1,8 @@
-from datetime import datetime
-
 from sqlalchemy import Column, DateTime, ForeignKey, Integer, JSON, String
 from sqlalchemy.orm import relationship
 
 from app.database import Base
+from app.utils.datetime import utcnow_naive
 
 
 class PaymentEvent(Base):
@@ -16,6 +15,6 @@ class PaymentEvent(Base):
     provider_event_id = Column(String(255), nullable=False, unique=True, index=True)
     payload = Column(JSON)
     processed_at = Column(DateTime)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=utcnow_naive)
 
     user = relationship("User", back_populates="payment_events")

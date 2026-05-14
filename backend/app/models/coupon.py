@@ -1,9 +1,9 @@
-from datetime import datetime
 from decimal import Decimal
 
 from sqlalchemy import Boolean, Column, DateTime, Integer, Numeric, String, Text
 
 from app.database import Base
+from app.utils.datetime import utcnow_naive
 
 
 class Coupon(Base):
@@ -18,4 +18,4 @@ class Coupon(Base):
     max_redemptions = Column(Integer, nullable=True)
     current_redemptions = Column(Integer, nullable=False, default=0)
     expires_at = Column(DateTime)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=utcnow_naive)
