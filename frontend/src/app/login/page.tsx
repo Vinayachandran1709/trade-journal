@@ -1,9 +1,9 @@
 "use client";
 
-import { FormEvent, Suspense, useState } from "react";
+import { FormEvent, Suspense, startTransition, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { login } from "@/lib/auth";
+import { isAuthenticated, login } from "@/lib/auth";
 
 export default function LoginPage() {
   return (
@@ -34,6 +34,13 @@ function LoginContent() {
   const [apiError, setApiError] = useState("");
   const [loading, setLoading] = useState(false);
 
+  useEffect(() => {
+    router.prefetch("/dashboard");
+    if (isAuthenticated()) {
+      router.replace("/dashboard");
+    }
+  }, [router]);
+
   const validate = () => {
     const e: Record<string, string> = {};
     if (!form.email) e.email = "Email is required";
@@ -50,7 +57,9 @@ function LoginContent() {
     setLoading(true);
     try {
       await login({ email: form.email, password: form.password });
-      router.push("/dashboard");
+      startTransition(() => {
+        router.push("/dashboard");
+      });
     } catch (err) {
       setApiError(err instanceof Error ? err.message : "Login failed");
     } finally {
@@ -131,10 +140,6 @@ function LoginContent() {
             </Link>
           </p>
         </div>
-
-        <p className="mt-6 text-center text-sm font-semibold text-gray-500">
-          Join 100+ Indian traders
-        </p>
       </div>
     </div>
   );

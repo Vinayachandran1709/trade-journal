@@ -2,6 +2,7 @@ import { apiFetch } from "./api";
 import type {
   LoginRequest,
   SignupRequest,
+  SignupTokenResponse,
   TokenResponse,
   User,
   UserPreferences,
@@ -12,6 +13,15 @@ export async function signup(data: SignupRequest): Promise<User> {
     method: "POST",
     body: JSON.stringify(data),
   });
+}
+
+export async function signupAndLogin(data: SignupRequest): Promise<User> {
+  const res = await apiFetch<SignupTokenResponse>("/auth/signup-with-token", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+  localStorage.setItem("token", res.access_token);
+  return res.user;
 }
 
 export async function login(data: LoginRequest): Promise<string> {

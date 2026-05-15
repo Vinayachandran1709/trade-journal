@@ -33,6 +33,10 @@ export interface TokenResponse {
   token_type: string;
 }
 
+export interface SignupTokenResponse extends TokenResponse {
+  user: User;
+}
+
 export interface ApiError {
   detail: string;
 }

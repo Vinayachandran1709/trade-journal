@@ -10,13 +10,15 @@ if settings.DATABASE_URL.startswith("sqlite"):
         echo=False,
     )
 else:
-    # Create engine with connection pool settings optimized for Neon
+    # Create engine with connection pool settings optimized for Neon.
+    # Avoid per-request pre-ping latency; recycle idle connections instead.
     engine = create_engine(
         settings.DATABASE_URL,
-        pool_pre_ping=True,  # Verify connections before using
-        pool_recycle=300,    # Recycle connections after 5 minutes
-        pool_size=5,         # Keep 5 connections in pool
-        max_overflow=10,     # Allow up to 10 additional connections
+        pool_pre_ping=False,
+        pool_recycle=300,
+        pool_size=5,
+        max_overflow=10,
+        pool_use_lifo=True,
         echo=False,
     )
 

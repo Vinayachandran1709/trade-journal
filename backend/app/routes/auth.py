@@ -4,13 +4,20 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models.user import User
-from app.schemas.auth import LoginRequest, PreferencesRequest, SignupRequest, TokenResponse
+from app.schemas.auth import (
+    LoginRequest,
+    PreferencesRequest,
+    SignupRequest,
+    SignupTokenResponse,
+    TokenResponse,
+)
 from app.schemas.user import UserResponse
 from app.services.auth_service import (
     authenticate_user,
     create_access_token,
     create_user,
     get_user_by_email,
+    user_exists_by_email,
     update_user_preferences,
 )
 from app.utils.dependencies import get_current_user
@@ -20,8 +27,7 @@ router = APIRouter(prefix="/api/auth", tags=["auth"])
 
 @router.post("/signup", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
 def signup(request: SignupRequest, db: Session = Depends(get_db)):
-    existing = get_user_by_email(db, request.email)
-    if existing:
+    if user_exists_by_email(db, request.email):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Email already registered",
@@ -29,6 +35,19 @@ def signup(request: SignupRequest, db: Session = Depends(get_db)):
 
     user = create_user(db, request.email, request.password, request.name)
     return user
+
+
+@router.post("/signup-with-token", response_model=SignupTokenResponse, status_code=status.HTTP_201_CREATED)
+def signup_with_token(request: SignupRequest, db: Session = Depends(get_db)):
+    if user_exists_by_email(db, request.email):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Email already registered",
+        )
+
+    user = create_user(db, request.email, request.password, request.name)
+    token = create_access_token(data={"sub": user.email})
+    return SignupTokenResponse(access_token=token, user=user)
 
 
 @router.post("/login", response_model=TokenResponse)

@@ -154,22 +154,61 @@ function AnalyticsContent() {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    Promise.all([
-      getMe(),
-      getAnalyticsSummary(),
-      getPatterns(),
-      getTrades({ limit: 500 }),
-      getCompletedTrades(500),
-    ])
-      .then(([userData, summaryData, patternsData, tradesData, completedData]) => {
-        setUser(userData);
-        setSummary(summaryData);
-        setPatterns(patternsData);
-        setTrades(tradesData);
-        setCompletedTrades(completedData);
-      })
-      .catch((err) => setError(err instanceof Error ? err.message : "Failed to load analytics"))
-      .finally(() => setLoading(false));
+    let active = true;
+
+    async function loadAnalytics() {
+      const userResult = await getMe()
+        .then((value) => ({ ok: true as const, value }))
+        .catch((reason) => ({ ok: false as const, reason }));
+
+      if (!active) return;
+
+      if (!userResult.ok) {
+        setError(
+          userResult.reason instanceof Error ? userResult.reason.message : "Failed to load analytics"
+        );
+        setLoading(false);
+        return;
+      }
+
+      setUser(userResult.value);
+
+      const [summaryResult, patternsResult, tradesResult, completedResult] = await Promise.allSettled([
+        getAnalyticsSummary(),
+        getPatterns(),
+        getTrades({ limit: 500 }),
+        getCompletedTrades(500),
+      ]);
+
+      if (!active) return;
+
+      if (summaryResult.status === "fulfilled") setSummary(summaryResult.value);
+      if (patternsResult.status === "fulfilled") setPatterns(patternsResult.value);
+      if (tradesResult.status === "fulfilled") setTrades(tradesResult.value);
+      if (completedResult.status === "fulfilled") setCompletedTrades(completedResult.value);
+
+      const backgroundFailure = [
+        summaryResult,
+        patternsResult,
+        tradesResult,
+        completedResult,
+      ].find((result) => result.status === "rejected");
+
+      if (backgroundFailure?.status === "rejected") {
+        setError(
+          backgroundFailure.reason instanceof Error
+            ? backgroundFailure.reason.message
+            : "Some analytics sections could not be loaded."
+        );
+      }
+
+      setLoading(false);
+    }
+
+    void loadAnalytics();
+    return () => {
+      active = false;
+    };
   }, []);
 
   useEffect(() => {
@@ -211,7 +250,7 @@ function AnalyticsContent() {
     );
   }
 
-  if (error || !summary || !patterns) {
+  if (!summary || !patterns) {
     return (
       <div className="min-h-screen bg-gray-50 px-4 pt-28">
         <div className="section-container rounded-2xl bg-rose-50 p-5 text-sm font-semibold text-rose-700">
@@ -235,6 +274,12 @@ function AnalyticsContent() {
   return (
     <div className="min-h-screen bg-gray-50 px-4 pb-16 pt-28 sm:px-6 lg:px-8">
       <div className="section-container">
+        {error ? (
+          <div className="mb-6 rounded-2xl bg-rose-50 p-4 text-sm font-semibold text-rose-700">
+            {error}
+          </div>
+        ) : null}
+
         <div className="mb-6 flex flex-wrap gap-3 text-sm font-semibold text-slate-600">
           <Link href="/dashboard" className="hover:text-indigo-600">
             Dashboard

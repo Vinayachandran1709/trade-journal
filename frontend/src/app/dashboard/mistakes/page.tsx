@@ -351,22 +351,54 @@ function MistakesContent() {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    Promise.all([
-      getAnalyticsSummary(),
-      getPatterns(),
-      getCompletedTrades(200, 0),
-      getTrades({ limit: 200 }),
-      getTradeSetups(100, 0),
-    ])
-      .then(([summaryData, patternsData, completedData, rawTradesData, setupsData]) => {
-        setSummary(summaryData);
-        setPatterns(patternsData);
-        setCompletedTrades(completedData);
-        setRawTrades(rawTradesData);
-        setSetups(setupsData);
-      })
-      .catch((err) => setError(err instanceof Error ? err.message : "Failed to load mistakes review"))
-      .finally(() => setLoading(false));
+    let active = true;
+
+    async function loadMistakes() {
+      const [
+        summaryResult,
+        patternsResult,
+        completedResult,
+        rawTradesResult,
+        setupsResult,
+      ] = await Promise.allSettled([
+        getAnalyticsSummary(),
+        getPatterns(),
+        getCompletedTrades(200, 0),
+        getTrades({ limit: 200 }),
+        getTradeSetups(100, 0),
+      ]);
+
+      if (!active) return;
+
+      if (summaryResult.status === "fulfilled") setSummary(summaryResult.value);
+      if (patternsResult.status === "fulfilled") setPatterns(patternsResult.value);
+      if (completedResult.status === "fulfilled") setCompletedTrades(completedResult.value);
+      if (rawTradesResult.status === "fulfilled") setRawTrades(rawTradesResult.value);
+      if (setupsResult.status === "fulfilled") setSetups(setupsResult.value);
+
+      const backgroundFailure = [
+        summaryResult,
+        patternsResult,
+        completedResult,
+        rawTradesResult,
+        setupsResult,
+      ].find((result) => result.status === "rejected");
+
+      if (backgroundFailure?.status === "rejected") {
+        setError(
+          backgroundFailure.reason instanceof Error
+            ? backgroundFailure.reason.message
+            : "Some mistake review sections could not be loaded."
+        );
+      }
+
+      setLoading(false);
+    }
+
+    void loadMistakes();
+    return () => {
+      active = false;
+    };
   }, []);
 
   const mistakeCategories = useMemo(
@@ -378,7 +410,7 @@ function MistakesContent() {
     return <MistakesSkeleton />;
   }
 
-  if (error) {
+  if (error && !summary && !patterns && completedTrades.length === 0 && rawTrades.length === 0 && setups.length === 0) {
     return (
       <div className="min-h-screen bg-gray-50 px-4 pt-28">
         <div className="section-container rounded-2xl bg-rose-50 p-5 text-sm font-semibold text-rose-700">
@@ -408,6 +440,12 @@ function MistakesContent() {
   return (
     <div className="min-h-screen bg-gray-50 px-4 pb-16 pt-28 sm:px-6 lg:px-8">
       <div className="section-container">
+        {error ? (
+          <div className="mb-6 rounded-2xl bg-rose-50 p-4 text-sm font-semibold text-rose-700">
+            {error}
+          </div>
+        ) : null}
+
         <div className="mb-6 flex flex-wrap gap-3 text-sm font-semibold text-slate-600">
           <Link href="/dashboard" className="hover:text-indigo-600">
             Dashboard

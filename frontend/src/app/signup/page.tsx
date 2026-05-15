@@ -1,9 +1,9 @@
 "use client";
 
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, startTransition, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { login, logout, signup, updatePreferences } from "@/lib/auth";
+import { isAuthenticated, signupAndLogin, updatePreferences } from "@/lib/auth";
 import type { UserPreferences } from "@/types/user";
 
 const BROKER_OPTIONS = [
@@ -94,6 +94,17 @@ export default function SignupPage() {
   const [apiError, setApiError] = useState("");
   const [loading, setLoading] = useState(false);
   const [savingPreferences, setSavingPreferences] = useState(false);
+  const passwordWarning =
+    form.password.length >= 6 && form.password.length < 8
+      ? "Weak password. Use 8+ characters for better security."
+      : "";
+
+  useEffect(() => {
+    router.prefetch("/dashboard");
+    if (isAuthenticated()) {
+      router.replace("/dashboard");
+    }
+  }, [router]);
 
   const canSavePreferences = useMemo(() => {
     return (
@@ -105,6 +116,7 @@ export default function SignupPage() {
 
   const validate = () => {
     const nextErrors: Record<string, string> = {};
+    if (!form.name.trim()) nextErrors.name = "Name is required";
     if (!form.email) nextErrors.email = "Email is required";
     else if (!/\S+@\S+\.\S+/.test(form.email)) nextErrors.email = "Invalid email";
     if (!form.password) nextErrors.password = "Password is required";
@@ -116,8 +128,9 @@ export default function SignupPage() {
   };
 
   const finishSignupFlow = () => {
-    logout();
-    router.push("/login?registered=1");
+    startTransition(() => {
+      router.push("/dashboard");
+    });
   };
 
   const togglePreference = (key: "brokers" | "sectors", value: string) => {
@@ -139,12 +152,11 @@ export default function SignupPage() {
 
     setLoading(true);
     try {
-      await signup({
+      await signupAndLogin({
         email: form.email,
         password: form.password,
         name: form.name || undefined,
       });
-      await login({ email: form.email, password: form.password });
       setStep("preferences");
     } catch (error) {
       setApiError(error instanceof Error ? error.message : "Signup failed");
@@ -221,6 +233,11 @@ export default function SignupPage() {
                     {errors[field.id] ? (
                       <p className="mt-1 text-xs font-medium text-rose-600">
                         {errors[field.id]}
+                      </p>
+                    ) : null}
+                    {field.id === "password" && !errors.password && passwordWarning ? (
+                      <p className="mt-1 text-xs font-medium text-amber-600">
+                        {passwordWarning}
                       </p>
                     ) : null}
                   </div>
@@ -339,10 +356,6 @@ export default function SignupPage() {
             </>
           )}
         </div>
-
-        <p className="mt-6 text-center text-sm font-semibold text-gray-500">
-          Join 100+ Indian traders
-        </p>
       </div>
     </div>
   );

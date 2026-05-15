@@ -1,7 +1,9 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import text
 
 from app.config import settings
+from app.database import engine
 from app.routes.auth import router as auth_router
 from app.routes.ai_agents import router as ai_agents_router
 from app.routes.analytics import router as analytics_router
@@ -38,3 +40,14 @@ app.include_router(setups_router)
 app.include_router(risk_router)
 app.include_router(analytics_router)
 app.include_router(watchlist_router)
+
+
+@app.on_event("startup")
+def warm_database_connection() -> None:
+    try:
+        with engine.connect() as connection:
+            connection.execute(text("SELECT 1"))
+    except Exception:
+        # Let the app boot even if the remote DB is temporarily slow; requests
+        # will surface a normal API error instead of crashing startup.
+        pass

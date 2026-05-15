@@ -2,3 +2,25 @@
 > trade-journal-frontend@1.0.0 dev
 > next dev
 
+  ▲ Next.js 14.2.21
+  - Local:        http://localhost:3000
+  - Environments: .env.local
+
+ ✓ Starting...
+ ✓ Ready in 3.5s
+ ○ Compiling /login ...
+ ✓ Compiled /login in 7.4s (521 modules)
+ GET /login 200 in 7730ms
+ GET /login 200 in 7764ms
+ GET /login 200 in 120ms
+ ○ Compiling /_not-found ...
+ ✓ Compiled /_not-found in 1819ms (515 modules)
+ GET /.well-known/appspecific/com.chrome.devtools.json 404 in 2108ms
+ ○ Compiling /dashboard ...
+ ✓ Compiled /dashboard in 688ms (513 modules)
+ ○ Compiling /dashboard/analytics ...
+ ✓ Compiled /dashboard/analytics in 920ms (518 modules)
+ ○ Compiling /dashboard/mistakes ...
+ ✓ Compiled /dashboard/mistakes in 661ms (524 modules)
+ ○ Compiling /import ...
+ ✓ Compiled /import in 851ms (532 modules)

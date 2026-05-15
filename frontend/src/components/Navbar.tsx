@@ -52,7 +52,7 @@ export default function Navbar() {
     logout();
     setLoggedIn(false);
     setMobileOpen(false);
-    router.push("/");
+    router.push("/login");
   };
 
   const navLinks = [

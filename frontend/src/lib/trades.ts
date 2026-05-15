@@ -103,7 +103,7 @@ export async function getTrades(filters?: {
 
   const query = params.toString();
   const response = await apiFetch<PaginatedTradesResponse>(
-    `/trades${query ? `?${query}` : ""}`
+    `/trades/${query ? `?${query}` : ""}`
   );
   return response.trades;
 }

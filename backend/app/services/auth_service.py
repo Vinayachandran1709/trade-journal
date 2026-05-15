@@ -52,6 +52,10 @@ def get_user_by_email(db: Session, email: str) -> User | None:
     return db.query(User).filter(User.email == email).first()
 
 
+def user_exists_by_email(db: Session, email: str) -> bool:
+    return db.query(User.id).filter(User.email == email).first() is not None
+
+
 def create_user(db: Session, email: str, password: str, name: str | None) -> User:
     user = User(email=email, hashed_password=hash_password(password), name=name)
     db.add(user)

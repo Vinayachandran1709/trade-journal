@@ -131,6 +131,10 @@ function getPerformanceScore(summary: AnalyticsSummaryResponse | null, rawTrades
   return Math.round(winRateScore + consistency + riskScore + emotionCoverage);
 }
 
+function isEmptyDashboard(summary: AnalyticsSummaryResponse | null, completedTrades: CompletedTrade[]) {
+  return (summary?.total_trades ?? 0) === 0 && completedTrades.length === 0;
+}
+
 function scoreTone(score: number): "green" | "amber" | "red" {
   if (score > 70) return "green";
   if (score >= 40) return "amber";
@@ -545,15 +549,29 @@ function DashboardContent() {
     let active = true;
 
     async function loadDashboard() {
+      let resolvedUser: User;
+      try {
+        resolvedUser = await getMe();
+      } catch (firstError) {
+        try {
+          resolvedUser = await getMe();
+        } catch (secondError) {
+          if (!active) return;
+          setError(
+            secondError instanceof Error ? secondError.message : "Failed to load dashboard"
+          );
+          setLoading(false);
+          return;
+        }
+      }
+
       const [
-        userResult,
         summaryResult,
         patternsResult,
         completedResult,
         rawTradesResult,
         setupsResult,
       ] = await Promise.allSettled([
-        getMe(),
         getAnalyticsSummary(),
         getPatterns(),
         getCompletedTrades(50, 0),
@@ -563,20 +581,26 @@ function DashboardContent() {
 
       if (!active) return;
 
-      if (userResult.status === "rejected") {
-        setError(
-          userResult.reason instanceof Error ? userResult.reason.message : "Failed to load dashboard"
-        );
-        setLoading(false);
-        return;
-      }
-
-      setUser(userResult.value);
+      setUser(resolvedUser);
       if (summaryResult.status === "fulfilled") setSummary(summaryResult.value);
       if (patternsResult.status === "fulfilled") setPatternsEnvelope(patternsResult.value);
       if (completedResult.status === "fulfilled") setCompletedTrades(completedResult.value);
       if (rawTradesResult.status === "fulfilled") setRawTrades(rawTradesResult.value);
       if (setupsResult.status === "fulfilled") setSetups(setupsResult.value);
+      const backgroundFailure = [
+        summaryResult,
+        patternsResult,
+        completedResult,
+        rawTradesResult,
+        setupsResult,
+      ].find((result) => result.status === "rejected");
+      if (backgroundFailure?.status === "rejected") {
+        setError(
+          backgroundFailure.reason instanceof Error
+            ? backgroundFailure.reason.message
+            : "Some dashboard sections could not be loaded."
+        );
+      }
       setLoading(false);
     }
 
@@ -613,6 +637,7 @@ function DashboardContent() {
   const needsAttention = getNeedsAttention(rawTrades, completedTrades, setups, patternsEnvelope);
   const weekSummary = getThisWeekSummary(completedTrades, rawTrades, setups, patternsEnvelope);
   const sectorStats = getSectorStats(completedTrades);
+  const emptyDashboard = isEmptyDashboard(summary, completedTrades);
   const worstPattern = [...visiblePatterns].sort(
     (a, b) => SEVERITY_ORDER[a.severity] - SEVERITY_ORDER[b.severity]
   )[0] ?? null;
@@ -683,12 +708,20 @@ function DashboardContent() {
               <div className="mt-4 flex items-center gap-4">
                 <div className="score-ring h-[84px] w-[84px]" style={{ background: getScoreGradient(score) }}>
                   <div className="score-ring-inner h-[64px] w-[64px]">
-                    <span className="text-lg font-black text-slate-950">{score}</span>
+                    <span className="text-lg font-black text-slate-950">
+                      {emptyDashboard ? "..." : score}
+                    </span>
                   </div>
                 </div>
                 <div>
-                  <div className="text-2xl font-black text-slate-950">{score}/100</div>
-                  <div className="text-sm text-gray-500">Live read on your trading health</div>
+                  <div className="text-2xl font-black text-slate-950">
+                    {emptyDashboard ? "Building sample" : `${score}/100`}
+                  </div>
+                  <div className="text-sm text-gray-500">
+                    {emptyDashboard
+                      ? "Complete trades to unlock your first performance read"
+                      : "Live read on your trading health"}
+                  </div>
                 </div>
               </div>
             </div>
@@ -880,7 +913,7 @@ function DashboardContent() {
           <div className="glass-card p-6">
             <h2 className="text-xl font-black text-slate-950">Trader DNA</h2>
             <p className="mt-3 text-sm text-gray-500">
-              Trader DNA unlocks at 20 completed trades. You have {tradeCountForDna}/20.
+              Unlocks at 20 trades. You have {tradeCountForDna}/20 completed trades.
             </p>
             <div className="mt-4 h-3 rounded-full bg-gray-100">
               <div
@@ -1045,7 +1078,7 @@ function DashboardContent() {
 
       <section className="mt-6 glass-card p-6">
         <h2 className="text-xl font-black text-slate-950">Quick Actions</h2>
-        <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+        <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           <Link
             href="/import"
             className="rounded-2xl border border-gray-100 bg-white px-4 py-4 text-sm font-semibold text-slate-700 transition hover:border-indigo-100 hover:bg-indigo-50/40"
@@ -1071,12 +1104,6 @@ function DashboardContent() {
           >
             📤 {exporting ? "Exporting..." : "Export Journal"}
           </button>
-          <Link
-            href="/dashboard/trades"
-            className="rounded-2xl border border-gray-100 bg-white px-4 py-4 text-sm font-semibold text-slate-700 transition hover:border-indigo-100 hover:bg-indigo-50/40"
-          >
-            📋 Complete Emotions
-          </Link>
         </div>
       </section>
     </div>
