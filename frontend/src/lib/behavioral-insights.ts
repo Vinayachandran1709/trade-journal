@@ -272,6 +272,16 @@ export function buildPerformanceScore(args: {
 }) {
   const { summary, completedTrades, trades } = args;
 
+  if (completedTrades.length === 0 && trades.length === 0) {
+    return {
+      totalScore: 0,
+      winRateScore: 0,
+      consistencyScore: 0,
+      riskDisciplineScore: 0,
+      emotionalAwarenessScore: 0,
+    };
+  }
+
   const winRateScore = Math.max(0, Math.min(30, summary.win_rate * 30));
 
   const dailyPnl = new Map<string, number>();

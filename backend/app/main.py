@@ -42,6 +42,11 @@ app.include_router(analytics_router)
 app.include_router(watchlist_router)
 
 
+@app.get("/")
+async def root():
+    return {"status": "ok", "message": "Trade Intelligence Platform API"}
+
+
 @app.on_event("startup")
 def warm_database_connection() -> None:
     try:

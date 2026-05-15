@@ -6,7 +6,7 @@ import AuthGuard from "@/components/AuthGuard";
 import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
 import FileUpload from "@/components/ui/FileUpload";
-import { importUniversalCSV } from "@/lib/trades";
+import { importUniversalCSV, processTrades } from "@/lib/trades";
 import type { TradeImportResponse } from "@/types/trade";
 
 function UniversalCsvImportContent() {
@@ -14,6 +14,7 @@ function UniversalCsvImportContent() {
   const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [status, setStatus] = useState("");
   const [result, setResult] = useState<TradeImportResponse | null>(null);
 
   async function handleSubmit() {
@@ -21,11 +22,22 @@ function UniversalCsvImportContent() {
 
     setLoading(true);
     setError("");
+    setStatus("");
     setResult(null);
 
     try {
       const response = await importUniversalCSV(file);
       setResult(response);
+
+      if ((response.imported_count ?? 0) > 0) {
+        setStatus("Processing your trades...");
+        try {
+          await processTrades();
+        } catch {
+          // Never block the dashboard redirect if processing needs a retry.
+        }
+        router.push("/dashboard");
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Import failed");
     } finally {
@@ -116,12 +128,19 @@ function UniversalCsvImportContent() {
         </div>
       )}
 
+      {status && (
+        <div className="mt-6 rounded-lg bg-indigo-50 p-4 text-sm text-indigo-700">
+          {status}
+        </div>
+      )}
+
       <div className="mt-6">
         <FileUpload
           accept=".csv"
           onChange={(nextFile) => {
             setFile(nextFile);
             setError("");
+            setStatus("");
             setResult(null);
           }}
           maxSize={10 * 1024 * 1024}

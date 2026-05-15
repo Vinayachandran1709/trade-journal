@@ -242,13 +242,20 @@ function getBiggestMistakeType(
     },
   ];
 
-  return candidates
-    .map((candidate) => ({
-      name: candidate.name,
-      count: candidate.trades.length,
-      totalLoss: candidate.trades.reduce((sum, trade) => sum + Math.abs(trade.pnl), 0),
-    }))
-    .sort((a, b) => b.totalLoss - a.totalLoss || b.count - a.count)[0] ?? null;
+  const biggestMistake =
+    candidates
+      .map((candidate) => ({
+        name: candidate.name,
+        count: candidate.trades.length,
+        totalLoss: candidate.trades.reduce((sum, trade) => sum + Math.abs(trade.pnl), 0),
+      }))
+      .sort((a, b) => b.totalLoss - a.totalLoss || b.count - a.count)[0] ?? null;
+
+  if (!biggestMistake || biggestMistake.count === 0) {
+    return null;
+  }
+
+  return biggestMistake;
 }
 
 function getPlanAdherence(setup: TradeSetup, trade: CompletedTrade) {
@@ -490,10 +497,10 @@ function MistakesContent() {
           <article className="mistake-summary-card">
             <div className="text-sm font-bold text-gray-500">Biggest Mistake Type</div>
             <div className="mt-3 text-2xl font-black text-slate-950">
-              {biggestMistake?.name ?? "No dominant mistake yet"}
+              {biggestMistake?.name ?? "No data yet"}
             </div>
             <p className="mt-2 text-sm text-gray-500">
-              {biggestMistake ? `${biggestMistake.count} instances` : "Keep tagging emotions and linking setups."}
+              {biggestMistake ? `${biggestMistake.count} instances` : "0 instances"}
             </p>
           </article>
 

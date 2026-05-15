@@ -385,6 +385,7 @@ function getThisWeekSummary(
   const weekWins = weekTrades.filter((trade) => trade.pnl > 0).length;
   const weekLosses = weekTrades.filter((trade) => trade.pnl < 0).length;
   const untaggedThisWeek = weekRawTrades.filter((trade) => !trade.emotion_tag).length;
+  const totalUntagged = rawTrades.filter((trade) => !trade.emotion_tag).length;
   const pendingSetups = setups.filter((setup) => !setup.linked_trade_id).length;
   const focusPattern = patterns?.unlocked
     ? [...patterns.patterns.filter((pattern) => !pattern.locked)].sort(
@@ -404,7 +405,7 @@ function getThisWeekSummary(
   return {
     title: "This Week",
     primary: "Trades: 0 this week",
-    secondary: `Pending setups: ${pendingSetups} · Journal gaps: ${untaggedThisWeek} trades need emotion tags`,
+    secondary: `Pending setups: ${pendingSetups} · ${totalUntagged} trades missing emotion tags (all time)`,
     focus: "Focus: Import trades or open your broker to start capturing",
   };
 }
@@ -430,6 +431,8 @@ function getAvoidLabel(pattern: PatternResponse | null) {
       return "Overactive sessions after the first few trades";
     case "losing_streak_tilt":
       return "Impulse entries during losing streaks";
+    case "holding_period":
+      return "Low-conviction trades without review";
     default:
       return pattern.title;
   }
@@ -515,7 +518,7 @@ function getTrackedFocus(
     .filter((value): value is string => Boolean(value));
 }
 
-function DashboardSkeleton() {
+export function DashboardSkeleton() {
   return (
     <div className="command-center pt-28">
       <div className="h-36 animate-pulse rounded-3xl bg-white" />
@@ -864,25 +867,33 @@ function DashboardContent() {
                 </div>
                 <div className="mt-5 grid gap-4 sm:grid-cols-2">
                   <div>
-                    <span className="text-sm text-gray-500">Best edge: Thursday trading</span>
+                    <span className="text-sm text-gray-500">
+                      {`Best edge: ${String(bestDayPattern?.data?.best_bucket ?? "—")}`}
+                    </span>
                     <div className="mt-1 font-black text-slate-950">
-                      {String(bestDayPattern?.data?.best_bucket ?? "Building sample")}
+                      {String(bestDayPattern?.data?.best_bucket ?? "—")}
                     </div>
                   </div>
                   <div>
-                    <span className="text-sm text-gray-500">Weak day: Wednesday (reduce activity)</span>
+                    <span className="text-sm text-gray-500">
+                      {`Weak day: ${String(bestDayPattern?.data?.worst_bucket ?? "—")} (reduce activity)`}
+                    </span>
                     <div className="mt-1 font-black text-slate-950">
-                      {String(bestDayPattern?.data?.worst_bucket ?? "Building sample")}
+                      {String(bestDayPattern?.data?.worst_bucket ?? "—")}
                     </div>
                   </div>
                   <div>
-                    <span className="text-sm text-gray-500">Sweet spot: Short swing trades (2-5 days)</span>
+                    <span className="text-sm text-gray-500">
+                      {`Sweet spot: ${String(holdingPattern?.data?.best_bucket ?? "—")}`}
+                    </span>
                     <div className="mt-1 font-black text-slate-950">
-                      {String(holdingPattern?.data?.best_bucket ?? "Building sample")}
+                      {String(holdingPattern?.data?.best_bucket ?? "—")}
                     </div>
                   </div>
                   <div>
-                    <span className="text-sm text-gray-500">Style: Swing trader</span>
+                    <span className="text-sm text-gray-500">
+                      {`Style: ${getTradingStyle(summary?.avg_holding_days)}`}
+                    </span>
                     <div className="mt-1 font-black text-slate-950">
                       {getTradingStyle(summary?.avg_holding_days)}
                     </div>
@@ -891,11 +902,15 @@ function DashboardContent() {
               </div>
               <div className="grid gap-4 sm:grid-cols-2">
                 <div>
-                  <span className="text-sm text-gray-500">Strongest sector: IT</span>
+                  <span className="text-sm text-gray-500">
+                    {`Strongest sector: ${sectorStats.bestSector}`}
+                  </span>
                   <div className="mt-1 font-black text-slate-950">{sectorStats.bestSector}</div>
                 </div>
                 <div>
-                  <span className="text-sm text-gray-500">Risk leak: Revenge trading</span>
+                  <span className="text-sm text-gray-500">
+                    {`Risk leak: ${getWorstPatternLabel(worstPattern)}`}
+                  </span>
                   <div className="mt-1 font-black text-slate-950">{getWorstPatternLabel(worstPattern)}</div>
                 </div>
                 <div>
@@ -1112,7 +1127,7 @@ function DashboardContent() {
 
 export default function DashboardPage() {
   return (
-    <AuthGuard>
+    <AuthGuard fallback={<DashboardSkeleton />}>
       <DashboardContent />
     </AuthGuard>
   );
