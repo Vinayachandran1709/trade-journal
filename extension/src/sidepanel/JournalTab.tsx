@@ -137,6 +137,18 @@ function getRrMeta(setup: TradeSetupItem): { value: number; className: string } 
   };
 }
 
+function normalizeCompletedTrades(value: unknown): CompletedTradeListItem[] {
+  return Array.isArray(value) ? (value as CompletedTradeListItem[]) : [];
+}
+
+function normalizeRawTrades(value: unknown): TradeListItem[] {
+  return Array.isArray(value) ? (value as TradeListItem[]) : [];
+}
+
+function normalizeSetups(value: unknown): TradeSetupItem[] {
+  return Array.isArray(value) ? (value as TradeSetupItem[]) : [];
+}
+
 function JournalSkeleton() {
   return (
     <>
@@ -171,7 +183,7 @@ export default function JournalTab({
   const [completedLoading, setCompletedLoading] = useState(false);
   const [completedError, setCompletedError] = useState<string | null>(null);
 
-  const todaysTrades = captureState?.trades ?? [];
+  const todaysTrades = Array.isArray(captureState?.trades) ? captureState.trades : [];
 
   useEffect(() => {
     let active = true;
@@ -193,9 +205,11 @@ export default function JournalTab({
         storageGet<TradeSetupItem[]>(CACHED_JOURNAL_SETUPS_KEY).catch(() => null),
       ]);
       if (!active) return;
-      if (cachedCompleted) setCompletedTrades(cachedCompleted);
-      if (cachedSetups) setSetups(cachedSetups);
-      setCompletedLoading(!cachedCompleted);
+      const safeCompleted = normalizeCompletedTrades(cachedCompleted);
+      const safeSetups = normalizeSetups(cachedSetups);
+      setCompletedTrades(safeCompleted);
+      setSetups(safeSetups);
+      setCompletedLoading(safeCompleted.length === 0);
 
       try {
         const token = await getAuthToken();
@@ -208,9 +222,9 @@ export default function JournalTab({
         ]);
 
         if (!active) return;
-        setCompletedTrades(nextCompleted);
-        setRawTrades(nextRaw);
-        setSetups(nextSetups);
+        setCompletedTrades(normalizeCompletedTrades(nextCompleted));
+        setRawTrades(normalizeRawTrades(nextRaw));
+        setSetups(normalizeSetups(nextSetups));
         setCompletedError(null);
         void storageSet(CACHED_COMPLETED_TRADES_KEY, nextCompleted).catch(() => undefined);
         void storageSet(CACHED_JOURNAL_SETUPS_KEY, nextSetups).catch(() => undefined);

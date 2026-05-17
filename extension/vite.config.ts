@@ -13,6 +13,10 @@ const contentScripts = [
     output: "content-scripts/broker-detector.js",
   },
   {
+    entry: "src/content-scripts/website-bridge.ts",
+    output: "content-scripts/website-bridge.js",
+  },
+  {
     entry: "src/content-scripts/ticker-highlighter.ts",
     output: "content-scripts/ticker-highlighter.js",
   },

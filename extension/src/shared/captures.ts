@@ -41,8 +41,25 @@ export function createEmptyCaptureState(): CaptureState {
   };
 }
 
+function normalizeCaptureState(value: unknown): CaptureState | null {
+  if (!value || typeof value !== "object") {
+    return null;
+  }
+
+  const record = value as Partial<CaptureState>;
+  return {
+    date: typeof record.date === "string" ? record.date : getTodayKey(),
+    trades: Array.isArray(record.trades) ? record.trades : [],
+    lastImportedCount:
+      typeof record.lastImportedCount === "number" ? record.lastImportedCount : 0,
+    lastBroker: typeof record.lastBroker === "string" ? record.lastBroker : null,
+    lastSyncAt: typeof record.lastSyncAt === "string" ? record.lastSyncAt : null,
+    lastError: typeof record.lastError === "string" ? record.lastError : null,
+  };
+}
+
 export async function getCaptureState(): Promise<CaptureState> {
-  const stored = await storageGet<CaptureState>(TODAY_CAPTURES_KEY);
+  const stored = normalizeCaptureState(await storageGet<unknown>(TODAY_CAPTURES_KEY));
   if (!stored || stored.date !== getTodayKey()) {
     const nextState = createEmptyCaptureState();
     await storageSet(TODAY_CAPTURES_KEY, nextState);

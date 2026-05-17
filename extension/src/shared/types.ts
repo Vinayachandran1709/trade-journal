@@ -34,6 +34,7 @@ export interface ExtensionMessage {
     | "auth:get-token"
     | "auth:get-me"
     | "auth:logout"
+    | "website:auth-handoff"
     | "health:ping"
     | "broker:page-detected"
     | "stocks:get-dictionary"
@@ -42,6 +43,12 @@ export interface ExtensionMessage {
     | "capture:get-state"
     | "capture:update-trade";
   payload?: Record<string, unknown>;
+}
+
+export interface ExternalAuthHandoffMessage {
+  type: "indiacircle:auth-handoff";
+  token?: string;
+  source?: string;
 }
 
 export interface BackgroundResponse {
@@ -55,4 +62,6 @@ export interface BackgroundResponse {
   trades?: CapturedTrade[];
   tickerIntel?: TickerIntelResponse;
   stockDictionary?: StockDictionaryResponse;
+  userEmail?: string;
+  sidePanelOpened?: boolean;
 }

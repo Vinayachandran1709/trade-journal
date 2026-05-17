@@ -31,6 +31,35 @@ type AiResult =
   | { kind: "stock"; data: WhyMovingResponse }
   | { kind: "research"; data: ResearchAskResponse };
 
+function normalizeAiQueryItems(value: unknown): AiQueryItem[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value
+    .map((item) => {
+      if (typeof item === "string") {
+        return { symbol: item, date: getIstDateKey() };
+      }
+
+      if (
+        item &&
+        typeof item === "object" &&
+        typeof item.symbol === "string" &&
+        typeof item.date === "string"
+      ) {
+        return { symbol: item.symbol, date: item.date };
+      }
+
+      return null;
+    })
+    .filter((item): item is AiQueryItem => Boolean(item));
+}
+
+function normalizeCompletedTrades(value: unknown): CompletedTradeListItem[] {
+  return Array.isArray(value) ? (value as CompletedTradeListItem[]) : [];
+}
+
 function toFiniteNumber(value: unknown): number | null {
   return typeof value === "number" && Number.isFinite(value) ? value : null;
 }
@@ -315,19 +344,15 @@ export default function AiTab({
     void storageGet<Array<string | AiQueryItem>>(RECENT_AI_QUERIES_KEY)
       .then((stored) => {
         if (active) {
-          setRecentQueries(
-            (stored ?? []).map((item) =>
-              typeof item === "string" ? { symbol: item, date: getIstDateKey() } : item
-            )
-          );
+          setRecentQueries(normalizeAiQueryItems(stored));
         }
       })
       .catch(() => undefined);
 
     void storageGet<CompletedTradeListItem[]>(CACHED_AI_COMPLETED_TRADES_KEY)
       .then((stored) => {
-        if (active && stored) {
-          setCompletedTradeCache(stored);
+        if (active) {
+          setCompletedTradeCache(normalizeCompletedTrades(stored));
         }
       })
       .catch(() => undefined);

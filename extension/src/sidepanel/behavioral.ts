@@ -123,6 +123,17 @@ export type ReasonValue =
 const PLAN_PATTERN = /\[PLAN:(YES|PARTIAL|NO)\]\s*/gi;
 const REASON_PATTERN = /\[REASON:([A-Z_]+)\]\s*/gi;
 
+function getSafeTrades(captureState: CaptureState | null): CapturedTrade[] {
+  return Array.isArray(captureState?.trades) ? captureState.trades : [];
+}
+
+function normalizePatternsEnvelope(value: PatternsEnvelope): PatternsEnvelope {
+  return {
+    ...value,
+    patterns: Array.isArray(value.patterns) ? value.patterns : [],
+  };
+}
+
 export function formatCurrency(value: number | null | undefined): string {
   if (value == null || !Number.isFinite(value)) {
     return "0";
@@ -249,7 +260,7 @@ function estimateTradeSector(symbol: string): string {
 }
 
 export function getCapturePerformanceStats(captureState: CaptureState | null): CapturePerformanceStats {
-  const trades = [...(captureState?.trades ?? [])].sort((a, b) => tradeSortValue(a) - tradeSortValue(b));
+  const trades = [...getSafeTrades(captureState)].sort((a, b) => tradeSortValue(a) - tradeSortValue(b));
   const openLots = new Map<string, Array<{ quantity: number; price: number }>>();
   const closedPnls: number[] = [];
   let realizedPnl = 0;
@@ -472,7 +483,7 @@ export function buildRealtimeRiskAlerts(args: {
   const alerts: RealtimeRiskAlert[] = [];
   const captureStats = getCapturePerformanceStats(captureState);
   const session = getSessionContext();
-  const trades = [...(captureState?.trades ?? [])].sort((a, b) => tradeSortValue(a) - tradeSortValue(b));
+  const trades = [...getSafeTrades(captureState)].sort((a, b) => tradeSortValue(a) - tradeSortValue(b));
 
   const overtradingPattern = findPattern(patterns, "overtrading");
   const threshold = getOvertradingThreshold(overtradingPattern) ?? 4;
@@ -549,7 +560,7 @@ export async function getCachedBehaviorPatterns(token: string | null): Promise<P
     return patternsCache.value;
   }
   try {
-    const value = await getPatterns(token);
+    const value = normalizePatternsEnvelope(await getPatterns(token));
     patternsCache = {
       token,
       value,

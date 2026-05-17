@@ -101,6 +101,7 @@ export default function SignupPage() {
 
   useEffect(() => {
     router.prefetch("/dashboard");
+    router.prefetch("/welcome");
     if (isAuthenticated()) {
       router.replace("/dashboard");
     }
@@ -129,7 +130,7 @@ export default function SignupPage() {
 
   const finishSignupFlow = () => {
     startTransition(() => {
-      router.push("/dashboard");
+      router.push("/welcome?source=signup");
     });
   };
 

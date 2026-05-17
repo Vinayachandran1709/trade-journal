@@ -318,12 +318,17 @@ function getRecentSymbols(args: {
   captureState: CaptureState | null;
   marketData: MarketDashboardData | null;
 }): Set<string> {
-  if (args.marketData?.personalized?.recent_symbols) {
-    return new Set(args.marketData.personalized.recent_symbols.map((symbol) => symbol.toUpperCase()));
+  if (Array.isArray(args.marketData?.personalized?.recent_symbols)) {
+    return new Set(
+      args.marketData.personalized.recent_symbols
+        .filter((symbol): symbol is string => typeof symbol === "string")
+        .map((symbol) => symbol.toUpperCase())
+    );
   }
 
   const symbols = new Set<string>();
-  for (const trade of args.captureState?.trades ?? []) {
+  const trades = Array.isArray(args.captureState?.trades) ? args.captureState.trades : [];
+  for (const trade of trades) {
     if (trade.stock_symbol) {
       symbols.add(trade.stock_symbol.toUpperCase());
     }

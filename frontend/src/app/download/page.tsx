@@ -1,5 +1,8 @@
 import Link from "next/link";
 
+const WEBSTORE_URL =
+  process.env.NEXT_PUBLIC_CHROME_WEBSTORE_URL || "https://chrome.google.com/webstore";
+
 function ChromeIcon() {
   return (
     <svg className="h-12 w-12" viewBox="0 0 48 48" fill="none" aria-hidden="true">
@@ -77,7 +80,7 @@ export default function DownloadPage() {
         <div className="section-container">
           <div className="grid gap-6 md:grid-cols-2">
             <a
-              href="https://chrome.google.com/webstore"
+              href={WEBSTORE_URL}
               target="_blank"
               rel="noopener noreferrer"
               className="rounded-3xl border border-gray-100 bg-white p-8 shadow-sm transition hover:-translate-y-1 hover:shadow-lg"
@@ -106,10 +109,10 @@ export default function DownloadPage() {
               <p className="mt-3 text-gray-600">A clean setup path for Chrome, Edge, Brave, and Opera.</p>
             </div>
             <div className="grid gap-4">
-              {[
+              {[ 
                 ["1", "Add to your browser", "Click the store button and approve the extension install."],
-                ["2", "Pin IndiaCircle", "Use the puzzle-piece menu and pin IndiaCircle to your toolbar."],
-                ["3", "Sign in and trade", "Open the side panel, login, and visit your broker platform."],
+                ["2", "Open Journal Side Panel", "Click the IndiaCircle icon to open your journal and copilot beside the page you are trading on."],
+                ["3", "Visit your broker and trade normally", "Keep IndiaCircle beside Zerodha, Groww, Dhan, Angel One, Upstox, or 5Paisa while auto-capture continues in the background."],
               ].map(([step, title, desc]) => (
                 <div key={step} className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
                   <span className="gradient-text text-4xl font-black">{step}</span>
@@ -123,6 +126,9 @@ export default function DownloadPage() {
           <div className="mt-14 rounded-3xl border border-gray-100 bg-white p-8 shadow-sm">
             <h2 className="text-xl font-black text-slate-950">System requirements</h2>
             <p className="mt-3 text-sm text-gray-600">Chrome 88+, Edge 88+, Brave, Opera</p>
+            <p className="mt-2 text-sm text-gray-500">
+              Pinning is optional, but recommended for one-click access.
+            </p>
             <Link href="/welcome" className="btn-secondary mt-6">View onboarding guide</Link>
           </div>
         </div>

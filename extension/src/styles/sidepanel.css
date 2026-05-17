@@ -6,14 +6,51 @@
   line-height: 1.5;
 }
 
+html,
 body {
   margin: 0;
   min-height: 100vh;
-  font-size: 14px;
-  line-height: 1.5;
+  min-height: 100dvh;
+  background-color: #eef4fb;
   background:
     radial-gradient(circle at top left, rgba(14, 165, 233, 0.18), transparent 28%),
     linear-gradient(180deg, #f8fbff 0%, #eef4fb 100%);
+  overscroll-behavior: none;
+}
+
+body,
+#root {
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+body {
+  font-size: 14px;
+  line-height: 1.5;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: none;
+}
+
+#root {
+  position: relative;
+  isolation: isolate;
+  background-color: #eef4fb;
+  background:
+    radial-gradient(circle at top left, rgba(14, 165, 233, 0.18), transparent 28%),
+    linear-gradient(180deg, #f8fbff 0%, #eef4fb 100%);
+}
+
+#root::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background-color: #eef4fb;
+  background:
+    radial-gradient(circle at top left, rgba(14, 165, 233, 0.18), transparent 28%),
+    linear-gradient(180deg, #f8fbff 0%, #eef4fb 100%);
+  z-index: -1;
+  pointer-events: none;
 }
 
 *,
@@ -23,11 +60,64 @@ body {
 }
 
 .sidepanel-shell {
+  position: relative;
   padding: 14px;
   display: grid;
   gap: 12px;
+  min-height: 100vh;
+  min-height: 100dvh;
+  align-content: start;
   max-width: 100vw;
   overflow-x: hidden;
+  background: transparent;
+}
+
+.sidepanel-shell > * {
+  min-width: 0;
+  align-self: start;
+}
+
+.sidepanel-shell--auth {
+  min-height: 100vh;
+  align-content: start;
+}
+
+.auth-hero-card {
+  min-height: unset;
+  max-height: none;
+}
+
+.auth-card {
+  display: grid;
+  gap: 14px;
+}
+
+.auth-sidepanel-form {
+  display: grid;
+  gap: 12px;
+}
+
+.auth-submit-button {
+  border: 0;
+  border-radius: 14px;
+  padding: 11px 14px;
+  background: #0f172a;
+  color: #f8fafc;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.auth-submit-button:disabled {
+  opacity: 0.7;
+  cursor: wait;
+}
+
+.auth-secondary-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
 }
 
 .trader-pulse,
@@ -225,29 +315,16 @@ body {
   position: relative;
 }
 
-.tabs-row {
-  display: flex;
-  gap: 2px;
-  overflow-x: auto;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-  position: relative;
-  padding-right: 30px;
-  padding-bottom: 2px;
-  -webkit-overflow-scrolling: touch;
+.tabs-fade-hint {
+  display: none;
 }
 
-.tabs-row::-webkit-scrollbar { display: none; }
-
-.tabs-fade-hint {
-  position: absolute;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  width: 40px;
-  background: linear-gradient(to right, transparent, white);
-  pointer-events: none;
-  z-index: 1;
+.tabs-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  overflow-x: visible;
+  padding-bottom: 2px;
 }
 
 .tab-button,
@@ -917,6 +994,9 @@ body {
   padding: 0;
   display: grid;
   gap: 10px;
+  align-content: start;
+  align-self: start;
+  min-height: 0;
 }
 
 .behavioral-warnings-section {
@@ -1337,11 +1417,13 @@ body {
 }
 
 .mkt-mover-row {
-  display: flex;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  column-gap: 8px;
   align-items: center;
   padding: 5px 0;
   border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+  min-width: 0;
 }
 
 .mkt-mover-row:last-child {
@@ -1349,7 +1431,10 @@ body {
 }
 
 .mkt-mover-sym {
-  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-size: 12px;
   font-weight: 600;
   color: #0f172a;
@@ -1358,7 +1443,7 @@ body {
 .mkt-mover-price {
   font-size: 12px;
   color: #475569;
-  margin-right: 8px;
+  white-space: nowrap;
   font-feature-settings: "tnum";
   font-variant-numeric: tabular-nums;
 }
@@ -1366,16 +1451,19 @@ body {
 .mkt-mover-pct {
   font-size: 12px;
   font-weight: 700;
-  min-width: 58px;
+  min-width: 52px;
   text-align: right;
+  white-space: nowrap;
 }
 
 .mkt-global-row {
-  display: flex;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  column-gap: 8px;
   align-items: center;
   padding: 5px 0;
   border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+  min-width: 0;
 }
 
 .mkt-global-row:last-child {
@@ -1387,7 +1475,10 @@ body {
 }
 
 .mkt-global-label {
-  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-size: 12px;
   color: #334155;
   font-weight: 500;
@@ -1397,7 +1488,7 @@ body {
   font-size: 12px;
   color: #0f172a;
   font-weight: 600;
-  margin-right: 8px;
+  white-space: nowrap;
   font-feature-settings: "tnum";
   font-variant-numeric: tabular-nums;
 }
@@ -1407,6 +1498,7 @@ body {
   font-weight: 700;
   min-width: 55px;
   text-align: right;
+  white-space: nowrap;
 }
 
 .mkt-fiidii-bar-row {
@@ -2757,7 +2849,8 @@ body {
 }
 
 .account-card-header {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   justify-content: space-between;
   gap: 12px;
   align-items: flex-start;
@@ -2765,6 +2858,7 @@ body {
 
 .account-email {
   margin: 4px 0 0;
+  overflow-wrap: anywhere;
 }
 
 .account-badge {
@@ -2805,6 +2899,7 @@ body {
   align-items: baseline;
   padding-bottom: 10px;
   border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+  min-width: 0;
 }
 
 .account-metric:last-child {
@@ -2815,12 +2910,16 @@ body {
 .account-metric-label {
   color: #64748b;
   font-size: 12px;
+  min-width: 0;
 }
 
 .account-metric strong {
   color: #0f172a;
   font-size: 14px;
   font-weight: 700;
+  min-width: 0;
+  text-align: right;
+  overflow-wrap: anywhere;
 }
 
 /* Skeleton shimmer */

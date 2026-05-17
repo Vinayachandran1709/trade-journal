@@ -67,6 +67,58 @@ function sortPatterns(patterns: PatternResponse[]): PatternResponse[] {
   return [...patterns].sort((a, b) => (order[a.severity] ?? 99) - (order[b.severity] ?? 99));
 }
 
+function normalizePatternsEnvelope(value: unknown): PatternsEnvelope | null {
+  if (!value || typeof value !== "object") {
+    return null;
+  }
+
+  const record = value as Partial<PatternsEnvelope>;
+  return {
+    patterns: Array.isArray(record.patterns) ? record.patterns : [],
+    total_completed_trades:
+      typeof record.total_completed_trades === "number" ? record.total_completed_trades : 0,
+    threshold: typeof record.threshold === "number" ? record.threshold : 20,
+    unlocked: Boolean(record.unlocked),
+  };
+}
+
+function normalizeAnalyticsSummary(value: unknown): AnalyticsSummaryResponse | null {
+  if (!value || typeof value !== "object") {
+    return null;
+  }
+
+  const record = value as Partial<AnalyticsSummaryResponse>;
+  return {
+    total_trades: typeof record.total_trades === "number" ? record.total_trades : 0,
+    win_rate: typeof record.win_rate === "number" ? record.win_rate : 0,
+    total_pnl: typeof record.total_pnl === "number" ? record.total_pnl : 0,
+    avg_pnl_per_trade:
+      typeof record.avg_pnl_per_trade === "number" ? record.avg_pnl_per_trade : 0,
+    best_trade:
+      record.best_trade && typeof record.best_trade === "object"
+        ? {
+            symbol: record.best_trade.symbol ?? null,
+            pnl: typeof record.best_trade.pnl === "number" ? record.best_trade.pnl : null,
+            exit_date:
+              typeof record.best_trade.exit_date === "string" ? record.best_trade.exit_date : null,
+          }
+        : { symbol: null, pnl: null, exit_date: null },
+    worst_trade:
+      record.worst_trade && typeof record.worst_trade === "object"
+        ? {
+            symbol: record.worst_trade.symbol ?? null,
+            pnl: typeof record.worst_trade.pnl === "number" ? record.worst_trade.pnl : null,
+            exit_date:
+              typeof record.worst_trade.exit_date === "string" ? record.worst_trade.exit_date : null,
+          }
+        : { symbol: null, pnl: null, exit_date: null },
+    avg_holding_days: typeof record.avg_holding_days === "number" ? record.avg_holding_days : 0,
+    most_traded_symbol:
+      typeof record.most_traded_symbol === "string" ? record.most_traded_symbol : null,
+    monthly_pnl: Array.isArray(record.monthly_pnl) ? record.monthly_pnl : [],
+  };
+}
+
 function formatStatValue(value: unknown): string {
   if (typeof value === "number") {
     return formatCount(value);
@@ -286,9 +338,11 @@ export default function InsightsTab({
         storageGet<AnalyticsSummaryResponse>(CACHED_INSIGHTS_SUMMARY_KEY).catch(() => null),
       ]);
       if (!active) return;
-      if (cachedPatterns) setPatternsData(cachedPatterns);
-      if (cachedSummary) setSummary(cachedSummary);
-      setLoading(!cachedPatterns);
+      const safeCachedPatterns = normalizePatternsEnvelope(cachedPatterns);
+      const safeCachedSummary = normalizeAnalyticsSummary(cachedSummary);
+      if (safeCachedPatterns) setPatternsData(safeCachedPatterns);
+      if (safeCachedSummary) setSummary(safeCachedSummary);
+      setLoading(!safeCachedPatterns);
 
       try {
         const token = await getAuthToken();
@@ -302,12 +356,18 @@ export default function InsightsTab({
         ]);
 
         if (active) {
-          setPatternsData(patternsResponse);
-          setSummary(summaryResponse);
+          setPatternsData(normalizePatternsEnvelope(patternsResponse));
+          setSummary(normalizeAnalyticsSummary(summaryResponse));
           setError(null);
         }
-        void storageSet(CACHED_INSIGHTS_PATTERNS_KEY, patternsResponse).catch(() => undefined);
-        void storageSet(CACHED_INSIGHTS_SUMMARY_KEY, summaryResponse).catch(() => undefined);
+        void storageSet(
+          CACHED_INSIGHTS_PATTERNS_KEY,
+          normalizePatternsEnvelope(patternsResponse)
+        ).catch(() => undefined);
+        void storageSet(
+          CACHED_INSIGHTS_SUMMARY_KEY,
+          normalizeAnalyticsSummary(summaryResponse)
+        ).catch(() => undefined);
       } catch (loadError) {
         if (active) {
           setError(loadError instanceof Error ? loadError.message : "Unable to load insights.");
@@ -341,11 +401,17 @@ export default function InsightsTab({
         getPatterns(token),
         getAnalyticsSummary(token),
       ]);
-      setPatternsData(patternsResponse);
-      setSummary(summaryResponse);
+      setPatternsData(normalizePatternsEnvelope(patternsResponse));
+      setSummary(normalizeAnalyticsSummary(summaryResponse));
       setError(null);
-      void storageSet(CACHED_INSIGHTS_PATTERNS_KEY, patternsResponse).catch(() => undefined);
-      void storageSet(CACHED_INSIGHTS_SUMMARY_KEY, summaryResponse).catch(() => undefined);
+      void storageSet(
+        CACHED_INSIGHTS_PATTERNS_KEY,
+        normalizePatternsEnvelope(patternsResponse)
+      ).catch(() => undefined);
+      void storageSet(
+        CACHED_INSIGHTS_SUMMARY_KEY,
+        normalizeAnalyticsSummary(summaryResponse)
+      ).catch(() => undefined);
     } catch (refreshError) {
       setError(
         refreshError instanceof Error

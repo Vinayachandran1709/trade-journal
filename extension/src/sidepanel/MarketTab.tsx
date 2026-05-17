@@ -90,6 +90,116 @@ const SECTOR_MAP: Record<string, string> = {
   ITC: "FMCG",
 };
 
+function asFiniteNumber(value: unknown): number | null {
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+function normalizeMarketDashboardData(payload: MarketDashboardData): MarketDashboardData {
+  const indices = typeof payload.indices === "object" && payload.indices !== null ? payload.indices : {};
+  const globalCues =
+    typeof payload.global_cues === "object" && payload.global_cues !== null ? payload.global_cues : {};
+  const sectorPerformance =
+    typeof payload.sector_performance === "object" && payload.sector_performance !== null
+      ? payload.sector_performance
+      : {};
+  const confidenceReasons = Array.isArray(payload.confidence?.reasons)
+    ? payload.confidence?.reasons.filter((reason): reason is string => typeof reason === "string")
+    : [];
+
+  return {
+    ...payload,
+    indices,
+    top_gainers: Array.isArray(payload.top_gainers) ? payload.top_gainers : [],
+    top_losers: Array.isArray(payload.top_losers) ? payload.top_losers : [],
+    global_cues: globalCues,
+    sector_performance: sectorPerformance,
+    vix: {
+      value: asFiniteNumber(payload.vix?.value),
+      change: asFiniteNumber(payload.vix?.change),
+      context: typeof payload.vix?.context === "string" ? payload.vix.context : "Unknown",
+    },
+    fii_dii: payload.fii_dii
+      ? {
+          fii_net: asFiniteNumber(payload.fii_dii.fii_net),
+          dii_net: asFiniteNumber(payload.fii_dii.dii_net),
+          date: typeof payload.fii_dii.date === "string" ? payload.fii_dii.date : null,
+          source: typeof payload.fii_dii.source === "string" ? payload.fii_dii.source : undefined,
+        }
+      : null,
+    regime: {
+      nifty_trend:
+        payload.regime?.nifty_trend === "Bullish" ||
+        payload.regime?.nifty_trend === "Bearish" ||
+        payload.regime?.nifty_trend === "Sideways"
+          ? payload.regime.nifty_trend
+          : "Sideways",
+      nifty_vs_vwap:
+        payload.regime?.nifty_vs_vwap === "Above VWAP" ||
+        payload.regime?.nifty_vs_vwap === "Below VWAP" ||
+        payload.regime?.nifty_vs_vwap === "At VWAP"
+          ? payload.regime.nifty_vs_vwap
+          : "At VWAP",
+      breadth: {
+        advancing: asFiniteNumber(payload.regime?.breadth?.advancing) ?? 0,
+        declining: asFiniteNumber(payload.regime?.breadth?.declining) ?? 0,
+        pct_advancing: asFiniteNumber(payload.regime?.breadth?.pct_advancing) ?? 50,
+      },
+      interpretation:
+        typeof payload.regime?.interpretation === "string" ? payload.regime.interpretation : "",
+    },
+    personalized: payload.personalized
+      ? {
+          preferred_sectors: Array.isArray(payload.personalized.preferred_sectors)
+            ? payload.personalized.preferred_sectors
+            : [],
+          recent_symbols: Array.isArray(payload.personalized.recent_symbols)
+            ? payload.personalized.recent_symbols.filter(
+                (symbol): symbol is string => typeof symbol === "string"
+              )
+            : [],
+          open_positions: Array.isArray(payload.personalized.open_positions)
+            ? payload.personalized.open_positions
+            : [],
+        }
+      : null,
+    confidence: payload.confidence
+      ? {
+          score: asFiniteNumber(payload.confidence.score) ?? 0,
+          level: typeof payload.confidence.level === "string" ? payload.confidence.level : "LOW",
+          reasons: confidenceReasons,
+        }
+      : null,
+  };
+}
+
+function normalizeWatchlistResponse(value: WatchlistResponse | null): WatchlistResponse | null {
+  if (!value || typeof value !== "object") {
+    return null;
+  }
+
+  return {
+    recent_symbols: Array.isArray(value.recent_symbols) ? value.recent_symbols : [],
+    preferred_sectors: Array.isArray(value.preferred_sectors) ? value.preferred_sectors : [],
+    sector_performance:
+      typeof value.sector_performance === "object" && value.sector_performance !== null
+        ? value.sector_performance
+        : {},
+    recent_stock_quotes: Array.isArray(value.recent_stock_quotes) ? value.recent_stock_quotes : [],
+  };
+}
+
+function normalizeCompletedTrades(value: unknown): CompletedTradeListItem[] {
+  return Array.isArray(value) ? (value as CompletedTradeListItem[]) : [];
+}
+
+function normalizeDismissedAlerts(value: unknown): string[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value.filter((item): item is string => typeof item === "string");
+}
+
 function formatNumber(value: number | null | undefined): string {
   return value == null ? "--" : NUMBER_FORMATTER.format(value);
 }
@@ -602,7 +712,7 @@ export default function MarketTab({
         storageGet<boolean>(getSeenAlertsKey(todayKey)).catch(() => false),
       ]);
       if (!active) return;
-      setDismissedAlerts(storedDismissed ?? []);
+      setDismissedAlerts(normalizeDismissedAlerts(storedDismissed));
       setSeenTimeWarning(Boolean(storedSeen));
     }
     void hydrateAlertState();
@@ -635,17 +745,21 @@ export default function MarketTab({
       ]);
 
       if (mountedRef.current) {
-        setData(dashboardResult);
-        setWatchlist(watchlistResult);
+        const safeDashboard = normalizeMarketDashboardData(dashboardResult);
+        setData(safeDashboard);
+        setWatchlist(normalizeWatchlistResponse(watchlistResult));
         setPatternsEnvelope(patternsResult);
-        setCompletedTrades(completedTradesResult);
+        setCompletedTrades(normalizeCompletedTrades(completedTradesResult));
         setError(null);
         setLastFetchedAtMs(Date.now());
       }
 
-      void storageSet(LAST_MARKET_DATA_KEY, dashboardResult).catch(() => undefined);
+      void storageSet(LAST_MARKET_DATA_KEY, normalizeMarketDashboardData(dashboardResult)).catch(() => undefined);
       if (watchlistResult) {
-        void storageSet(LAST_MARKET_WATCHLIST_KEY, watchlistResult).catch(() => undefined);
+        void storageSet(
+          LAST_MARKET_WATCHLIST_KEY,
+          normalizeWatchlistResponse(watchlistResult)
+        ).catch(() => undefined);
       }
     } catch (nextError) {
       if (mountedRef.current) {
@@ -688,12 +802,13 @@ export default function MarketTab({
       if (!mountedRef.current) return;
 
       if (cachedDashboard) {
-        setData(cachedDashboard);
+        const safeDashboard = normalizeMarketDashboardData(cachedDashboard);
+        setData(safeDashboard);
         setLastFetchedAtMs(new Date(cachedDashboard.last_updated).getTime() || Date.now());
         setLoading(false);
       }
       if (cachedWatchlist) {
-        setWatchlist(cachedWatchlist);
+        setWatchlist(normalizeWatchlistResponse(cachedWatchlist));
       }
 
       const token = await getAuthToken().catch(() => null);
@@ -723,7 +838,10 @@ export default function MarketTab({
     };
   }, [isSignedIn, onDataChange]);
 
-  const yourStocks = (watchlist?.recent_stock_quotes ?? []).slice(0, 6);
+  const yourStocks = (Array.isArray(watchlist?.recent_stock_quotes)
+    ? watchlist.recent_stock_quotes
+    : []
+  ).slice(0, 6);
 
   useEffect(() => {
     let active = true;
@@ -846,7 +964,9 @@ export default function MarketTab({
     return null;
   }
 
-  const preferredSectors = new Set(watchlist?.preferred_sectors ?? []);
+  const preferredSectors = new Set(
+    Array.isArray(watchlist?.preferred_sectors) ? watchlist.preferred_sectors : []
+  );
   const sectorPerformance = Object.keys(data.sector_performance || {}).length
     ? data.sector_performance
     : watchlist?.sector_performance ?? {};

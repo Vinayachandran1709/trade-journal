@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
+    "clean": "powershell -NoProfile -ExecutionPolicy Bypass -Command \"if (Test-Path '.next') { Remove-Item -LiteralPath '.next' -Recurse -Force -ErrorAction SilentlyContinue }\"",
+    "predev": "npm run clean",
+    "prebuild": "npm run clean",
     "dev": "next dev",
     "build": "next build",
     "start": "next start",

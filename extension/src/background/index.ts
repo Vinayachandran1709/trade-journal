@@ -1,4 +1,4 @@
-import { AUTH_TOKEN_KEY, clearAuthToken, getAuthToken } from "../shared/auth";
+import { AUTH_TOKEN_KEY, clearAuthToken, getAuthToken, setAuthToken } from "../shared/auth";
 import {
   storageGet,
   storageGetAll,
@@ -21,9 +21,12 @@ import {
   type StockDictionaryCacheEntry,
   type StockDictionaryResponse,
 } from "../shared/stockDictionary";
-import type { BackgroundResponse, ExtensionMessage } from "../shared/types";
+import type {
+  BackgroundResponse,
+  ExtensionMessage,
+  ExternalAuthHandoffMessage,
+} from "../shared/types";
 
-const POPUP_PATH = "popup.html";
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "http://localhost:8000").replace(/\/$/, "");
 const WEB_APP_URL = (import.meta.env.VITE_WEB_APP_URL || "https://indiacircle.in").replace(/\/$/, "");
 const TICKER_INTEL_TIMEOUT_MS = 8_000;
@@ -54,6 +57,12 @@ const PREWARM_TICKERS = [
   "NTPC",
 ] as const;
 const TICKER_HIGHLIGHTER_MATCH_PATTERNS = ["https://*/*", "http://*/*"] as const;
+const TRUSTED_EXTERNAL_ORIGINS = new Set([
+  "https://indiacircle.in",
+  "https://www.indiacircle.in",
+  "http://localhost:3000",
+  "http://127.0.0.1:3000",
+]);
 
 interface TickerCacheEntry {
   data: TickerIntelResponse;
@@ -93,8 +102,13 @@ chrome.storage.onChanged.addListener((changes, areaName) => {
   void configureActionSurface(nextToken);
 });
 
-chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
-  void handleMessage(message as ExtensionMessage, sendResponse);
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  void handleMessage(message as ExtensionMessage, sender, sendResponse);
+  return true;
+});
+
+chrome.runtime.onMessageExternal.addListener((message, sender, sendResponse) => {
+  void handleExternalMessage(message as ExternalAuthHandoffMessage, sender, sendResponse);
   return true;
 });
 
@@ -105,15 +119,13 @@ async function syncActionSurface(): Promise<void> {
 }
 
 async function configureActionSurface(token: string | null): Promise<void> {
-  await chrome.action.setPopup({
-    popup: POPUP_PATH,
-  });
+  await chrome.action.setPopup({ popup: "" });
 
   await chrome.action.setBadgeBackgroundColor({ color: "#0f766e" });
 
   await chrome.sidePanel
     .setPanelBehavior({
-      openPanelOnActionClick: false,
+      openPanelOnActionClick: true,
     })
     .catch(() => undefined);
 
@@ -123,12 +135,142 @@ async function configureActionSurface(token: string | null): Promise<void> {
   }
 }
 
+function getTrustedExternalOrigin(url?: string): string | null {
+  if (!url) {
+    return null;
+  }
+
+  try {
+    const origin = new URL(url).origin;
+    return TRUSTED_EXTERNAL_ORIGINS.has(origin) ? origin : null;
+  } catch {
+    return null;
+  }
+}
+
+async function openSidePanelForSenderWindow(
+  sender: chrome.runtime.MessageSender
+): Promise<boolean> {
+  const tabId = sender.tab?.id;
+  const windowId = sender.tab?.windowId;
+
+  if (typeof tabId === "number") {
+    try {
+      await chrome.sidePanel.open({ tabId });
+      return true;
+    } catch {
+      // Fall back to window-level opening below.
+    }
+  }
+
+  if (typeof windowId === "number") {
+    try {
+      await chrome.sidePanel.open({ windowId });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  try {
+    const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (typeof activeTab?.id === "number") {
+      await chrome.sidePanel.open({ tabId: activeTab.id });
+      return true;
+    }
+    if (typeof activeTab?.windowId !== "number") {
+      return false;
+    }
+    await chrome.sidePanel.open({ windowId: activeTab.windowId });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function handleExternalMessage(
+  message: ExternalAuthHandoffMessage,
+  sender: chrome.runtime.MessageSender,
+  sendResponse: (response: BackgroundResponse) => void
+): Promise<void> {
+  if (message?.type !== "indiacircle:auth-handoff") {
+    sendResponse({ ok: false, error: "Unsupported external request." });
+    return;
+  }
+
+  const trustedOrigin = getTrustedExternalOrigin(sender.url);
+  if (!trustedOrigin) {
+    sendResponse({ ok: false, error: "Untrusted website. Open IndiaCircle from the official site." });
+    return;
+  }
+
+  const token = message.token?.trim();
+  if (!token) {
+    sendResponse({ ok: false, error: "Missing session. Please log in on the website first." });
+    return;
+  }
+
+  try {
+    const sidePanelOpened = await openSidePanelForSenderWindow(sender);
+    const user = await fetchCurrentUser(token);
+    await setAuthToken(token);
+    await storageSet("cached_email", user.email);
+    await configureActionSurface(token);
+    sendResponse({
+      ok: true,
+      user,
+      userEmail: user.email,
+      sidePanelOpened,
+    });
+  } catch (error) {
+    await clearAuthToken();
+    await storageRemoveMany(["cached_email"]);
+    sendResponse({
+      ok: false,
+      error:
+        error instanceof Error
+          ? error.message
+          : `Unable to connect your extension from ${trustedOrigin}.`,
+    });
+  }
+}
+
 async function handleMessage(
   message: ExtensionMessage,
+  sender: chrome.runtime.MessageSender,
   sendResponse: (response: BackgroundResponse) => void
 ): Promise<void> {
   try {
     switch (message.type) {
+      case "website:auth-handoff": {
+        const trustedOrigin = getTrustedExternalOrigin(sender.tab?.url);
+        if (!trustedOrigin) {
+          sendResponse({
+            ok: false,
+            error: "Open the IndiaCircle welcome page in Chrome before launching the side panel.",
+          });
+          return;
+        }
+
+        const token = String(message.payload?.token ?? "").trim();
+        if (!token) {
+          sendResponse({ ok: false, error: "Missing session. Please log in first." });
+          return;
+        }
+
+        const sidePanelOpened = await openSidePanelForSenderWindow(sender);
+        const user = await fetchCurrentUser(token);
+        await setAuthToken(token);
+        await storageSet("cached_email", user.email);
+        await configureActionSurface(token);
+        sendResponse({
+          ok: true,
+          user,
+          userEmail: user.email,
+          sidePanelOpened,
+        });
+        return;
+      }
       case "auth:get-token": {
         const token = await getAuthToken();
         sendResponse({ ok: true, token });

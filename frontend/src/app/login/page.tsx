@@ -28,6 +28,8 @@ function LoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const justRegistered = searchParams.get("registered") === "1";
+  const redirectParam = searchParams.get("redirect");
+  const redirectPath = redirectParam && redirectParam.startsWith("/") ? redirectParam : "/dashboard";
 
   const [form, setForm] = useState({ email: "", password: "" });
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -36,10 +38,13 @@ function LoginContent() {
 
   useEffect(() => {
     router.prefetch("/dashboard");
-    if (isAuthenticated()) {
-      router.replace("/dashboard");
+    if (redirectPath !== "/dashboard") {
+      router.prefetch(redirectPath);
     }
-  }, [router]);
+    if (isAuthenticated()) {
+      router.replace(redirectPath);
+    }
+  }, [redirectPath, router]);
 
   const validate = () => {
     const e: Record<string, string> = {};
@@ -58,7 +63,7 @@ function LoginContent() {
     try {
       await login({ email: form.email, password: form.password });
       startTransition(() => {
-        router.push("/dashboard");
+        router.push(redirectPath);
       });
     } catch (err) {
       setApiError(err instanceof Error ? err.message : "Login failed");

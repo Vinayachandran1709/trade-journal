@@ -1,0 +1,20 @@
+
+> trade-journal-frontend@1.0.0 dev
+> next dev -p 3000
+
+  ▲ Next.js 14.2.21
+  - Local:        http://localhost:3000
+  - Environments: .env.local
+
+ ✓ Starting...
+ ✓ Ready in 7.3s
+ ○ Compiling /welcome ...
+ ✓ Compiled /welcome in 34.9s (528 modules)
+ GET /welcome 200 in 35530ms
+ GET /_next/static/webpack/86bd3fefbc0d99ff.webpack.hot-update.json 404 in 35831ms
+ GET /welcome 200 in 309ms
+ ○ Compiling /download ...
+ ✓ Compiled /download in 1397ms (522 modules)
+ ○ Compiling /dashboard ...
+ ✓ Compiled /dashboard in 990ms (523 modules)
+ ✓ Compiled in 5.1s (537 modules)
