@@ -129,7 +129,7 @@ def verify_payment(
             expires_at=(
                 current_user.subscription_expires_at.isoformat()
                 if current_user.subscription_expires_at
-                else _utcnow_naive().isoformat()
+                else utcnow_naive().isoformat()
             ),
         )
 

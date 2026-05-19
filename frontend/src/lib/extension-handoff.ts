@@ -174,15 +174,6 @@ export async function handoffWebsiteSessionToExtension(): Promise<ExtensionHando
     };
   }
 
-  const extensionId = getExtensionId();
-  if (!extensionId) {
-    return {
-      status: "missing_extension_id",
-      message: "Extension setup is not configured in this environment yet.",
-      webstoreUrl: getWebStoreUrl(),
-    };
-  }
-
   const runtime = getChromeRuntime();
   if (!runtime) {
     return {
@@ -194,9 +185,20 @@ export async function handoffWebsiteSessionToExtension(): Promise<ExtensionHando
 
   try {
     const bridgeResponse = await attemptWebsiteBridgeHandoff(token);
-    const response =
-      bridgeResponse ??
-      (await new Promise<ExternalAuthHandoffResponse>((resolve, reject) => {
+    let response = bridgeResponse;
+
+    if (!response) {
+      const extensionId = getExtensionId();
+      if (!extensionId) {
+        return {
+          status: "missing_extension_id",
+          message:
+            "Extension was not detected on this page yet. Reload the welcome page after the extension is loaded, or set NEXT_PUBLIC_CHROME_EXTENSION_ID for direct handoff.",
+          webstoreUrl: getWebStoreUrl(),
+        };
+      }
+
+      response = await new Promise<ExternalAuthHandoffResponse>((resolve, reject) => {
         runtime.sendMessage(
           extensionId,
           { type: "indiacircle:auth-handoff", token, source: "web" },
@@ -209,7 +211,8 @@ export async function handoffWebsiteSessionToExtension(): Promise<ExtensionHando
             resolve(nextResponse ?? {});
           }
         );
-      }));
+      });
+    }
 
     if (!response.ok) {
       return {

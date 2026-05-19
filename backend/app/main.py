@@ -47,6 +47,15 @@ async def root():
     return {"status": "ok", "message": "Trade Intelligence Platform API"}
 
 
+@app.get("/api")
+async def api_root():
+    return {
+        "status": "ok",
+        "message": "Trade Intelligence Platform API",
+        "docs": "/docs",
+    }
+
+
 @app.on_event("startup")
 def warm_database_connection() -> None:
     try:

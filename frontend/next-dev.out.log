@@ -32,3 +32,4 @@
  ✓ Compiled /_error in 3.7s (748 modules)
  GET /dashboard 404 in 3964ms
  GET / 404 in 56ms
+ ✓ Compiled in 4.1s (759 modules)
