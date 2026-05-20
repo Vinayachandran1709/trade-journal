@@ -1,10 +1,12 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import {
   analyzePatterns,
+  fetchCompletedTrades,
   getAnalyticsSummary,
   getPatterns,
   type AnalyticsSummaryResponse,
+  type CompletedTradeListItem,
   type PatternResponse,
   type PatternsEnvelope,
 } from "../shared/api";
@@ -14,10 +16,70 @@ import SkeletonLine from "./SkeletonLine";
 
 const CACHED_INSIGHTS_PATTERNS_KEY = "cachedInsightsPatterns";
 const CACHED_INSIGHTS_SUMMARY_KEY = "cachedInsightsSummary";
+const WEEKDAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as const;
 
 const CURRENCY_FORMATTER = new Intl.NumberFormat("en-IN", {
   maximumFractionDigits: 0,
 });
+
+const SHORT_DATE_FORMATTER = new Intl.DateTimeFormat("en-IN", {
+  day: "numeric",
+  month: "short",
+});
+
+type PatternMeta = {
+  pattern: PatternResponse;
+  impact: { amount: number; text: string } | null;
+  confidence: { className: string; text: string };
+  statusPill: string;
+  exampleTrades: CompletedTradeListItem[];
+  isCosting: boolean;
+  isHelping: boolean;
+};
+
+type AvoidableLossesSummary =
+  | {
+      kind: "locked";
+      message: string;
+    }
+  | {
+      kind: "empty";
+      message: string;
+      detail: string;
+    }
+  | {
+      kind: "ready";
+      amount: number;
+      leak: string;
+      rule: string;
+    };
+
+type DisciplineScoreSummary =
+  | {
+      kind: "locked";
+      message: string;
+    }
+  | {
+      kind: "ready";
+      score: number;
+      label: string;
+      note: string;
+    };
+
+type ImprovementTrendSummary =
+  | {
+      kind: "not-enough-data";
+      title: string;
+      note: string;
+    }
+  | {
+      kind: "ready";
+      title: string;
+      note: string;
+      recentWinRate: string;
+      previousWinRate: string;
+      recentAvgPnl: string;
+    };
 
 function formatCurrency(value: number | null | undefined): string {
   if (value == null || !Number.isFinite(value)) {
@@ -40,14 +102,29 @@ function formatCount(value: number | null | undefined): string {
   return CURRENCY_FORMATTER.format(value);
 }
 
+function formatSignedCurrency(value: number | null | undefined): string {
+  if (value == null || !Number.isFinite(value)) {
+    return "₹--";
+  }
+  return `${value >= 0 ? "+" : "-"}₹${CURRENCY_FORMATTER.format(Math.abs(value))}`;
+}
+
+function formatExampleTradeDate(value: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+  return SHORT_DATE_FORMATTER.format(date);
+}
+
 function severityIcon(severity: string): string {
   switch (severity) {
     case "high":
-      return "🔴";
+      return "●";
     case "medium":
-      return "🟠";
+      return "◐";
     default:
-      return "🟢";
+      return "○";
   }
 }
 
@@ -145,31 +222,70 @@ function formatPatternStat(key: string, value: unknown): string {
   return formatCount(value);
 }
 
+function getPatternSampleSize(pattern: PatternResponse): number {
+  return Number(pattern.data?.sample_size ?? 0);
+}
+
+function isSoftConfidencePattern(pattern: PatternResponse, totalCompletedTrades: number): boolean {
+  const sampleSize = getPatternSampleSize(pattern);
+  return totalCompletedTrades < 30 || sampleSize < 30;
+}
+
 function getConfidenceMeta(pattern: PatternResponse) {
-  const sampleSize = Number(pattern.data?.sample_size ?? 0);
+  const sampleSize = getPatternSampleSize(pattern);
   if (sampleSize > 30) {
     return {
       className: "confidence-high",
-      text: `High confidence · ${sampleSize} trades analyzed`,
+      text: `Higher confidence · ${sampleSize} trades analyzed`,
     };
   }
   if (sampleSize >= 20) {
     return {
       className: "confidence-moderate",
-      text: `Moderate confidence · ${sampleSize} trades`,
+      text: `Early signal · ${sampleSize} trades`,
     };
   }
   return {
     className: "confidence-low",
-    text: `Low sample size · ${sampleSize} trades — pattern may change`,
+    text: `Worth monitoring · ${sampleSize} trades`,
   };
+}
+
+function getExplicitImpactAmount(pattern: PatternResponse): number | null {
+  const keys = [
+    "estimated_monthly_impact",
+    "monthly_impact",
+    "impact",
+    "estimatedImpact",
+  ] as const;
+
+  const source = pattern as PatternResponse & Record<string, unknown>;
+  for (const key of keys) {
+    const topLevel = source[key];
+    if (typeof topLevel === "number" && Number.isFinite(topLevel)) {
+      return topLevel;
+    }
+    const nested = pattern.data?.[key];
+    if (typeof nested === "number" && Number.isFinite(nested)) {
+      return nested;
+    }
+  }
+  return null;
 }
 
 function estimateImpact(
   pattern: PatternResponse,
   summary: AnalyticsSummaryResponse | null
 ): { amount: number; text: string } | null {
-  const sampleSize = Number(pattern.data?.sample_size ?? 0);
+  const explicitImpact = getExplicitImpactAmount(pattern);
+  if (explicitImpact != null) {
+    return {
+      amount: explicitImpact,
+      text: `Estimated monthly impact: ${formatCurrency(explicitImpact)}`,
+    };
+  }
+
+  const sampleSize = getPatternSampleSize(pattern);
   const avgPnl = summary?.avg_pnl_per_trade ?? 0;
 
   switch (pattern.pattern_type) {
@@ -185,7 +301,7 @@ function estimateImpact(
       const saved = Math.max(0, gap * Math.max(Math.abs(avgPnl), 1) * Math.max(sampleSize, 1));
       return {
         amount: saved,
-        text: `If you had avoided your worst hours, you would have saved approximately ${formatCurrency(saved)}`,
+        text: `Estimated monthly impact: ${formatCurrency(saved)}`,
       };
     }
     case "holding_period": {
@@ -238,55 +354,461 @@ function estimateImpact(
   }
 }
 
-function getRecommendation(pattern: PatternResponse): string {
+function getSoftLead(pattern: PatternResponse, totalCompletedTrades: number): string {
+  return isSoftConfidencePattern(pattern, totalCompletedTrades)
+    ? "Early data suggests"
+    : "Your recent data shows";
+}
+
+function getTraderFacingPatternDescription(
+  pattern: PatternResponse,
+  totalCompletedTrades: number
+): string {
+  const lead = getSoftLead(pattern, totalCompletedTrades);
   switch (pattern.pattern_type) {
-    case "time_of_day":
-      return `Consider reducing position size during ${String(pattern.data?.worst_bucket ?? "weaker hours")} or limiting trades to ${String(pattern.data?.best_bucket ?? "your stronger hours")}.`;
     case "day_of_week":
-      return `Your data suggests ${String(pattern.data?.best_bucket ?? "some weekdays")} are stronger. Consider being more selective on ${String(pattern.data?.worst_bucket ?? "weaker days")}.`;
+      return `${lead} your results are not evenly distributed across weekdays. That means selectivity matters more on ${String(pattern.data?.worst_bucket ?? "weaker days")}.`;
     case "holding_period":
-      return `Your most profitable trades are held for ${String(pattern.data?.best_bucket ?? "your strongest bucket")}. Consider adjusting your holding strategy.`;
+      return `${lead} ${String(pattern.data?.best_bucket ?? "shorter")} holds are doing more of the work. ${String(pattern.data?.worst_bucket ?? "weaker hold times")} need review.`;
+    case "time_of_day":
+      return `${lead} your results change meaningfully by trading window. ${String(pattern.data?.worst_bucket ?? "weaker hours")} need tighter execution quality than ${String(pattern.data?.best_bucket ?? "stronger hours")}.`;
     case "revenge_trading":
-      return "After a loss, consider waiting at least 30 minutes before entering a new trade.";
+      return `${lead} follow-up trades after losses are hurting execution quality. This is worth monitoring after difficult sessions.`;
     case "overtrading":
-      return "On days with elevated trade count, your profitability drops significantly. Consider setting a daily trade limit.";
+      return `${lead} extra trades are reducing your edge. More activity is not translating into better control.`;
     case "sector_concentration":
-      return "Diversifying across sectors could reduce your concentration risk.";
+      return `${lead} one sector is carrying too much of your risk. That can distort the whole week when one pocket turns weak.`;
     case "winning_streak_tilt":
-      return "After winning streaks, consider maintaining your normal position size instead of increasing it.";
+      return `${lead} wins may be nudging you away from your normal process. This is worth monitoring when confidence rises quickly.`;
     case "losing_streak_tilt":
-      return "During losing streaks, your data shows losses compound. Consider reducing size or taking a break.";
+      return `${lead} losses may be carrying into the next decision. Tighter review can help protect execution quality.`;
     default:
-      return "Your data suggests a repeatable pattern here. Consider tracking it more closely in your journal.";
+      return pattern.description;
   }
 }
 
-function getWeeklyFocusCopy(pattern: PatternResponse): string | null {
+function getRecommendation(pattern: PatternResponse, totalCompletedTrades: number): string {
+  const softEnding = isSoftConfidencePattern(pattern, totalCompletedTrades)
+    ? " This is worth monitoring as more trades come in."
+    : "";
+
+  switch (pattern.pattern_type) {
+    case "time_of_day":
+      return `Reduce activity during ${String(pattern.data?.worst_bucket ?? "weaker hours")} and keep more decisions inside ${String(pattern.data?.best_bucket ?? "your stronger hours")}.${softEnding}`;
+    case "day_of_week":
+      return `Be more selective on ${String(pattern.data?.worst_bucket ?? "weaker days")} and review what is working on your stronger days.${softEnding}`;
+    case "holding_period":
+      return `Lean toward ${String(pattern.data?.best_bucket ?? "your stronger hold window")} and review trades that drift into ${String(pattern.data?.worst_bucket ?? "weaker hold times")}.${softEnding}`;
+    case "revenge_trading":
+      return `Pause after a loss before the next decision so frustration does not carry forward.${softEnding}`;
+    case "overtrading": {
+      const threshold = Math.max(1, Math.ceil(Number(pattern.data?.average_trades_per_day ?? 2) * 2));
+      return `Set a daily trade cap around ${threshold} so activity does not dilute your edge.${softEnding}`;
+    }
+    case "sector_concentration":
+      return `Review how much of your risk is tied to ${String(pattern.data?.sector ?? "one sector")} before adding more exposure there.${softEnding}`;
+    case "winning_streak_tilt":
+      return `Keep your normal size after a run of wins instead of pressing harder.${softEnding}`;
+    case "losing_streak_tilt":
+      return `Reduce size or step back when losses start clustering before taking the next trade.${softEnding}`;
+    default:
+      return `Review this behavior pattern in your journal and keep the rule simple.${softEnding}`;
+  }
+}
+
+function getWeeklyFocusCopy(pattern: PatternResponse, totalCompletedTrades: number): string | null {
   switch (pattern.pattern_type) {
     case "time_of_day":
       return `Limit entries during ${String(pattern.data?.worst_bucket ?? "your weaker hours")}.`;
     case "day_of_week":
-      return `Be more selective on ${String(pattern.data?.worst_bucket ?? "weaker days")}.`;
+      return `Be selective on ${String(pattern.data?.worst_bucket ?? "weaker days")}.`;
     case "revenge_trading":
-      return "After a loss, wait 30 minutes.";
+      return "Pause after a loss before re-entering.";
     case "overtrading": {
       const threshold = Math.max(
         1,
         Math.ceil(Number(pattern.data?.average_trades_per_day ?? 2) * 2)
       );
-      return `Max ${threshold} trades per day.`;
+      return `Stop after ${threshold} trades in a day.`;
     }
     case "sector_concentration":
-      return `Look for setups outside ${String(pattern.data?.sector ?? "one concentrated sector")}.`;
+      return `Review whether ${String(pattern.data?.sector ?? "one sector")} is dominating your risk.`;
     case "holding_period":
-      return `Target ${String(pattern.data?.best_bucket ?? "your strongest")} hold times.`;
+      return `Prefer ${String(pattern.data?.best_bucket ?? "your stronger")} hold times.`;
     case "winning_streak_tilt":
-      return "After 3 wins, keep normal sizing.";
+      return isSoftConfidencePattern(pattern, totalCompletedTrades)
+        ? "Monitor sizing after a run of wins."
+        : "Keep normal sizing after a run of wins.";
     case "losing_streak_tilt":
-      return "After 2 losses, halve your size.";
+      return "Cut size after losses start clustering.";
     default:
       return null;
   }
+}
+
+function getTraderFacingPatternTitle(pattern: PatternResponse): string {
+  switch (pattern.pattern_type) {
+    case "day_of_week":
+      return "Your best and worst trading days are clear";
+    case "holding_period":
+      return "Your holding-period sweet spot is visible";
+    case "time_of_day":
+      return "Some hours are costing you more";
+    case "revenge_trading":
+      return "Revenge trades are damaging your P&L";
+    case "overtrading":
+      return "Extra trades are reducing your edge";
+    case "sector_concentration":
+      return "One sector may be dominating your risk";
+    case "winning_streak_tilt":
+      return "Wins may be making you oversized";
+    case "losing_streak_tilt":
+      return "Losses may be triggering tilt";
+    default:
+      return pattern.title;
+  }
+}
+
+function isCostingPattern(pattern: PatternResponse, impact: { amount: number; text: string } | null): boolean {
+  const text = `${pattern.title} ${pattern.description} ${getTraderFacingPatternTitle(pattern)}`.toLowerCase();
+  const negativeTypes = new Set([
+    "revenge_trading",
+    "overtrading",
+    "losing_streak_tilt",
+    "winning_streak_tilt",
+    "time_of_day",
+    "day_of_week",
+    "holding_period",
+    "sector_concentration",
+  ]);
+
+  if (impact && impact.amount < 0) {
+    return true;
+  }
+  if (negativeTypes.has(pattern.pattern_type) && pattern.severity !== "low") {
+    return true;
+  }
+  return ["cost", "hurt", "damaging", "reducing", "loss", "weak"].some((term) => text.includes(term));
+}
+
+function isHelpingPattern(pattern: PatternResponse, impact: { amount: number; text: string } | null): boolean {
+  if (pattern.severity !== "low") {
+    return false;
+  }
+  if (impact && impact.amount > 0) {
+    return true;
+  }
+  const text = `${pattern.title} ${pattern.description}`.toLowerCase();
+  return ["sweet spot", "stronger", "best", "helping", "visible"].some((term) => text.includes(term));
+}
+
+function getPatternStatusPill(pattern: PatternResponse, impact: { amount: number; text: string } | null): string {
+  if (pattern.locked) {
+    return "Pro";
+  }
+  if (isCostingPattern(pattern, impact) && pattern.severity === "high") {
+    return "Costing money";
+  }
+  if (isHelpingPattern(pattern, impact)) {
+    return "Helping you";
+  }
+  return "Needs attention";
+}
+
+function getMainFocusPriority(pattern: PatternResponse, impact: { amount: number; text: string } | null): number {
+  const severityScore = pattern.severity === "high" ? 300 : pattern.severity === "medium" ? 200 : 100;
+  const negativeImpactScore =
+    impact && impact.amount < 0 ? Math.min(Math.abs(Math.round(impact.amount)), 9999) : 0;
+  return severityScore + negativeImpactScore;
+}
+
+function getMainFocusWhy(pattern: PatternResponse, totalCompletedTrades: number): string {
+  const softLead = isSoftConfidencePattern(pattern, totalCompletedTrades)
+    ? "So far, your data shows"
+    : "Your trade history shows";
+
+  switch (pattern.pattern_type) {
+    case "holding_period":
+      return `${softLead} holding time matters as much as entry quality. That makes exit discipline worth reviewing this week.`;
+    case "day_of_week":
+      return `${softLead} some weekdays are much less forgiving. That makes selectivity measurable, not just emotional.`;
+    case "time_of_day":
+      return `${softLead} your edge changes through the day. Better timing can improve execution quality without changing strategy.`;
+    case "revenge_trading":
+      return `${softLead} follow-up trades after losses are reducing control. A pause rule can help with loss prevention.`;
+    case "overtrading":
+      return `${softLead} more trades are not improving outcomes. A cap can protect discipline and capital.`;
+    case "sector_concentration":
+      return `${softLead} one weak pocket can distort the whole week when risk is concentrated.`;
+    case "winning_streak_tilt":
+      return `${softLead} confidence can drift away from process when results run hot.`;
+    case "losing_streak_tilt":
+      return `${softLead} frustration can carry into the next trade when losses cluster.`;
+    default:
+      return "This pattern is worth monitoring because one simple rule can protect execution quality.";
+  }
+}
+
+function getMainFocusHeadline(pattern: PatternResponse, totalCompletedTrades: number): string {
+  const softLead = isSoftConfidencePattern(pattern, totalCompletedTrades) ? "Early data suggests" : "";
+  switch (pattern.pattern_type) {
+    case "holding_period":
+      return `${softLead ? `${softLead} ` : ""}your shorter holds are doing more of the work.`;
+    case "day_of_week":
+      return `${softLead ? `${softLead} ` : ""}${String(pattern.data?.worst_bucket ?? "Some days")} are costing you more than others.`;
+    case "time_of_day":
+      return `${softLead ? `${softLead} ` : ""}${String(pattern.data?.worst_bucket ?? "Some hours")} are reducing your edge.`;
+    case "revenge_trading":
+      return `${softLead ? `${softLead} ` : ""}follow-up trades after losses are hurting your P&L.`;
+    case "overtrading":
+      return `${softLead ? `${softLead} ` : ""}extra trades are reducing the quality of your day.`;
+    case "sector_concentration":
+      return `${softLead ? `${softLead} ` : ""}${String(pattern.data?.sector ?? "One sector")} may be dominating your risk too much.`;
+    case "winning_streak_tilt":
+      return `${softLead ? `${softLead} ` : ""}wins may be pulling you away from normal sizing discipline.`;
+    case "losing_streak_tilt":
+      return `${softLead ? `${softLead} ` : ""}losses may be carrying into the next trade more than you think.`;
+    default:
+      return getTraderFacingPatternTitle(pattern);
+  }
+}
+
+function bucketMatchesHoldingDays(bucket: string, holdingDays: number): boolean {
+  if (!bucket) {
+    return false;
+  }
+  const normalized = bucket.toLowerCase();
+  if (normalized.includes("intraday") || normalized.includes("same day")) {
+    return holdingDays <= 0;
+  }
+  if (normalized.includes("1-3")) {
+    return holdingDays >= 1 && holdingDays <= 3;
+  }
+  if (normalized.includes("4-7")) {
+    return holdingDays >= 4 && holdingDays <= 7;
+  }
+  if (normalized.includes("8+") || normalized.includes("8 +") || normalized.includes("8 or")) {
+    return holdingDays >= 8;
+  }
+  return false;
+}
+
+function getTradeWeekday(entryDate: string): string | null {
+  const parsed = new Date(entryDate);
+  if (Number.isNaN(parsed.getTime())) {
+    return null;
+  }
+  const day = parsed.getUTCDay();
+  return WEEKDAY_LABELS[(day + 6) % 7] ?? null;
+}
+
+function getExampleTrades(pattern: PatternResponse, completedTrades: CompletedTradeListItem[]): CompletedTradeListItem[] {
+  const bestBucket = String(pattern.data?.best_bucket ?? "");
+  const worstBucket = String(pattern.data?.worst_bucket ?? "");
+  const symbol = typeof pattern.data?.symbol === "string" ? pattern.data.symbol.toUpperCase() : null;
+  const bucketsToTry = [worstBucket, bestBucket].filter(Boolean);
+
+  if (pattern.pattern_type === "holding_period") {
+    for (const bucket of bucketsToTry) {
+      const matches = completedTrades.filter((trade) => bucketMatchesHoldingDays(bucket, trade.holding_days));
+      if (matches.length >= 1) {
+        return matches.slice(0, 3);
+      }
+    }
+    return [];
+  }
+
+  if (pattern.pattern_type === "day_of_week") {
+    for (const bucket of bucketsToTry) {
+      const matches = completedTrades.filter((trade) => getTradeWeekday(trade.entry_date) === bucket);
+      if (matches.length >= 2) {
+        return matches.slice(0, 3);
+      }
+    }
+    return [];
+  }
+
+  if (symbol) {
+    return completedTrades
+      .filter((trade) => trade.stock_symbol.toUpperCase() === symbol)
+      .slice(0, 3);
+  }
+
+  return [];
+}
+
+function getAvoidableLeakLabel(pattern: PatternResponse): string {
+  switch (pattern.pattern_type) {
+    case "day_of_week":
+      return `${String(pattern.data?.worst_bucket ?? "Weekday")} execution`;
+    case "holding_period":
+      return `${String(pattern.data?.worst_bucket ?? "Holding-period")} review`;
+    case "time_of_day":
+      return `${String(pattern.data?.worst_bucket ?? "Timing")} execution`;
+    case "revenge_trading":
+      return "Post-loss re-entry";
+    case "overtrading":
+      return "Trade-frequency control";
+    case "sector_concentration":
+      return `${String(pattern.data?.sector ?? "Sector")} concentration`;
+    case "winning_streak_tilt":
+      return "Post-win sizing drift";
+    case "losing_streak_tilt":
+      return "Post-loss tilt";
+    default:
+      return getTraderFacingPatternTitle(pattern);
+  }
+}
+
+function buildAvoidableLossesSummary(
+  patternsWithMeta: PatternMeta[],
+  unlocked: boolean,
+  totalCompletedTrades: number
+): AvoidableLossesSummary {
+  if (!unlocked) {
+    return {
+      kind: "locked",
+      message: "Unlock full behavioral analysis to estimate avoidable losses.",
+    };
+  }
+
+  const costingPatterns = patternsWithMeta.filter(
+    (item) => !item.pattern.locked && item.isCosting && item.impact
+  );
+
+  if (costingPatterns.length === 0) {
+    return {
+      kind: "empty",
+      message: "Not enough negative patterns yet",
+      detail:
+        totalCompletedTrades < 30
+          ? "Keep journaling more trades to estimate avoidable losses."
+          : "Keep reviewing trades to isolate your biggest leak more clearly.",
+    };
+  }
+
+  const displayAmounts = costingPatterns.map((item) => {
+    const rawAmount = item.impact?.amount ?? 0;
+    return {
+      item,
+      amount: Math.abs(rawAmount),
+    };
+  });
+
+  const totalAmount = displayAmounts.reduce((sum, current) => sum + current.amount, 0);
+  const biggestLeak = [...displayAmounts].sort((left, right) => right.amount - left.amount)[0];
+
+  if (!Number.isFinite(totalAmount) || totalAmount <= 0 || !biggestLeak) {
+    return {
+      kind: "empty",
+      message: "Not enough negative patterns yet",
+      detail: "Keep journaling more trades to estimate avoidable losses.",
+    };
+  }
+
+  return {
+    kind: "ready",
+    amount: totalAmount,
+    leak: getAvoidableLeakLabel(biggestLeak.item.pattern),
+    rule: getRecommendation(biggestLeak.item.pattern, totalCompletedTrades),
+  };
+}
+
+function buildDisciplineScoreSummary(args: {
+  summary: AnalyticsSummaryResponse | null;
+  patternsWithMeta: PatternMeta[];
+  unlocked: boolean;
+}): DisciplineScoreSummary {
+  const { summary, patternsWithMeta, unlocked } = args;
+  if (!unlocked) {
+    return {
+      kind: "locked",
+      message: "Unlock full behavioral analysis to score consistency across behavior patterns.",
+    };
+  }
+
+  let score = 75;
+  if ((summary?.win_rate ?? 0) >= 0.6) {
+    score += 10;
+  }
+  if ((summary?.avg_pnl_per_trade ?? 0) > 0) {
+    score += 5;
+  }
+
+  const highCosting = patternsWithMeta.filter(
+    (item) => !item.pattern.locked && item.isCosting && item.pattern.severity === "high"
+  ).length;
+  const mediumCosting = patternsWithMeta.filter(
+    (item) => !item.pattern.locked && item.isCosting && item.pattern.severity === "medium"
+  ).length;
+  const hasHelpingPattern = patternsWithMeta.some((item) => !item.pattern.locked && item.isHelping);
+
+  score -= Math.min(highCosting * 10, 25);
+  score -= Math.min(mediumCosting * 5, 15);
+  if (hasHelpingPattern) {
+    score += 5;
+  }
+
+  score = Math.max(0, Math.min(100, score));
+
+  return {
+    kind: "ready",
+    score,
+    label: score >= 75 ? "Improving" : score >= 55 ? "Stable" : "Needs control",
+    note: "Based on consistency across timing, holding period, and repeated mistake patterns.",
+  };
+}
+
+function summarizeTradeSet(trades: CompletedTradeListItem[]) {
+  const winRate = trades.length
+    ? trades.filter((trade) => trade.pnl > 0).length / trades.length
+    : null;
+  const avgPnl = trades.length
+    ? trades.reduce((sum, trade) => sum + trade.pnl, 0) / trades.length
+    : null;
+  return { winRate, avgPnl };
+}
+
+function buildImprovementTrendSummary(completedTrades: CompletedTradeListItem[]): ImprovementTrendSummary {
+  const sortedTrades = [...completedTrades].sort(
+    (left, right) => new Date(right.exit_date).getTime() - new Date(left.exit_date).getTime()
+  );
+
+  if (sortedTrades.length < 20) {
+    return {
+      kind: "not-enough-data",
+      title: "Improvement Trend",
+      note: "Need more completed trades to show trend.",
+    };
+  }
+
+  const recent10 = sortedTrades.slice(0, 10);
+  const previous10 = sortedTrades.slice(10, 20);
+  const recentStats = summarizeTradeSet(recent10);
+  const previousStats = summarizeTradeSet(previous10);
+
+  const improvedWinRate =
+    recentStats.winRate != null &&
+    previousStats.winRate != null &&
+    recentStats.winRate > previousStats.winRate;
+  const improvedAvgPnl =
+    recentStats.avgPnl != null &&
+    previousStats.avgPnl != null &&
+    recentStats.avgPnl > previousStats.avgPnl;
+
+  return {
+    kind: "ready",
+    title: improvedWinRate || improvedAvgPnl
+      ? "Recent trades show better control."
+      : "Recent trades need tighter review.",
+    note:
+      improvedWinRate || improvedAvgPnl
+        ? "Recent decisions are showing better discipline than the prior set."
+        : "The recent set is softer than the prior one, so this is worth reviewing.",
+    recentWinRate: `Recent 10 win rate: ${formatPercent(recentStats.winRate)}`,
+    previousWinRate: `Previous 10 win rate: ${formatPercent(previousStats.winRate)}`,
+    recentAvgPnl: `Change in avg/trade: ${formatSignedCurrency((recentStats.avgPnl ?? 0) - (previousStats.avgPnl ?? 0))}`,
+  };
 }
 
 function InsightsSkeleton() {
@@ -314,6 +836,7 @@ export default function InsightsTab({
 }) {
   const [patternsData, setPatternsData] = useState<PatternsEnvelope | null>(null);
   const [summary, setSummary] = useState<AnalyticsSummaryResponse | null>(null);
+  const [completedTrades, setCompletedTrades] = useState<CompletedTradeListItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -327,6 +850,7 @@ export default function InsightsTab({
         if (active) {
           setPatternsData(null);
           setSummary(null);
+          setCompletedTrades([]);
           setError(null);
           setLoading(false);
         }
@@ -350,14 +874,16 @@ export default function InsightsTab({
           throw new Error("Sign in to view your insights.");
         }
 
-        const [patternsResponse, summaryResponse] = await Promise.all([
+        const [patternsResponse, summaryResponse, completedTradesResponse] = await Promise.all([
           getPatterns(token),
           getAnalyticsSummary(token),
+          fetchCompletedTrades(token, { limit: 200 }).catch(() => []),
         ]);
 
         if (active) {
           setPatternsData(normalizePatternsEnvelope(patternsResponse));
           setSummary(normalizeAnalyticsSummary(summaryResponse));
+          setCompletedTrades(Array.isArray(completedTradesResponse) ? completedTradesResponse : []);
           setError(null);
         }
         void storageSet(
@@ -373,6 +899,7 @@ export default function InsightsTab({
           setError(loadError instanceof Error ? loadError.message : "Unable to load insights.");
           setPatternsData(null);
           setSummary(null);
+          setCompletedTrades([]);
         }
       } finally {
         if (active) {
@@ -397,12 +924,14 @@ export default function InsightsTab({
       }
 
       await analyzePatterns(token);
-      const [patternsResponse, summaryResponse] = await Promise.all([
+      const [patternsResponse, summaryResponse, completedTradesResponse] = await Promise.all([
         getPatterns(token),
         getAnalyticsSummary(token),
+        fetchCompletedTrades(token, { limit: 200 }).catch(() => []),
       ]);
       setPatternsData(normalizePatternsEnvelope(patternsResponse));
       setSummary(normalizeAnalyticsSummary(summaryResponse));
+      setCompletedTrades(Array.isArray(completedTradesResponse) ? completedTradesResponse : []);
       setError(null);
       void storageSet(
         CACHED_INSIGHTS_PATTERNS_KEY,
@@ -423,6 +952,69 @@ export default function InsightsTab({
     }
   }
 
+  const totalCompletedTrades = patternsData?.total_completed_trades ?? 0;
+  const threshold = patternsData?.threshold ?? 20;
+  const unlocked = patternsData?.unlocked ?? false;
+  const progressPct = Math.min((totalCompletedTrades / threshold) * 100, 100);
+
+  const patternsWithMeta = useMemo<PatternMeta[]>(() => {
+    return sortPatterns(patternsData?.patterns ?? []).map((pattern) => {
+      const impact = estimateImpact(pattern, summary);
+      const isCosting = isCostingPattern(pattern, impact);
+      const isHelping = isHelpingPattern(pattern, impact);
+      return {
+        pattern,
+        impact,
+        confidence: getConfidenceMeta(pattern),
+        statusPill: getPatternStatusPill(pattern, impact),
+        exampleTrades: getExampleTrades(pattern, completedTrades),
+        isCosting,
+        isHelping,
+      };
+    });
+  }, [completedTrades, patternsData?.patterns, summary]);
+
+  const weeklyFocusItems = useMemo(() => {
+    return patternsWithMeta
+      .filter((item) => !item.pattern.locked)
+      .map((item) => ({
+        severityOrder:
+          item.pattern.severity === "high" ? 0 : item.pattern.severity === "medium" ? 1 : 2,
+        text: getWeeklyFocusCopy(item.pattern, totalCompletedTrades),
+      }))
+      .filter((item): item is { severityOrder: number; text: string } => Boolean(item.text))
+      .sort((a, b) => a.severityOrder - b.severityOrder)
+      .map((item, index) => `Rule ${index + 1}: ${item.text}`)
+      .slice(0, 3);
+  }, [patternsWithMeta, totalCompletedTrades]);
+
+  const mainFocus = useMemo(() => {
+    const unlockedPatterns = patternsWithMeta.filter((item) => !item.pattern.locked);
+    if (unlockedPatterns.length === 0) {
+      return null;
+    }
+    return [...unlockedPatterns].sort((left, right) => {
+      const rightPriority = getMainFocusPriority(right.pattern, right.impact);
+      const leftPriority = getMainFocusPriority(left.pattern, left.impact);
+      return rightPriority - leftPriority;
+    })[0];
+  }, [patternsWithMeta]);
+
+  const avoidableLosses = useMemo(
+    () => buildAvoidableLossesSummary(patternsWithMeta, unlocked, totalCompletedTrades),
+    [patternsWithMeta, totalCompletedTrades, unlocked]
+  );
+
+  const disciplineScore = useMemo(
+    () => buildDisciplineScoreSummary({ summary, patternsWithMeta, unlocked }),
+    [patternsWithMeta, summary, unlocked]
+  );
+
+  const improvementTrend = useMemo(
+    () => buildImprovementTrendSummary(completedTrades),
+    [completedTrades]
+  );
+
   if (!isSignedIn) {
     return (
       <section className="placeholder-grid">
@@ -438,47 +1030,43 @@ export default function InsightsTab({
     return <InsightsSkeleton />;
   }
 
-  const totalCompletedTrades = patternsData?.total_completed_trades ?? 0;
-  const threshold = patternsData?.threshold ?? 20;
-  const unlocked = patternsData?.unlocked ?? false;
-  const progressPct = Math.min((totalCompletedTrades / threshold) * 100, 100);
-  const patterns = sortPatterns(patternsData?.patterns ?? []);
-  const weeklyFocusItems = patterns
-    .filter((pattern) => !pattern.locked)
-    .map((pattern) => ({
-      severityOrder: pattern.severity === "high" ? 0 : pattern.severity === "medium" ? 1 : 2,
-      text: getWeeklyFocusCopy(pattern),
-    }))
-    .filter((item): item is { severityOrder: number; text: string } => Boolean(item.text))
-    .sort((a, b) => a.severityOrder - b.severityOrder)
-    .map((item) => item.text)
-    .slice(0, 3);
-
   return (
     <section className="insights-root">
       {error ? <div className="connection-error-banner">{error}</div> : null}
 
       {!unlocked ? (
-        <article className="insights-progress-card">
-          <div className="insights-progress-icon">📊</div>
-          <div className="insights-progress-copy">
-            <h2>Insights unlock at {threshold} completed trades</h2>
-            <p>
-              Insights unlock at {threshold} trades. You have {totalCompletedTrades}/{threshold}.
+        <>
+          <article className="insights-progress-card">
+            <div className="insights-progress-icon">📊</div>
+            <div className="insights-progress-copy">
+              <h2>Insights unlock at {threshold} completed trades</h2>
+              <p>
+                Insights unlock at {threshold} trades. You have {totalCompletedTrades}/{threshold}.
+              </p>
+            </div>
+            <div className="insights-progress-bar">
+              <span style={{ width: `${progressPct}%` }} />
+            </div>
+            <p className="insights-progress-note">
+              Import more trades via CSV or keep your broker tab open to auto-capture.
             </p>
-          </div>
-          <div className="insights-progress-bar">
-            <span style={{ width: `${progressPct}%` }} />
-          </div>
-          <p className="insights-progress-note">
-            Import more trades via CSV or keep your broker tab open to auto-capture.
-          </p>
-        </article>
+          </article>
+
+          <article className="insight-loss-card">
+            <div className="insight-loss-title">Avoidable Losses</div>
+            <p className="insight-soft-note">{avoidableLosses.kind === "locked" ? avoidableLosses.message : "Unlock full behavioral analysis to estimate avoidable losses."}</p>
+          </article>
+
+          <article className="insight-discipline-card">
+            <div className="insight-loss-title">Discipline Score</div>
+            <p className="insight-soft-note">{disciplineScore.kind === "locked" ? disciplineScore.message : "Unlock full behavioral analysis to score consistency."}</p>
+          </article>
+        </>
       ) : (
         <>
           {weeklyFocusItems.length ? (
             <section className="weekly-focus-card">
-              <div className="weekly-focus-title">📋 This Week&apos;s Focus</div>
+              <div className="weekly-focus-title">This week&apos;s focus</div>
               <div>
                 {weeklyFocusItems.map((item) => (
                   <div key={item} className="weekly-focus-item">
@@ -489,11 +1077,91 @@ export default function InsightsTab({
             </section>
           ) : null}
 
+          {mainFocus ? (
+            <article className="insight-main-focus-card">
+              <div className="insight-main-focus-label">Main focus this week</div>
+              <div className="insight-main-focus-title">
+                {getMainFocusHeadline(mainFocus.pattern, totalCompletedTrades)}
+              </div>
+              {mainFocus.impact ? (
+                <div className={`insight-main-focus-impact ${mainFocus.impact.amount >= 0 ? "impact-positive" : "impact-negative"}`}>
+                  {mainFocus.impact.text}
+                </div>
+              ) : null}
+              <div className="insight-main-focus-rule">
+                Rule this week: {getRecommendation(mainFocus.pattern, totalCompletedTrades)}
+              </div>
+              <p className="insights-subcopy" style={{ marginTop: 0 }}>
+                {getMainFocusWhy(mainFocus.pattern, totalCompletedTrades)}
+              </p>
+            </article>
+          ) : null}
+
+          <article className="insight-loss-card">
+            <div className="insight-loss-title">Avoidable Losses</div>
+            {avoidableLosses.kind === "ready" ? (
+              <>
+                <div className="insight-loss-number">
+                  Estimated avoidable impact: {formatCurrency(avoidableLosses.amount)}/month
+                </div>
+                <div className="insight-loss-row">
+                  <span>Biggest leak</span>
+                  <strong>{avoidableLosses.leak}</strong>
+                </div>
+                <div className="insight-loss-row">
+                  <span>Most useful rule</span>
+                  <strong>{avoidableLosses.rule}</strong>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="insight-loss-number">{avoidableLosses.message}</div>
+                {"detail" in avoidableLosses ? (
+                  <p className="insight-soft-note">{avoidableLosses.detail}</p>
+                ) : null}
+              </>
+            )}
+          </article>
+
+          <article className="insight-discipline-card">
+            <div className="insight-loss-title">Discipline Score</div>
+            {disciplineScore.kind === "ready" ? (
+              <>
+                <div className="insight-discipline-score">{disciplineScore.score}/100</div>
+                <div className="insight-discipline-label">{disciplineScore.label}</div>
+                <p className="insight-soft-note">{disciplineScore.note}</p>
+              </>
+            ) : (
+              <p className="insight-soft-note">{disciplineScore.message}</p>
+            )}
+          </article>
+
+          <article className="insight-trend-card">
+            <div className="insight-loss-title">Improvement Trend</div>
+            <div className="insight-discipline-label">{improvementTrend.title}</div>
+            {improvementTrend.kind === "ready" ? (
+              <>
+                <div className="insight-trend-row">
+                  <span>{improvementTrend.recentWinRate}</span>
+                </div>
+                <div className="insight-trend-row">
+                  <span>{improvementTrend.previousWinRate}</span>
+                </div>
+                <div className="insight-trend-row">
+                  <span>{improvementTrend.recentAvgPnl}</span>
+                </div>
+                <p className="insight-soft-note">{improvementTrend.note}</p>
+              </>
+            ) : (
+              <p className="insight-soft-note">{improvementTrend.note}</p>
+            )}
+          </article>
+
           <div className="insights-toolbar">
             <div>
-              <h2 className="insights-heading">Behavioral Patterns</h2>
+              <h2 className="insights-heading">Mistakes &amp; Strengths</h2>
               <p className="insights-subcopy">
-                Your data shows where your own execution patterns are helping or hurting.
+                Your trade history shows what is helping your P&amp;L and what is quietly costing you.
               </p>
             </div>
             <button
@@ -541,10 +1209,8 @@ export default function InsightsTab({
           ) : null}
 
           <div className="insights-pattern-list">
-            {patterns.map((pattern) => {
+            {patternsWithMeta.map(({ pattern, confidence, impact, statusPill, exampleTrades }) => {
               const isExpanded = expanded[pattern.pattern_type] ?? false;
-              const confidence = getConfidenceMeta(pattern);
-              const impact = estimateImpact(pattern, summary);
 
               return (
                 <article
@@ -554,17 +1220,20 @@ export default function InsightsTab({
                 >
                   <div className="insights-pattern-content">
                     <div className="insights-pattern-header">
-                      <span className="insights-pattern-severity">
-                        {severityIcon(pattern.severity)}
-                      </span>
+                      <span className="insights-pattern-severity">{severityIcon(pattern.severity)}</span>
                       <div className="insights-pattern-copy">
                         <div className="insights-pattern-title-row">
-                          <h3>{pattern.title}</h3>
+                          <h3>{getTraderFacingPatternTitle(pattern)}</h3>
                           <span className={`insight-confidence ${confidence.className}`}>
                             {confidence.text}
                           </span>
+                          {!pattern.locked ? (
+                            <span className={`insight-status-pill status-${pattern.severity}`}>
+                              {statusPill}
+                            </span>
+                          ) : null}
                         </div>
-                        <p>{pattern.description}</p>
+                        <p>{getTraderFacingPatternDescription(pattern, totalCompletedTrades)}</p>
                       </div>
                     </div>
 
@@ -574,9 +1243,9 @@ export default function InsightsTab({
                       </div>
                     ) : null}
 
-                    <div className="insight-recommendation">
-                      <span>💡</span>
-                      <span>{getRecommendation(pattern)}</span>
+                    <div className="insight-next-action">
+                      <span>Next action</span>
+                      <span>{getRecommendation(pattern, totalCompletedTrades)}</span>
                     </div>
 
                     <button
@@ -593,14 +1262,29 @@ export default function InsightsTab({
                     </button>
 
                     {isExpanded ? (
-                      <div className="insights-details-grid">
-                        {Object.entries(pattern.data ?? {}).map(([key, value]) => (
-                          <div key={key} className="insights-detail-row">
-                            <span>{key.replace(/_/g, " ")}</span>
-                            <strong>{formatPatternStat(key, value)}</strong>
+                      <>
+                        <div className="insights-details-grid">
+                          {Object.entries(pattern.data ?? {}).map(([key, value]) => (
+                            <div key={key} className="insights-detail-row">
+                              <span>{key.replace(/_/g, " ")}</span>
+                              <strong>{formatPatternStat(key, value)}</strong>
+                            </div>
+                          ))}
+                        </div>
+
+                        {exampleTrades.length > 0 ? (
+                          <div className="insight-proof-trades">
+                            <div className="insights-section-title">Proof trades</div>
+                            {exampleTrades.map((trade) => (
+                              <div key={trade.id} className="insight-proof-row">
+                                <span className="insight-proof-symbol">{trade.stock_symbol}</span>
+                                <span>{formatExampleTradeDate(trade.entry_date)}</span>
+                                <strong className="insight-proof-pnl">{formatSignedCurrency(trade.pnl)}</strong>
+                              </div>
+                            ))}
                           </div>
-                        ))}
-                      </div>
+                        ) : null}
+                      </>
                     ) : null}
                   </div>
 

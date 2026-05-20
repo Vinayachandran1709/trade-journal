@@ -6,6 +6,7 @@ import {
   fetchWatchlist,
   type CompletedTradeListItem,
   type MarketDashboardData,
+  type PatternResponse,
   type PatternsEnvelope,
   type TickerIntelResponse,
   type WatchlistResponse,
@@ -88,6 +89,24 @@ const SECTOR_MAP: Record<string, string> = {
   MARUTI: "Auto",
   TATASTEEL: "Metals",
   ITC: "FMCG",
+};
+
+type TradingPlanMode = "Momentum-Friendly" | "Selective" | "Defensive" | "Wait & Watch";
+
+type TradingPlan = {
+  mode: TradingPlanMode;
+  why: string;
+  bestSuited: string;
+  avoid: string;
+  focusSectors: string;
+  personalWarning: string | null;
+};
+
+type StockHistoryStats = {
+  tradeCount: number;
+  winRate: number | null;
+  lastPnl: number | null;
+  tag: string | null;
 };
 
 function asFiniteNumber(value: unknown): number | null {
@@ -211,6 +230,13 @@ function formatSignedPercent(value: number | null | undefined): string {
   return `${value >= 0 ? "+" : ""}${NUMBER_FORMATTER.format(value)}%`;
 }
 
+function formatSignedCurrency(value: number | null | undefined): string {
+  if (value == null) {
+    return "₹--";
+  }
+  return `${value >= 0 ? "+" : "-"}₹${formatNumber(Math.abs(value))}`;
+}
+
 function percentColor(value: number | null | undefined): string {
   if (value == null) {
     return "#64748b";
@@ -279,10 +305,8 @@ function MarketConfidence({ confidence }: { confidence: MarketDashboardData["con
   return (
     <div className="confidence-meter">
       <div className="confidence-header">
-        <span className="confidence-label">Market Confidence</span>
-        <span className={`confidence-score confidence-${level}`}>
-          {score}/100
-        </span>
+        <span className="confidence-label">Trade Environment Score</span>
+        <span className={`confidence-score confidence-${level}`}>{score}/100</span>
       </div>
       <div className="confidence-bar-track">
         <div
@@ -307,24 +331,24 @@ function getRegimeInterpretation(data: MarketDashboardData): string {
   const niftyChange = data.indices?.nifty_50?.change_pct ?? 0;
 
   if (niftyChange > 0.8 && advPct > 55) {
-    return "Strong broad-based rally. Trend-following setups look favorable.";
+    return "Broad participation is improving. Stay selective, not reactive.";
   }
   if (niftyChange > 0.5 && advPct < 40) {
-    return "Index up but breadth is narrow. Few stocks are driving the move.";
+    return "Narrow participation is visible. Let structure confirm first.";
   }
   if (niftyChange < -0.8 && advPct < 35) {
-    return "Broad downside pressure. Risk management is priority.";
+    return "Weak breadth and pressure are visible. Protect decision quality.";
   }
   if (niftyChange < -0.3 && advPct > 45) {
-    return "Index weak but internals are mixed. Selective strength in pockets.";
+    return "Mixed internals are offsetting index weakness. Wait for cleaner structure.";
   }
   if (vix > 20) {
-    return "Elevated volatility. Wider stops and smaller positions may help control risk.";
+    return "Volatility is elevated. Let cleaner structure do more of the work.";
   }
   if (Math.abs(niftyChange) < 0.3) {
-    return "Low conviction session. Consider avoiding overactivity in the chop.";
+    return "Low-conviction tape. Wait for cleaner structure.";
   }
-  return "Mixed signals. Watch for sector-specific opportunities.";
+  return "Mixed conditions. Stay selective and let context lead.";
 }
 
 function getGlobalCuesInsight(globalCues: MarketDashboardData["global_cues"]): string {
@@ -336,29 +360,29 @@ function getGlobalCuesInsight(globalCues: MarketDashboardData["global_cues"]): s
   const parts: string[] = [];
 
   if (spChange > 0.5 && nasdaqChange > 0.5) {
-    parts.push("US futures firmly positive — supportive for opening");
+    parts.push("US futures are supportive for opening sentiment");
   } else if (spChange < -0.5 && nasdaqChange < -0.5) {
-    parts.push("US futures under pressure — may weigh on opening");
+    parts.push("US futures are under pressure into the open");
   } else if (spChange > 0.3) {
-    parts.push("US futures mildly positive");
+    parts.push("US futures are mildly positive");
   } else if (spChange < -0.3) {
-    parts.push("US futures mildly negative");
+    parts.push("US futures are mildly negative");
   }
 
   if (crudeChange > 2) {
-    parts.push("Rising crude may support upstream energy while pressuring airlines");
+    parts.push("Rising crude can change sector behavior quickly");
   } else if (crudeChange < -2) {
-    parts.push("Falling crude may support paint, airlines, and auto sectors");
+    parts.push("Falling crude may ease pressure on fuel-sensitive sectors");
   }
 
   if (goldChange > 1.5) {
-    parts.push("Gold rally signals risk-off sentiment globally");
+    parts.push("Gold strength suggests some risk-off positioning");
   }
 
   if (usdInrChange > 0.3) {
-    parts.push("Rupee weakening may support IT export earnings");
+    parts.push("A weaker rupee can shift attention toward exporters");
   } else if (usdInrChange < -0.3) {
-    parts.push("Rupee strengthening may affect IT sector sentiment");
+    parts.push("A stronger rupee may soften exporter sentiment");
   }
 
   if (parts.length === 0) {
@@ -375,72 +399,50 @@ function getSectorFlowInsight(
     .sort((left, right) => right.pct - left.pct);
 
   if (!entries.length) {
-    return "Sector data is limited. Watch for clearer leadership.";
+    return "Sector data is limited. Wait for clearer leadership before reading too much into the tape.";
   }
 
-  const positiveCount = entries.filter((entry) => entry.pct > 0).length;
-  const top2 = entries.slice(0, 2).map((entry) => entry.name).join(" and ");
-  const bottom = entries[entries.length - 1]?.name ?? "laggards";
+  const strongPositiveCount = entries.filter((entry) => entry.pct > 0.5).length;
+  const weakCount = entries.filter((entry) => entry.pct < 0).length;
+  const topLead = entries[0]?.pct ?? 0;
+  const secondLead = entries[1]?.pct ?? 0;
+  const leaders = entries
+    .slice(0, 2)
+    .map((entry) => entry.name)
+    .join(" and ");
 
-  if (positiveCount >= 7) {
-    return `Broad sector strength. ${top2} leading the rally.`;
+  if (strongPositiveCount >= 5) {
+    return "Broad sector strength - trend setups have better context.";
   }
-  if (positiveCount >= 4) {
-    return `Rotation into ${top2}. ${bottom} underperforming.`;
+  if (weakCount >= Math.max(5, Math.floor(entries.length * 0.6))) {
+    return "Most sectors weak - capital protection matters today.";
   }
-  if (positiveCount <= 2) {
-    return `Most sectors under pressure. Only ${top2} holding up.`;
+  if (topLead > 0.7 && secondLead < 0.25) {
+    return "Leadership is narrow - avoid assuming the whole market is strong.";
   }
-  return `Mixed sector performance. ${top2} showing relative strength.`;
-}
-
-function generateMarketNarrative(
-  data: MarketDashboardData,
-  sectorData: Record<string, { change_pct: number | null } | undefined>
-): string {
-  const niftyChange = data.indices?.nifty_50?.change_pct ?? 0;
-  const vix = data.vix?.value ?? 15;
-  const advPct = data.regime?.breadth?.pct_advancing ?? 50;
-  const sectors = Object.entries(sectorData)
-    .map(([name, sector]) => ({ name, pct: sector?.change_pct ?? 0 }))
-    .sort((left, right) => right.pct - left.pct);
-  const leading = sectors.filter((sector) => sector.pct > 0.5).slice(0, 2).map((sector) => sector.name);
-  const lagging = sectors.filter((sector) => sector.pct < -0.5).slice(0, 2).map((sector) => sector.name);
-  const parts: string[] = [];
-
-  if (niftyChange > 1) {
-    parts.push(`Markets are in a strong uptrend with Nifty up ${niftyChange.toFixed(1)}%.`);
-  } else if (niftyChange > 0.3) {
-    parts.push(`Positive session with Nifty holding gains of ${niftyChange.toFixed(1)}%.`);
-  } else if (niftyChange < -1) {
-    parts.push(`Markets are under broad pressure with Nifty down ${Math.abs(niftyChange).toFixed(1)}%.`);
-  } else if (niftyChange < -0.3) {
-    parts.push(`Markets are mildly weak with Nifty slipping ${Math.abs(niftyChange).toFixed(1)}%.`);
-  } else {
-    parts.push(`Markets are trading flat with Nifty at ${data.indices?.nifty_50?.value?.toLocaleString("en-IN") ?? "--"}.`);
-  }
-
-  if (leading.length > 0 && lagging.length > 0) {
-    parts.push(`${leading.join(" and ")} are leading while ${lagging.join(" and ")} trail.`);
-  } else if (leading.length > 0) {
-    parts.push(`Strength concentrated in ${leading.join(" and ")}.`);
-  }
-
-  if (advPct > 60) {
-    parts.push(`Breadth is healthy at ${advPct}% advancing — broad participation.`);
-  } else if (advPct < 35) {
-    parts.push(`Breadth is weak at ${advPct}% advancing — narrow participation.`);
-  }
-
-  if (vix > 20) {
-    parts.push(`Volatility is elevated (VIX ${vix.toFixed(1)}) — consider smaller positions.`);
-  }
-
-  return parts.slice(0, 3).join(" ");
+  return `Mixed rotation - ${leaders || "a few sectors"} are showing relative strength.`;
 }
 
 function getTradeSector(symbol: string): string {
   return SECTOR_MAP[symbol.toUpperCase()] ?? "Other";
+}
+
+function getFocusSectors(
+  sectorPerformance: Record<string, { change_pct: number | null } | undefined>
+): string {
+  const leaders = Object.entries(sectorPerformance)
+    .map(([name, value]) => ({ name, pct: value?.change_pct ?? Number.NEGATIVE_INFINITY }))
+    .filter((entry) => Number.isFinite(entry.pct))
+    .sort((left, right) => right.pct - left.pct)
+    .filter((entry) => entry.pct > 0.35)
+    .slice(0, 2)
+    .map((entry) => entry.name);
+
+  if (leaders.length === 0) {
+    return "No clear focus area yet";
+  }
+
+  return leaders.join(" and ");
 }
 
 function getStockTag(stock: {
@@ -455,18 +457,134 @@ function getStockTag(stock: {
       : null;
 
   if (changePct > 2.5 && volRatio && volRatio > 1.3) {
-    return { label: "🔥 Momentum", className: "stock-tag-momentum" };
+    return { label: "Momentum", className: "stock-tag-momentum" };
   }
   if (volRatio && volRatio > 2.0) {
-    return { label: "📊 Vol Spike", className: "stock-tag-volume" };
+    return { label: "Vol spike", className: "stock-tag-volume" };
   }
   if (changePct > 2.0) {
-    return { label: "↑ Strong", className: "stock-tag-strong" };
+    return { label: "Strong", className: "stock-tag-strong" };
   }
   if (changePct < -2.5) {
-    return { label: "↓ Weak", className: "stock-tag-weak" };
+    return { label: "Weak", className: "stock-tag-weak" };
   }
   return null;
+}
+
+function getStockPersonalTag(tradeCount: number, winRate: number | null, lastPnl: number | null): string | null {
+  if (tradeCount < 3) {
+    return "Limited data";
+  }
+  if (winRate != null && winRate >= 0.6) {
+    return "Historically strong for you";
+  }
+  if (winRate != null && winRate <= 0.4) {
+    return "Historically weak for you";
+  }
+  if (lastPnl != null && lastPnl < 0) {
+    return "Recent loser";
+  }
+  return null;
+}
+
+function getPersonalWarning(args: {
+  patterns: PatternResponse[] | undefined;
+  sectorPerformance: Record<string, { change_pct: number | null } | undefined>;
+  marketData: MarketDashboardData;
+}): string | null {
+  const { patterns, sectorPerformance, marketData } = args;
+  const timePattern = findPattern(patterns, "time_of_day");
+  if (timePattern?.data?.worst_bucket) {
+    return `Early data suggests ${String(timePattern.data.worst_bucket)} has been a weaker window for you.`;
+  }
+
+  const weekdayPattern = findPattern(patterns, "day_of_week");
+  if (weekdayPattern?.data?.worst_bucket) {
+    return `Early data shows ${String(weekdayPattern.data.worst_bucket)} has been weaker for you.`;
+  }
+
+  const overtradingPattern = findPattern(patterns, "overtrading");
+  if (overtradingPattern?.data?.average_trades_per_day) {
+    const threshold = Math.max(1, Math.ceil(Number(overtradingPattern.data.average_trades_per_day) * 2));
+    return `So far, your data points to weaker results after about ${threshold} trades in a day.`;
+  }
+
+  const sectorPattern = findPattern(patterns, "sector_concentration");
+  const sector = String(sectorPattern?.data?.sector ?? "");
+  const sectorChange = sector ? sectorPerformance[sector]?.change_pct ?? null : null;
+  if (sector && sectorChange != null && sectorChange < 0) {
+    return `Your recent data shows concentration risk matters more when ${sector} is soft.`;
+  }
+
+  const highestSeverityPattern = [...(patterns ?? [])]
+    .filter((pattern) => !pattern.locked)
+    .sort((left, right) => getPatternSeverityRank(left.severity) - getPatternSeverityRank(right.severity))[0];
+  if (highestSeverityPattern?.pattern_type === "losing_streak_tilt") {
+    return "Your recent data shows losses can compound during streaks, so activity control matters today.";
+  }
+
+  if ((marketData.vix?.value ?? 0) > 20) {
+    return "Higher volatility can magnify execution mistakes, so patience matters more.";
+  }
+
+  return null;
+}
+
+function buildTradingPlan(args: {
+  data: MarketDashboardData;
+  sectorPerformance: Record<string, { change_pct: number | null } | undefined>;
+  patterns: PatternResponse[] | undefined;
+}): TradingPlan {
+  const { data, sectorPerformance, patterns } = args;
+  const niftyChange = data.indices?.nifty_50?.change_pct ?? 0;
+  const breadth = data.regime?.breadth?.pct_advancing ?? 50;
+  const vix = data.vix?.value ?? 15;
+  const trend = data.regime?.nifty_trend ?? "Sideways";
+  const vwap = data.regime?.nifty_vs_vwap ?? "At VWAP";
+
+  let mode: TradingPlanMode = "Selective";
+  if (Math.abs(niftyChange) < 0.2 && breadth >= 40 && breadth <= 58 && trend === "Sideways") {
+    mode = "Wait & Watch";
+  } else if (trend === "Bearish" || breadth < 38 || vix >= 19) {
+    mode = "Defensive";
+  } else if (trend === "Bullish" && breadth >= 58 && niftyChange >= 0.7 && vix < 16) {
+    mode = "Momentum-Friendly";
+  }
+
+  let why = `Nifty is ${niftyChange >= 0 ? "up" : "down"} ${Math.abs(niftyChange).toFixed(1)}%, breadth is ${Math.round(breadth)}%, and VIX is ${vix.toFixed(1)} in a ${trend.toLowerCase()} regime.`;
+  let bestSuited = "selective setups";
+  let avoid = "avoid reacting to isolated moves";
+
+  if (mode === "Momentum-Friendly") {
+    why = "Broad participation and a supportive regime are in place, with volatility still contained.";
+    bestSuited = "sector-specific setups and pullback entries";
+    avoid = "avoid chasing extended moves after sharp intraday spikes";
+  } else if (mode === "Selective") {
+    why = "Internals are mixed and leadership is not fully broad, so selectivity matters more than speed.";
+    bestSuited = "pullback entries and selective relative-strength pockets";
+    avoid = "avoid assuming every green index move means broad confirmation";
+  } else if (mode === "Defensive") {
+    why = "Weak breadth or elevated volatility is raising execution risk even if some pockets still move.";
+    bestSuited = "reduced size and only the clearest sector-specific setups";
+    avoid = vix >= 19 ? "avoid large size in high VIX conditions" : "avoid overtrading into weak participation";
+  } else {
+    why = "The tape looks choppy and low-conviction, with no strong internal push yet.";
+    bestSuited = "mean reversion and patience for cleaner confirmation";
+    avoid = "avoid chasing breakouts in chop";
+  }
+
+  if (vwap === "Below VWAP" && mode !== "Wait & Watch") {
+    avoid = "avoid pressing size while the index stays below VWAP";
+  }
+
+  return {
+    mode,
+    why,
+    bestSuited,
+    avoid,
+    focusSectors: getFocusSectors(sectorPerformance),
+    personalWarning: getPersonalWarning({ patterns, sectorPerformance, marketData: data }),
+  };
 }
 
 function SectorBox({
@@ -606,7 +724,7 @@ function FiiDiiSection({
           />
         </div>
         <span className="mkt-fiidii-value" style={{ color: fii >= 0 ? "#16a34a" : "#dc2626" }}>
-          {fii >= 0 ? "+" : ""}₹{NUMBER_FORMATTER.format(Math.abs(fii))} Cr
+          {fii >= 0 ? "+" : "-"}₹{NUMBER_FORMATTER.format(Math.abs(fii))} Cr
         </span>
       </div>
       <div className="mkt-fiidii-bar-row">
@@ -621,7 +739,7 @@ function FiiDiiSection({
           />
         </div>
         <span className="mkt-fiidii-value" style={{ color: dii >= 0 ? "#16a34a" : "#dc2626" }}>
-          {dii >= 0 ? "+" : ""}₹{NUMBER_FORMATTER.format(Math.abs(dii))} Cr
+          {dii >= 0 ? "+" : "-"}₹{NUMBER_FORMATTER.format(Math.abs(dii))} Cr
         </span>
       </div>
     </div>
@@ -847,9 +965,7 @@ export default function MarketTab({
     let active = true;
 
     async function loadStockIntel() {
-      const stocksNeedingIntel = yourStocks
-        .filter((stock) => stock.volume == null)
-        .slice(0, 3);
+      const stocksNeedingIntel = yourStocks.filter((stock) => stock.volume == null).slice(0, 3);
 
       if (!isSignedIn || stocksNeedingIntel.length === 0) {
         if (active) {
@@ -881,6 +997,39 @@ export default function MarketTab({
       active = false;
     };
   }, [isSignedIn, yourStocks]);
+
+  const stockHistoryMap = useMemo(() => {
+    const stats = new Map<string, { tradeCount: number; wins: number; lastTrade: CompletedTradeListItem | null }>();
+    const sortedTrades = [...completedTrades].sort(
+      (left, right) => new Date(right.exit_date).getTime() - new Date(left.exit_date).getTime()
+    );
+
+    for (const trade of sortedTrades) {
+      const symbol = trade.stock_symbol.toUpperCase();
+      const current = stats.get(symbol) ?? { tradeCount: 0, wins: 0, lastTrade: null };
+      current.tradeCount += 1;
+      if (trade.pnl > 0) {
+        current.wins += 1;
+      }
+      if (!current.lastTrade) {
+        current.lastTrade = trade;
+      }
+      stats.set(symbol, current);
+    }
+
+    const normalized = new Map<string, StockHistoryStats>();
+    for (const [symbol, value] of stats.entries()) {
+      const winRate = value.tradeCount > 0 ? value.wins / value.tradeCount : null;
+      const lastPnl = value.lastTrade?.pnl ?? null;
+      normalized.set(symbol, {
+        tradeCount: value.tradeCount,
+        winRate,
+        lastPnl,
+        tag: getStockPersonalTag(value.tradeCount, winRate, lastPnl),
+      });
+    }
+    return normalized;
+  }, [completedTrades]);
 
   const sectorWinRates = useMemo(() => {
     const stats = new Map<string, { total: number; wins: number }>();
@@ -982,7 +1131,7 @@ export default function MarketTab({
     data.vix.value != null &&
     data.vix.value > 18 &&
     typeof highestSeverityPattern?.data?.high_vix_win_rate === "number"
-      ? `Your data shows high-VIX days reduce your win rate to ${formatPercent(
+      ? `So far, your data points to high-VIX days reducing your win rate to ${formatPercent(
           Number(highestSeverityPattern.data.high_vix_win_rate) / 100,
           0
         )}.`
@@ -993,10 +1142,16 @@ export default function MarketTab({
     : null;
   const yourStocksInsight =
     strongSector && strongSectorTodayChange != null && strongSectorTodayChange > 0
-      ? `Your strongest sector (${strongSector}) is up ${formatSignedPercent(strongSectorTodayChange)} today.`
+      ? `Your recent data has been strongest in ${strongSector}, which is up ${formatSignedPercent(strongSectorTodayChange)} today.`
       : concentratedSector && concentratedSectorChange != null && concentratedSectorChange < 0
         ? `Your most-traded sector (${concentratedSector}) is down ${formatSignedPercent(Math.abs(concentratedSectorChange))} today.`
         : null;
+  const tradingPlan = buildTradingPlan({
+    data,
+    sectorPerformance,
+    patterns: patternsEnvelope?.patterns,
+  });
+  const tradingPlanModeClass = tradingPlan.mode.toLowerCase().replace(/[^a-z0-9]+/g, "-");
 
   return (
     <div className="mkt-root">
@@ -1033,15 +1188,40 @@ export default function MarketTab({
         </>
       ) : null}
 
-      <MarketConfidence confidence={data.confidence} />
-
-      <div className="market-narrative">
-        <div className="narrative-header">
-          <span className="narrative-icon">📋</span>
-          <span className="narrative-title">Today&apos;s Setup</span>
+      <div className="action-zone-card">
+        <div className="action-zone-header">
+          <span className="narrative-title">Today&apos;s Trading Plan</span>
+          <span className={`action-zone-mode action-zone-mode-${tradingPlanModeClass}`}>
+            {tradingPlan.mode}
+          </span>
         </div>
-        <p className="narrative-text">{generateMarketNarrative(data, sectorPerformance)}</p>
+        <div className="action-zone-grid">
+          <div className="action-zone-item">
+            <span className="action-zone-label">Why</span>
+            <span className="action-zone-value">{tradingPlan.why}</span>
+          </div>
+          <div className="action-zone-item">
+            <span className="action-zone-label">Best suited today</span>
+            <span className="action-zone-value">{tradingPlan.bestSuited}</span>
+          </div>
+          <div className="action-zone-item">
+            <span className="action-zone-label">Avoid today</span>
+            <span className="action-zone-value">{tradingPlan.avoid}</span>
+          </div>
+          <div className="action-zone-item">
+            <span className="action-zone-label">Focus sectors</span>
+            <span className="action-zone-value">{tradingPlan.focusSectors}</span>
+          </div>
+          {tradingPlan.personalWarning ? (
+            <div className="action-zone-item">
+              <span className="action-zone-label">Personal warning</span>
+              <span className="action-zone-value">{tradingPlan.personalWarning}</span>
+            </div>
+          ) : null}
+        </div>
       </div>
+
+      <MarketConfidence confidence={data.confidence} />
 
       {showYourStocks ? (
         <div className="mkt-section">
@@ -1049,9 +1229,7 @@ export default function MarketTab({
             <div>
               <h3 className="mkt-section-title">Your Stocks</h3>
               <p className="mkt-section-subcopy">Based on your recent trades</p>
-              {yourStocksInsight ? (
-                <p className="your-stocks-insight">{yourStocksInsight}</p>
-              ) : null}
+              {yourStocksInsight ? <p className="your-stocks-insight">{yourStocksInsight}</p> : null}
             </div>
           </div>
           <div className="mkt-your-stocks-list">
@@ -1062,18 +1240,31 @@ export default function MarketTab({
                 volume: stock.volume ?? intel?.volume ?? null,
                 avg_volume: intel?.avg_volume ?? null,
               });
+              const history = stockHistoryMap.get(stock.symbol.toUpperCase()) ?? null;
+              const showHistoryLine = history != null && history.tradeCount >= 3;
+              const showLimitedDataLine = history != null && history.tradeCount < 3;
+              const showPersonalTag = history?.tag != null && history.tradeCount >= 3;
               return (
                 <div
                   key={`${stock.symbol}-${index}`}
                   className={`mkt-your-stock-row${index % 2 === 0 ? " alt" : ""}`}
                 >
-                  <span className="mkt-your-stock-symbol">{stock.symbol}</span>
+                  <div className="mkt-your-stock-copy">
+                    <span className="mkt-your-stock-symbol">{stock.symbol}</span>
+                    {showHistoryLine ? (
+                      <span className="stock-history-line">
+                        {history.tradeCount} trades · {history.winRate != null ? formatPercent(history.winRate, 0) : "--"} win
+                        {history.lastPnl != null ? ` · Last ${formatSignedCurrency(history.lastPnl)}` : ""}
+                      </span>
+                    ) : showLimitedDataLine ? <span className="stock-history-line">Limited data</span> : null}
+                  </div>
                   <span className="mkt-your-stock-data">
                     <span className="mkt-your-stock-price">₹{formatNumber(stock.price)}</span>
                     <span className="mkt-your-stock-change" style={{ color: percentColor(stock.change_pct) }}>
                       {formatSignedPercent(stock.change_pct)}
                     </span>
                     {tag ? <span className={`stock-mini-tag ${tag.className}`}>{tag.label}</span> : null}
+                    {showPersonalTag ? <span className="stock-personal-tag">{history.tag}</span> : null}
                   </span>
                 </div>
               );
