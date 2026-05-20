@@ -367,52 +367,50 @@ function getTraderFacingPatternDescription(
   const lead = getSoftLead(pattern, totalCompletedTrades);
   switch (pattern.pattern_type) {
     case "day_of_week":
-      return `${lead} your results are not evenly distributed across weekdays. That means selectivity matters more on ${String(pattern.data?.worst_bucket ?? "weaker days")}.`;
+      return `${lead} your stronger days are doing more of the work, and ${String(pattern.data?.worst_bucket ?? "weaker days")} need tighter discipline.`;
     case "holding_period":
-      return `${lead} ${String(pattern.data?.best_bucket ?? "shorter")} holds are doing more of the work. ${String(pattern.data?.worst_bucket ?? "weaker hold times")} need review.`;
+      return `${lead} short holds are working better for you. ${String(pattern.data?.worst_bucket ?? "weaker hold times")} need review.`;
     case "time_of_day":
-      return `${lead} your results change meaningfully by trading window. ${String(pattern.data?.worst_bucket ?? "weaker hours")} need tighter execution quality than ${String(pattern.data?.best_bucket ?? "stronger hours")}.`;
+      return `${lead} some hours are costing you more. ${String(pattern.data?.worst_bucket ?? "weaker hours")} need tighter execution quality.`;
     case "revenge_trading":
-      return `${lead} follow-up trades after losses are hurting execution quality. This is worth monitoring after difficult sessions.`;
+      return `${lead} follow-up trades after losses are hurting execution quality.`;
     case "overtrading":
-      return `${lead} extra trades are reducing your edge. More activity is not translating into better control.`;
+      return `${lead} extra trades are reducing your edge. More activity is not improving control.`;
     case "sector_concentration":
-      return `${lead} one sector is carrying too much of your risk. That can distort the whole week when one pocket turns weak.`;
+      return `${lead} one sector is carrying too much of your risk.`;
     case "winning_streak_tilt":
-      return `${lead} wins may be nudging you away from your normal process. This is worth monitoring when confidence rises quickly.`;
+      return `${lead} wins may be nudging you away from your normal process.`;
     case "losing_streak_tilt":
-      return `${lead} losses may be carrying into the next decision. Tighter review can help protect execution quality.`;
+      return `${lead} losses may be carrying into the next decision.`;
     default:
       return pattern.description;
   }
 }
 
 function getRecommendation(pattern: PatternResponse, totalCompletedTrades: number): string {
-  const softEnding = isSoftConfidencePattern(pattern, totalCompletedTrades)
-    ? " This is worth monitoring as more trades come in."
-    : "";
-
   switch (pattern.pattern_type) {
     case "time_of_day":
-      return `Reduce activity during ${String(pattern.data?.worst_bucket ?? "weaker hours")} and keep more decisions inside ${String(pattern.data?.best_bucket ?? "your stronger hours")}.${softEnding}`;
+      return `Trade smaller during ${String(pattern.data?.worst_bucket ?? "weaker hours")}. Keep your better decisions inside ${String(pattern.data?.best_bucket ?? "your stronger hours")}.`;
     case "day_of_week":
-      return `Be more selective on ${String(pattern.data?.worst_bucket ?? "weaker days")} and review what is working on your stronger days.${softEnding}`;
+      return `Trade smaller on ${String(pattern.data?.worst_bucket ?? "weaker days")}. Your stronger days are doing more of the work.`;
     case "holding_period":
-      return `Lean toward ${String(pattern.data?.best_bucket ?? "your stronger hold window")} and review trades that drift into ${String(pattern.data?.worst_bucket ?? "weaker hold times")}.${softEnding}`;
+      return `Lean into ${String(pattern.data?.best_bucket ?? "shorter holds")} and review trades that drift into ${String(pattern.data?.worst_bucket ?? "weaker hold times")}.`;
     case "revenge_trading":
-      return `Pause after a loss before the next decision so frustration does not carry forward.${softEnding}`;
+      return "Pause after a loss before the next decision.";
     case "overtrading": {
       const threshold = Math.max(1, Math.ceil(Number(pattern.data?.average_trades_per_day ?? 2) * 2));
-      return `Set a daily trade cap around ${threshold} so activity does not dilute your edge.${softEnding}`;
+      return `Stop after about ${threshold} trades so activity does not dilute your edge.`;
     }
     case "sector_concentration":
-      return `Review how much of your risk is tied to ${String(pattern.data?.sector ?? "one sector")} before adding more exposure there.${softEnding}`;
+      return `Review how much of your risk is tied to ${String(pattern.data?.sector ?? "one sector")}.`;
     case "winning_streak_tilt":
-      return `Keep your normal size after a run of wins instead of pressing harder.${softEnding}`;
+      return "Keep your normal size after a run of wins.";
     case "losing_streak_tilt":
-      return `Reduce size or step back when losses start clustering before taking the next trade.${softEnding}`;
+      return "Reduce size or step back when losses start clustering.";
     default:
-      return `Review this behavior pattern in your journal and keep the rule simple.${softEnding}`;
+      return isSoftConfidencePattern(pattern, totalCompletedTrades)
+        ? "Early data suggests this behavior pattern is worth monitoring."
+        : "Review this behavior pattern in your journal and keep the rule simple.";
   }
 }
 
@@ -451,7 +449,7 @@ function getTraderFacingPatternTitle(pattern: PatternResponse): string {
     case "day_of_week":
       return "Your best and worst trading days are clear";
     case "holding_period":
-      return "Your holding-period sweet spot is visible";
+      return "Short holds are working better for you";
     case "time_of_day":
       return "Some hours are costing you more";
     case "revenge_trading":
@@ -470,49 +468,69 @@ function getTraderFacingPatternTitle(pattern: PatternResponse): string {
 }
 
 function isCostingPattern(pattern: PatternResponse, impact: { amount: number; text: string } | null): boolean {
+  if (pattern.locked) {
+    return false;
+  }
   const text = `${pattern.title} ${pattern.description} ${getTraderFacingPatternTitle(pattern)}`.toLowerCase();
-  const negativeTypes = new Set([
-    "revenge_trading",
-    "overtrading",
-    "losing_streak_tilt",
-    "winning_streak_tilt",
-    "time_of_day",
-    "day_of_week",
-    "holding_period",
-    "sector_concentration",
-  ]);
-
+  if (pattern.pattern_type === "holding_period") {
+    return typeof pattern.data?.worst_avg_pnl === "number" &&
+      typeof pattern.data?.best_avg_pnl === "number"
+      ? Number(pattern.data.worst_avg_pnl) > Number(pattern.data.best_avg_pnl)
+      : false;
+  }
   if (impact && impact.amount < 0) {
     return true;
   }
-  if (negativeTypes.has(pattern.pattern_type) && pattern.severity !== "low") {
+  if (
+    ["revenge_trading", "overtrading", "losing_streak_tilt"].includes(pattern.pattern_type) &&
+    pattern.severity !== "low"
+  ) {
     return true;
   }
-  return ["cost", "hurt", "damaging", "reducing", "loss", "weak"].some((term) => text.includes(term));
+  return ["cost", "hurt", "damaging", "reducing", "loss", "weak", "worst"].some((term) =>
+    text.includes(term)
+  );
 }
 
 function isHelpingPattern(pattern: PatternResponse, impact: { amount: number; text: string } | null): boolean {
-  if (pattern.severity !== "low") {
-    return false;
-  }
   if (impact && impact.amount > 0) {
     return true;
   }
-  const text = `${pattern.title} ${pattern.description}`.toLowerCase();
-  return ["sweet spot", "stronger", "best", "helping", "visible"].some((term) => text.includes(term));
+  if (
+    pattern.pattern_type === "holding_period" &&
+    typeof pattern.data?.best_avg_pnl === "number" &&
+    typeof pattern.data?.worst_avg_pnl === "number" &&
+    Number(pattern.data.best_avg_pnl) >= Number(pattern.data.worst_avg_pnl)
+  ) {
+    return true;
+  }
+  const text = `${pattern.title} ${pattern.description} ${getTraderFacingPatternTitle(pattern)}`.toLowerCase();
+  return ["sweet spot", "stronger", "best", "helping", "working better", "positive"].some((term) =>
+    text.includes(term)
+  );
 }
 
 function getPatternStatusPill(pattern: PatternResponse, impact: { amount: number; text: string } | null): string {
   if (pattern.locked) {
     return "Pro";
   }
-  if (isCostingPattern(pattern, impact) && pattern.severity === "high") {
-    return "Costing money";
-  }
   if (isHelpingPattern(pattern, impact)) {
     return "Helping you";
   }
+  if (isCostingPattern(pattern, impact)) {
+    return "Costing money";
+  }
   return "Needs attention";
+}
+
+function getPatternStatusClass(statusPill: string): string {
+  if (statusPill === "Helping you") {
+    return "status-low";
+  }
+  if (statusPill === "Costing money") {
+    return "status-high";
+  }
+  return "status-medium";
 }
 
 function getMainFocusPriority(pattern: PatternResponse, impact: { amount: number; text: string } | null): number {
@@ -620,7 +638,10 @@ function getExampleTrades(pattern: PatternResponse, completedTrades: CompletedTr
 
   if (pattern.pattern_type === "day_of_week") {
     for (const bucket of bucketsToTry) {
-      const matches = completedTrades.filter((trade) => getTradeWeekday(trade.entry_date) === bucket);
+      const matches = completedTrades.filter(
+        (trade) =>
+          getTradeWeekday(trade.entry_date) === bucket || getTradeWeekday(trade.exit_date) === bucket
+      );
       if (matches.length >= 2) {
         return matches.slice(0, 3);
       }
@@ -799,15 +820,15 @@ function buildImprovementTrendSummary(completedTrades: CompletedTradeListItem[])
   return {
     kind: "ready",
     title: improvedWinRate || improvedAvgPnl
-      ? "Recent trades show better control."
-      : "Recent trades need tighter review.",
+      ? "Recent trades show better control"
+      : "Recent trades need tighter review",
     note:
       improvedWinRate || improvedAvgPnl
         ? "Recent decisions are showing better discipline than the prior set."
         : "The recent set is softer than the prior one, so this is worth reviewing.",
     recentWinRate: `Recent 10 win rate: ${formatPercent(recentStats.winRate)}`,
     previousWinRate: `Previous 10 win rate: ${formatPercent(previousStats.winRate)}`,
-    recentAvgPnl: `Change in avg/trade: ${formatSignedCurrency((recentStats.avgPnl ?? 0) - (previousStats.avgPnl ?? 0))}`,
+    recentAvgPnl: `Avg P&L change: ${formatSignedCurrency((recentStats.avgPnl ?? 0) - (previousStats.avgPnl ?? 0))}`,
   };
 }
 
@@ -1228,7 +1249,7 @@ export default function InsightsTab({
                             {confidence.text}
                           </span>
                           {!pattern.locked ? (
-                            <span className={`insight-status-pill status-${pattern.severity}`}>
+                            <span className={`insight-status-pill ${getPatternStatusClass(statusPill)}`}>
                               {statusPill}
                             </span>
                           ) : null}

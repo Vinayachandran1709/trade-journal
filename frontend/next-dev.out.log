@@ -1,4 +1,12 @@
 
+> trade-journal-frontend@1.0.0 predev
+> npm run clean
+
+
+> trade-journal-frontend@1.0.0 clean
+> powershell -NoProfile -ExecutionPolicy Bypass -Command "if (Test-Path '.next') { Remove-Item -LiteralPath '.next' -Recurse -Force -ErrorAction SilentlyContinue }"
+
+
 > trade-journal-frontend@1.0.0 dev
 > next dev
 
@@ -7,29 +15,5 @@
   - Environments: .env.local
 
  ✓ Starting...
- ✓ Ready in 4s
- ○ Compiling / ...
- ✓ Compiled / in 24.4s (524 modules)
- GET / 200 in 9208ms
- ○ Compiling /login ...
- ✓ Compiled /login in 1142ms (521 modules)
- ○ Compiling /dashboard ...
- ✓ Compiled /dashboard in 723ms (519 modules)
- ✓ Compiled in 2.5s (530 modules)
- ✓ Compiled in 2.3s (519 modules)
- GET /dashboard 200 in 900ms
- ✓ Compiled in 932ms (272 modules)
- GET /dashboard 200 in 124ms
- ○ Compiling /_not-found ...
- ✓ Compiled /_not-found in 1080ms (522 modules)
- GET /_next/static/css/app/layout.css?v=1778847876548 404 in 1366ms
- GET /_next/static/chunks/main-app.js?v=1778847876548 404 in 1359ms
- GET /_next/static/chunks/webpack.js?v=1778847876548 404 in 1365ms
- GET /_next/static/chunks/app-pages-internals.js 404 in 1359ms
- GET /_next/static/chunks/app/dashboard/loading.js 404 in 1357ms
- GET /_next/static/chunks/app/layout.js 404 in 1312ms
- ○ Compiling /_error ...
- ✓ Compiled /_error in 3.7s (748 modules)
- GET /dashboard 404 in 3964ms
- GET / 404 in 56ms
- ✓ Compiled in 4.1s (759 modules)
+ ✓ Ready in 5s
+ ○ Compiling /welcome ...

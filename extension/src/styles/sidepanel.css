@@ -785,29 +785,48 @@ body {
 /* Session Summary Card */
 .session-summary {
   min-height: 40px;
-  max-height: 60px;
+  max-height: none;
   box-sizing: border-box;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 10px 14px;
+  display: grid;
+  gap: 12px;
+  padding: 14px;
   border-radius: 12px;
   background: #f8fafc;
   border: 1px solid rgba(148, 163, 184, 0.1);
   min-width: 0;
 }
 
+.session-summary-grid {
+  display: grid;
+  gap: 12px;
+}
+
+.session-summary-metrics {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 12px;
+  font-size: 12px;
+  color: #475569;
+  font-feature-settings: "tnum";
+}
+
+.session-summary-metrics strong {
+  color: #0f172a;
+  font-size: 13px;
+}
+
 .session-summary h3 {
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 700;
   color: #0f172a;
   margin: 0;
 }
 
 .session-summary .session-stats {
-  font-size: 12px;
+  font-size: 13px;
   color: #475569;
   font-feature-settings: "tnum";
+  line-height: 1.5;
 }
 
 /* Setup Cards (improved) */
@@ -854,9 +873,10 @@ body {
 }
 
 .setup-card-v2 .setup-plan-line {
-  font-size: 12px;
+  font-size: 13px;
   color: #475569;
   font-feature-settings: "tnum";
+  line-height: 1.45;
 }
 
 .setup-plan-meta-row {
@@ -867,7 +887,7 @@ body {
 }
 
 .setup-created {
-  font-size: 11px;
+  font-size: 12px;
   color: #94a3b8;
 }
 
@@ -883,7 +903,7 @@ body {
 .setup-conviction {
   display: grid;
   gap: 4px;
-  font-size: 11px;
+  font-size: 12px;
   color: #64748b;
 }
 
@@ -901,7 +921,7 @@ body {
 }
 
 .setup-card-v2 .setup-thesis {
-  font-size: 11px;
+  font-size: 12px;
   font-style: italic;
   color: #94a3b8;
   overflow: hidden;
@@ -1788,6 +1808,7 @@ body {
 }
 
 .ai-search-button:disabled,
+.ai-quick-suggestion:disabled,
 .ai-recent-pill:disabled {
   opacity: 0.7;
   cursor: wait;
@@ -1801,6 +1822,25 @@ body {
 .ai-quick-block {
   display: grid;
   gap: 8px;
+}
+
+.ai-quick-suggestions {
+  display: grid;
+  gap: 8px;
+}
+
+.ai-quick-suggestion {
+  width: 100%;
+  text-align: left;
+  border: 1px solid rgba(79, 70, 229, 0.14);
+  border-radius: 14px;
+  background: rgba(79, 70, 229, 0.06);
+  color: #1e293b;
+  font: inherit;
+  font-size: 13px;
+  line-height: 1.45;
+  padding: 10px 12px;
+  cursor: pointer;
 }
 
 .ai-recent-title {
@@ -1880,7 +1920,7 @@ body {
 .ai-result-company {
   margin: 6px 0 0;
   color: #64748b;
-  font-size: 12px;
+  font-size: 13px;
   line-height: 1.4;
 }
 
@@ -1953,20 +1993,46 @@ body {
   align-items: center;
   padding: 3px 10px;
   border-radius: 6px;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   background: #eff6ff;
   color: #1e40af;
   margin-bottom: 8px;
 }
 
-.research-response { line-height: 1.6; }
+.research-response {
+  display: grid;
+  gap: 8px;
+  line-height: 1.6;
+}
 
 .research-bullet {
   display: flex;
   gap: 8px;
   align-items: flex-start;
   padding: 2px 0;
+  font-size: 13px;
+  color: #1f2937;
+}
+
+.research-numbered {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 8px;
+  align-items: flex-start;
+  font-size: 13px;
+  color: #1f2937;
+}
+
+.research-paragraph {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.65;
+  color: #1f2937;
+}
+
+.research-spacer {
+  height: 4px;
 }
 
 .research-bullet .bullet-dot {
@@ -1981,9 +2047,9 @@ body {
 .ai-result-explanation {
   margin: 0;
   color: #1f2937;
-  font-size: 13px;
+  font-size: 13.5px;
   line-height: 1.55;
-  white-space: pre-line;
+  white-space: normal;
 }
 
 .ai-explanation-headline {

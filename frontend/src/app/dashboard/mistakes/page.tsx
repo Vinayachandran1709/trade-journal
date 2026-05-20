@@ -13,25 +13,39 @@ type MistakeCategory = {
   totalPnl: number;
 };
 
+function toFiniteNumber(value: unknown): number | null {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value;
+  }
+  if (typeof value === "string" && value.trim() !== "") {
+    const parsed = Number(value);
+    if (Number.isFinite(parsed)) {
+      return parsed;
+    }
+  }
+  return null;
+}
+
 function formatCurrency(value: number | null | undefined): string {
-  const amount = value ?? 0;
+  const amount = toFiniteNumber(value) ?? 0;
   return `₹${amount.toLocaleString("en-IN", { maximumFractionDigits: 0 })}`;
 }
 
 function formatPercent(value: number | null | undefined): string {
-  if (value == null || !Number.isFinite(value)) {
+  const amount = toFiniteNumber(value);
+  if (amount == null) {
     return "0.0%";
   }
-  return `${(value * 100).toFixed(1)}%`;
+  return `${(amount * 100).toFixed(1)}%`;
 }
 
 function formatSignedCurrency(value: number | null | undefined): string {
-  const amount = value ?? 0;
+  const amount = toFiniteNumber(value) ?? 0;
   return `${amount >= 0 ? "+" : "-"}${formatCurrency(Math.abs(amount))}`;
 }
 
 function formatSignedPercent(value: number | null | undefined): string {
-  const amount = value ?? 0;
+  const amount = toFiniteNumber(value) ?? 0;
   return `${amount >= 0 ? "+" : ""}${amount.toFixed(1)}%`;
 }
 

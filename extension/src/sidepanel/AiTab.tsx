@@ -312,13 +312,45 @@ function getCategoryLabel(category: string): string {
     .join(" ");
 }
 
-function getMostTradedSymbol(trades: CompletedTradeListItem[]): string | null {
-  const counts = new Map<string, number>();
-  for (const trade of trades) {
-    const symbol = trade.stock_symbol.toUpperCase();
-    counts.set(symbol, (counts.get(symbol) ?? 0) + 1);
-  }
-  return [...counts.entries()].sort((left, right) => right[1] - left[1])[0]?.[0] ?? null;
+function renderResearchResponse(response: string) {
+  return response.split("\n").map((line, index) => {
+    const boldProcessed = line.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
+    const isBullet = /^\s*[-•]\s/.test(line);
+    const isNumbered = /^\s*\d+\.\s/.test(line);
+    const cleanLine = line.replace(/^\s*[-•]\s*/, "").replace(/^\s*\d+\.\s*/, "");
+    const processedLine = cleanLine.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
+
+    if (!line.trim()) {
+      return <div key={index} className="research-spacer" />;
+    }
+
+    if (isBullet) {
+      return (
+        <div key={index} className="research-bullet">
+          <span className="bullet-dot">•</span>
+          <span dangerouslySetInnerHTML={{ __html: processedLine }} />
+        </div>
+      );
+    }
+
+    if (isNumbered) {
+      const marker = line.match(/^\s*(\d+\.)\s/)?.[1] ?? "";
+      return (
+        <div key={index} className="research-numbered">
+          <span className="bullet-dot">{marker}</span>
+          <span dangerouslySetInnerHTML={{ __html: processedLine }} />
+        </div>
+      );
+    }
+
+    return (
+      <p
+        key={index}
+        className="research-paragraph"
+        dangerouslySetInnerHTML={{ __html: boldProcessed }}
+      />
+    );
+  });
 }
 
 export default function AiTab({
@@ -423,15 +455,16 @@ export default function AiTab({
     };
   }, [personalTrades]);
 
-  const quickSuggestions = useMemo(() => {
-    const lastSymbol = todaysQueries[0]?.symbol || recentQueries[0]?.symbol || getMostTradedSymbol(completedTradeCache) || "TCS";
-    return [
-      "How am I doing this week?",
-      "What sectors are strong?",
-      "Am I overtrading?",
-      `${lastSymbol} outlook`,
-    ];
-  }, [completedTradeCache, recentQueries, todaysQueries]);
+  const quickSuggestions = useMemo(
+    () => [
+      "How did I do this month and what's my biggest mistake pattern?",
+      "Which of my setups perform best, and am I overtrading?",
+      "How is my portfolio positioned right now — what am I still holding?",
+      "Is TCS trading nearer its 52-week high or low, and how does that line up with the prices I've entered before?",
+      "Between INFY and TCS, which looks stronger today?",
+    ],
+    []
+  );
 
   async function saveRecentQuery(nextSymbol: string) {
     const today = getIstDateKey();
@@ -568,11 +601,11 @@ export default function AiTab({
         {!result ? (
           <div className="ai-quick-block">
             <div className="ai-recent-title">Quick research</div>
-            <div className="ai-today-queries">
+            <div className="ai-quick-suggestions">
               {quickSuggestions.map((suggestion) => (
                 <button
                   key={suggestion}
-                  className="ai-recent-pill"
+                  className="ai-quick-suggestion"
                   disabled={loading}
                   onClick={() => void runQuery(suggestion)}
                 >
@@ -776,7 +809,8 @@ export default function AiTab({
           </div>
 
           <div className="ai-result-explanation research-response">
-            {result.data.response.split("\n").map((line, index) => {
+            {renderResearchResponse(result.data.response)}
+            {String.raw`
               const boldProcessed = line.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
               const isBullet = /^\s*[-•]\s/.test(line);
               const cleanLine = isBullet ? line.replace(/^\s*[-•]\s*/, "") : line;
@@ -801,8 +835,7 @@ export default function AiTab({
                   dangerouslySetInnerHTML={{ __html: processedLine }}
                   style={{ margin: "4px 0" }}
                 />
-              );
-            })}
+              );` && null}
           </div>
 
           <div className="ai-quota-copy">

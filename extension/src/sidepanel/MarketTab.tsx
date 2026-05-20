@@ -577,6 +577,10 @@ function buildTradingPlan(args: {
     avoid = "avoid pressing size while the index stays below VWAP";
   }
 
+  if (mode === "Defensive" || mode === "Wait & Watch") {
+    why = `${why} Capital preservation matters more than activity today.`;
+  }
+
   return {
     mode,
     why,
@@ -1241,9 +1245,15 @@ export default function MarketTab({
                 avg_volume: intel?.avg_volume ?? null,
               });
               const history = stockHistoryMap.get(stock.symbol.toUpperCase()) ?? null;
-              const showHistoryLine = history != null && history.tradeCount >= 3;
-              const showLimitedDataLine = history != null && history.tradeCount < 3;
-              const showPersonalTag = history?.tag != null && history.tradeCount >= 3;
+              const historyLine = history
+                ? history.tradeCount >= 3
+                  ? `${history.tradeCount} trades · ${history.winRate != null ? formatPercent(history.winRate, 0) : "--"} win${
+                      history.lastPnl != null ? ` · Last ${formatSignedCurrency(history.lastPnl)}` : ""
+                    }`
+                  : "Limited data"
+                : "Limited data";
+              const showPersonalTag =
+                history?.tag != null && (history.tradeCount >= 3 || history.tag === "Limited data");
               return (
                 <div
                   key={`${stock.symbol}-${index}`}
@@ -1251,12 +1261,7 @@ export default function MarketTab({
                 >
                   <div className="mkt-your-stock-copy">
                     <span className="mkt-your-stock-symbol">{stock.symbol}</span>
-                    {showHistoryLine ? (
-                      <span className="stock-history-line">
-                        {history.tradeCount} trades · {history.winRate != null ? formatPercent(history.winRate, 0) : "--"} win
-                        {history.lastPnl != null ? ` · Last ${formatSignedCurrency(history.lastPnl)}` : ""}
-                      </span>
-                    ) : showLimitedDataLine ? <span className="stock-history-line">Limited data</span> : null}
+                    <span className="stock-history-line">{historyLine}</span>
                   </div>
                   <span className="mkt-your-stock-data">
                     <span className="mkt-your-stock-price">₹{formatNumber(stock.price)}</span>
@@ -1264,7 +1269,7 @@ export default function MarketTab({
                       {formatSignedPercent(stock.change_pct)}
                     </span>
                     {tag ? <span className={`stock-mini-tag ${tag.className}`}>{tag.label}</span> : null}
-                    {showPersonalTag ? <span className="stock-personal-tag">{history.tag}</span> : null}
+                    {showPersonalTag ? <span className="stock-personal-tag">{history?.tag}</span> : null}
                   </span>
                 </div>
               );

@@ -122,6 +122,13 @@ function getRiskClass(score: number): string {
   return "risk-high";
 }
 
+function formatSetupPriceLine(label: string, value?: number | null): string {
+  if (value == null || !Number.isFinite(value)) {
+    return `${label} not set`;
+  }
+  return `${label} ₹${formatMoney(value)}`;
+}
+
 function getRrMeta(setup: TradeSetupItem): { value: number; className: string } | null {
   const entry = setup.entry_price;
   const stop = setup.stop_loss_price;
@@ -245,21 +252,49 @@ export default function JournalTab({
     };
   }, [isSignedIn, captureState?.lastSyncAt]);
 
+  const todayKey = getIstDateKey();
   const sessionSummary = useMemo(() => {
-    if (!todaysTrades.length) return null;
-    return `${todaysTrades.length} trade${todaysTrades.length === 1 ? "" : "s"}`;
-  }, [todaysTrades]);
+    const todaysRealizedTrades = completedTrades.filter(
+      (trade) => parseDateKey(trade.exit_date) === todayKey
+    );
+    return {
+      tradesCapturedToday: todaysTrades.length,
+      completedTradesLoaded: completedTrades.length,
+      openPlansCount: setups.filter((setup) => !setup.linked_trade_id).length,
+      todaysRealizedPnl:
+        todaysRealizedTrades.length > 0
+          ? todaysRealizedTrades.reduce((sum, trade) => sum + trade.pnl, 0)
+          : null,
+      hasTodayActivity: todaysTrades.length > 0,
+    };
+  }, [completedTrades, setups, todayKey, todaysTrades]);
 
   const visibleSetups = setups.slice(0, 3);
 
   return (
     <section className="journal-root">
       <article className="session-summary">
-        <div>
-          <h3>{todaysTrades.length ? "Today's Session" : "No trades today"}</h3>
-          <div className="session-stats">
-            {sessionSummary ??
-              "Open your broker's order page — trades are captured automatically."}
+        <div className="session-summary-grid">
+          <div>
+            <h3>{sessionSummary.hasTodayActivity ? "Today's Journal" : "Ready for today's trading journal"}</h3>
+            <div className="session-stats">
+              {sessionSummary.hasTodayActivity
+                ? "What you did today, what is still open, and whether the plan held."
+                : "Open your broker order page. Captured trades will appear here automatically after execution."}
+            </div>
+          </div>
+          <div className="session-summary-metrics">
+            <span>Captured today: <strong>{sessionSummary.tradesCapturedToday}</strong></span>
+            <span>Completed loaded: <strong>{sessionSummary.completedTradesLoaded}</strong></span>
+            <span>Open plans: <strong>{sessionSummary.openPlansCount}</strong></span>
+            <span>
+              Realized today:{" "}
+              <strong>
+                {sessionSummary.todaysRealizedPnl != null
+                  ? formatPnl(sessionSummary.todaysRealizedPnl)
+                  : "--"}
+              </strong>
+            </span>
           </div>
         </div>
       </article>
@@ -289,7 +324,10 @@ export default function JournalTab({
               ))
             : null}
           {!completedLoading && !completedTrades.length ? (
-            <p>{completedError ?? "No completed round-trips yet."}</p>
+            <p>
+              {completedError ??
+                "No completed round-trips yet. Once a BUY and SELL are matched, your P&L will appear here."}
+            </p>
           ) : null}
         </div>
       </article>
@@ -299,12 +337,12 @@ export default function JournalTab({
         {visibleSetups.length ? (
           <div className="setup-list">
             {visibleSetups.map((setup) => (
-              <SetupCard key={setup.id} setup={setup} />
+              <SetupCard key={setup.id} setup={setup} rawTrades={rawTrades} />
             ))}
             {setups.length > 3 ? <button className="journal-view-all">View all plans →</button> : null}
           </div>
         ) : (
-          <p>No pre-trade setups logged yet.</p>
+          <p>No pre-trade setups logged yet. Plans created from the checklist will appear here.</p>
         )}
       </article>
     </section>
@@ -346,34 +384,47 @@ function CompletedTradeCard({
   );
 }
 
-function SetupCard({ setup }: { setup: TradeSetupItem }) {
+function SetupCard({ setup, rawTrades }: { setup: TradeSetupItem; rawTrades: TradeListItem[] }) {
   const linked = Boolean(setup.linked_trade_id);
   const rr = getRrMeta(setup);
   const riskScore = setup.risk_score;
   const conviction = Math.max(0, Math.min(10, setup.conviction_score ?? 0));
+  const linkedTrade =
+    linked && setup.linked_trade_id
+      ? rawTrades.find((trade) => trade.id === setup.linked_trade_id) ?? null
+      : null;
+  const hasPlannedValues =
+    setup.entry_price != null || setup.stop_loss_price != null || setup.target_price != null;
+  const planVsActual =
+    linkedTrade && hasPlannedValues
+      ? `Plan vs Actual: Executed at ₹${formatMoney(linkedTrade.price)} on ${formatJournalDate(
+          linkedTrade.trade_date
+        )}`
+      : null;
 
   return (
     <article className="setup-card-v2">
       <div className="setup-header-v2">
-        <span className="setup-symbol-v2">
-          {linked ? "✓" : "⏳"} {setup.symbol ?? "SETUP"}
-        </span>
+        <span className="setup-symbol-v2">{(setup.symbol ?? "SETUP").toUpperCase()}</span>
         <span className={linked ? "setup-badge-linked" : "setup-badge-pending"}>
           {linked ? "Executed" : "Awaiting trade"}
         </span>
       </div>
       <div className="setup-plan-line">
-        Entry ₹{formatMoney(setup.entry_price)} · SL ₹{formatMoney(setup.stop_loss_price)} ·
-        Target ₹{formatMoney(setup.target_price)}
+        {formatSetupPriceLine("Entry", setup.entry_price)} · {formatSetupPriceLine("SL", setup.stop_loss_price)} ·{" "}
+        {formatSetupPriceLine("Target", setup.target_price)}
       </div>
       <div className="setup-plan-meta-row">
         {rr ? <span className={`setup-rr ${rr.className}`}>R:R 1:{rr.value.toFixed(1)}</span> : null}
+        {setup.conviction_score != null ? (
+          <span className="setup-created">Conviction {setup.conviction_score}/10</span>
+        ) : null}
         {riskScore != null ? (
           <span className={`risk-badge ${getRiskClass(riskScore)}`}>Risk {riskScore}/10</span>
         ) : null}
-        {!linked ? <span className="setup-created">{hoursSince(setup.created_at)}</span> : null}
+        <span className="setup-created">{hoursSince(setup.created_at)}</span>
       </div>
-      {setup.conviction_score != null ? (
+      {setup.conviction_score != null && !linked ? (
         <div className="setup-conviction">
           <span>Conviction {setup.conviction_score}/10</span>
           <div className="conviction-bar">
@@ -381,6 +432,7 @@ function SetupCard({ setup }: { setup: TradeSetupItem }) {
           </div>
         </div>
       ) : null}
+      {planVsActual ? <div className="setup-thesis">{planVsActual}</div> : null}
       {setup.thesis ? <div className="setup-thesis">{setup.thesis.slice(0, 60)}</div> : null}
     </article>
   );
