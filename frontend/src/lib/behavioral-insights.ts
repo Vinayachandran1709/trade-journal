@@ -177,6 +177,158 @@ export function getRecommendation(pattern: PatternResponse): string {
   }
 }
 
+export type PatternStatus = "costing" | "helping" | "monitoring";
+
+export function getPatternStatus(
+  pattern: PatternResponse,
+  summary: AnalyticsSummaryResponse | null
+): PatternStatus {
+  const impact = estimatePatternImpact(pattern, summary);
+  const text = `${pattern.title} ${pattern.description}`.toLowerCase();
+
+  if (impact && impact.amount > 0) {
+    return "helping";
+  }
+
+  if (pattern.pattern_type === "holding_period") {
+    const bestAvg = Number(pattern.data?.best_avg_pnl ?? 0);
+    const worstAvg = Number(pattern.data?.worst_avg_pnl ?? 0);
+    return bestAvg >= worstAvg ? "helping" : "costing";
+  }
+
+  if (impact && impact.amount < 0) {
+    return "costing";
+  }
+
+  if (
+    text.includes("best") ||
+    text.includes("strong") ||
+    text.includes("improving") ||
+    text.includes("discipline")
+  ) {
+    return "helping";
+  }
+
+  if (
+    text.includes("worst") ||
+    text.includes("weak") ||
+    text.includes("cost") ||
+    text.includes("loss") ||
+    text.includes("revenge") ||
+    text.includes("overtrad")
+  ) {
+    return "costing";
+  }
+
+  return "monitoring";
+}
+
+export function getPatternStatusLabel(status: PatternStatus): string {
+  if (status === "costing") return "Costing money";
+  if (status === "helping") return "Helping you";
+  return "Needs attention";
+}
+
+export function getPatternStatusGroupTitle(status: PatternStatus): string {
+  if (status === "costing") return "Costing you";
+  if (status === "helping") return "Helping you";
+  return "Needs monitoring";
+}
+
+export function getTraderFacingPatternTitle(pattern: PatternResponse): string {
+  switch (pattern.pattern_type) {
+    case "time_of_day":
+      return `${String(pattern.data?.worst_bucket ?? "Certain hours")} are dragging your edge`;
+    case "day_of_week":
+      return `${String(pattern.data?.worst_bucket ?? "Certain days")} need more selectivity`;
+    case "holding_period":
+      return "Your holding time is shaping outcomes";
+    case "revenge_trading":
+      return "Follow-up trades after losses are hurting";
+    case "overtrading":
+      return "Activity spikes are eroding quality";
+    case "sector_concentration":
+      return "Your sector concentration needs cleaner focus";
+    case "winning_streak_tilt":
+      return "Winning streaks may be loosening discipline";
+    case "losing_streak_tilt":
+      return "Losing streaks are compounding damage";
+    default:
+      return pattern.title;
+  }
+}
+
+export function getTraderFacingPatternDescription(pattern: PatternResponse): string {
+  switch (pattern.pattern_type) {
+    case "time_of_day":
+      return `Your entries around ${String(pattern.data?.worst_bucket ?? "this window")} are underperforming. Tighten standards there and press harder during ${String(pattern.data?.best_bucket ?? "stronger windows")}.`;
+    case "day_of_week":
+      return `Your data suggests ${String(pattern.data?.worst_bucket ?? "some weekdays")} are less forgiving. Treat them as lower-conviction sessions unless the setup is exceptional.`;
+    case "holding_period":
+      return `Your exits are affecting P&L as much as entry quality. The holding bucket doing the real work deserves to become part of your plan.`;
+    case "revenge_trading":
+      return "Loss-triggered re-entries are showing up as repeat damage, which points to emotional continuation instead of fresh opportunity.";
+    case "overtrading":
+      return "More trades are not producing more edge in your data. Past a certain point, decision quality falls faster than opportunity rises.";
+    case "sector_concentration":
+      return "Your results are clustering by sector. That can be useful if the edge is real, or expensive if you keep forcing the wrong pocket.";
+    case "winning_streak_tilt":
+      return "After a run of wins, your process may be loosening. Protect size discipline when confidence is high.";
+    case "losing_streak_tilt":
+      return "After losses, your next decisions appear more fragile. Damage control matters more than forcing recovery.";
+    default:
+      return pattern.description;
+  }
+}
+
+export function getRuleLikeRecommendation(pattern: PatternResponse): string {
+  switch (pattern.pattern_type) {
+    case "time_of_day":
+      return `Trade smaller during ${String(pattern.data?.worst_bucket ?? "weak hours")}.`;
+    case "day_of_week":
+      return `Demand A-grade setups on ${String(pattern.data?.worst_bucket ?? "your weak day")}.`;
+    case "holding_period":
+      return `Match exits to your best holding bucket.`;
+    case "revenge_trading":
+      return "Wait 30 minutes after a loss.";
+    case "overtrading":
+      return "Set a hard daily trade cap.";
+    case "sector_concentration":
+      return "Only press size in sectors that prove edge.";
+    case "winning_streak_tilt":
+      return "Keep size constant after a hot streak.";
+    case "losing_streak_tilt":
+      return "Cut size after consecutive losses.";
+    default:
+      return "Turn this pattern into a review rule.";
+  }
+}
+
+export function getPatternProofTrades(
+  pattern: PatternResponse,
+  completedTrades: CompletedTrade[]
+): CompletedTrade[] {
+  const sorted = [...completedTrades].sort(
+    (left, right) => Math.abs(right.pnl) - Math.abs(left.pnl)
+  );
+
+  switch (pattern.pattern_type) {
+    case "holding_period": {
+      const worstBucket = String(pattern.data?.worst_bucket ?? "").toLowerCase();
+      return sorted
+        .filter((trade) => {
+          if (worstBucket.includes("intra")) return trade.holding_days <= 1;
+          if (worstBucket.includes("swing")) return trade.holding_days > 1 && trade.holding_days <= 7;
+          if (worstBucket.includes("position")) return trade.holding_days > 7;
+          return true;
+        })
+        .slice(0, 3);
+    }
+    default:
+      return sorted.slice(0, 3);
+  }
+}
+
 function getHoldingBucket(days: number): "Intraday" | "Swing" | "Positional" {
   if (days <= 1) return "Intraday";
   if (days <= 7) return "Swing";

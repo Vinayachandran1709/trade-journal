@@ -23,7 +23,9 @@ const MAX_RECENT_QUERIES = 5;
 const MAX_VISIBLE_SOURCES = 3;
 
 interface AiQueryItem {
-  symbol: string;
+  label: string;
+  value: string;
+  type: "symbol" | "question";
   date: string;
 }
 
@@ -39,16 +41,50 @@ function normalizeAiQueryItems(value: unknown): AiQueryItem[] {
   return value
     .map((item) => {
       if (typeof item === "string") {
-        return { symbol: item, date: getIstDateKey() };
+        return {
+          label: item.toUpperCase(),
+          value: item.toUpperCase(),
+          type: "symbol" as const,
+          date: getIstDateKey(),
+        };
       }
 
       if (
         item &&
         typeof item === "object" &&
-        typeof item.symbol === "string" &&
+        typeof (item as { value?: unknown }).value === "string" &&
         typeof item.date === "string"
       ) {
-        return { symbol: item.symbol, date: item.date };
+        const nextItem = item as {
+          label?: unknown;
+          value: string;
+          type?: unknown;
+          date: string;
+        };
+        return {
+          label:
+            typeof nextItem.label === "string" && nextItem.label.trim()
+              ? nextItem.label
+              : nextItem.value.trim(),
+          value: nextItem.value,
+          type: nextItem.type === "question" ? "question" : "symbol",
+          date: nextItem.date,
+        };
+      }
+
+      if (
+        item &&
+        typeof item === "object" &&
+        typeof (item as { symbol?: unknown }).symbol === "string" &&
+        typeof item.date === "string"
+      ) {
+        const legacyItem = item as { symbol: string; date: string };
+        return {
+          label: legacyItem.symbol.toUpperCase(),
+          value: legacyItem.symbol.toUpperCase(),
+          type: "symbol",
+          date: legacyItem.date,
+        };
       }
 
       return null;
@@ -306,10 +342,50 @@ function shouldUseStockAnalysis(value: string): boolean {
 }
 
 function getCategoryLabel(category: string): string {
-  return category
-    .split("_")
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(" ");
+  switch (category) {
+    case "my_trades":
+      return "My Trades";
+    case "strategy_check":
+      return "Strategy Check";
+    case "portfolio":
+      return "Portfolio";
+    case "stock_research":
+      return "Stock Research";
+    case "market_context":
+      return "Market Context";
+    default:
+      return category
+        .split("_")
+        .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+        .join(" ");
+  }
+}
+
+function buildQueryLabel(value: string, type: "symbol" | "question"): string {
+  return type === "symbol" ? value.trim().toUpperCase() : value.trim();
+}
+
+function getResearchTakeaway(response: string): string | null {
+  const directAnswerLine =
+    response
+      .split("\n")
+      .map((line) => line.trim())
+      .find((line) => /^1\.\s*/.test(line) || /^direct answer[:\s-]/i.test(line)) ??
+    response
+      .split("\n")
+      .map((line) => line.trim())
+      .find(Boolean) ??
+    null;
+
+  if (!directAnswerLine) {
+    return null;
+  }
+
+  return directAnswerLine
+    .replace(/^1\.\s*/, "")
+    .replace(/^direct answer[:\s-]*/i, "")
+    .replace(/\*\*/g, "")
+    .trim();
 }
 
 function renderResearchResponse(response: string) {
@@ -466,12 +542,15 @@ export default function AiTab({
     []
   );
 
-  async function saveRecentQuery(nextSymbol: string) {
+  async function saveRecentQuery(value: string, type: "symbol" | "question") {
     const today = getIstDateKey();
-    const normalized = nextSymbol.toUpperCase();
+    const normalizedValue = type === "symbol" ? value.trim().toUpperCase() : value.trim();
+    const label = buildQueryLabel(normalizedValue, type);
     const nextQueries = [
-      { symbol: normalized, date: today },
-      ...recentQueries.filter((item) => !(item.symbol === normalized && item.date === today)),
+      { label, value: normalizedValue, type, date: today },
+      ...recentQueries.filter(
+        (item) => !(item.value === normalizedValue && item.type === type && item.date === today)
+      ),
     ].slice(0, MAX_RECENT_QUERIES);
     setRecentQueries(nextQueries);
     await storageSet(RECENT_AI_QUERIES_KEY, nextQueries);
@@ -532,10 +611,11 @@ export default function AiTab({
             )
         );
 
-        await saveRecentQuery(normalizedSymbol);
+        await saveRecentQuery(normalizedSymbol, "symbol");
       } else {
         const response = await askResearch(token, query);
         setResult({ kind: "research", data: response });
+        await saveRecentQuery(query, "question");
       }
     } catch (queryError) {
       setResult(null);
@@ -570,6 +650,8 @@ export default function AiTab({
       : null;
   const cleanExplanation = stockResult ? getCleanExplanation(stockResult) : "";
   const splitExplanation = stockResult ? splitExplanationText(cleanExplanation) : null;
+  const researchTakeaway =
+    result?.kind === "research" ? getResearchTakeaway(result.data.response) : null;
 
   return (
     <section className="ai-root">
@@ -578,7 +660,7 @@ export default function AiTab({
           <input
             id="ai-symbol-input"
             className="ai-input"
-            placeholder="Ask research or type TCS..."
+            placeholder="Ask about your trades or type TCS"
             value={symbol}
             onChange={(event) => setSymbol(event.target.value)}
             onKeyDown={(event) => {
@@ -622,17 +704,18 @@ export default function AiTab({
             <div className="ai-today-queries">
               {todaysQueries.map((recentQuery) => (
                 <button
-                  key={`${recentQuery.symbol}-${recentQuery.date}`}
+                  key={`${recentQuery.type}-${recentQuery.value}-${recentQuery.date}`}
                   className="ai-recent-pill"
                   disabled={loading}
-                  onClick={() => void runQuery(recentQuery.symbol)}
+                  onClick={() => void runQuery(recentQuery.value)}
+                  title={recentQuery.value}
                 >
-                  {recentQuery.symbol}
+                  {recentQuery.label}
                 </button>
               ))}
             </div>
           ) : (
-            <p className="ai-recent-empty">Symbols you check today will show here.</p>
+            <p className="ai-recent-empty">Stocks and research questions you run today will show here.</p>
           )}
         </div>
       </div>
@@ -808,34 +891,15 @@ export default function AiTab({
             <span className="research-category-badge">{getCategoryLabel(result.data.category)}</span>
           </div>
 
+          {researchTakeaway ? (
+            <div className="research-takeaway-box">
+              <span className="research-takeaway-label">Takeaway</span>
+              <strong>{researchTakeaway}</strong>
+            </div>
+          ) : null}
+
           <div className="ai-result-explanation research-response">
             {renderResearchResponse(result.data.response)}
-            {String.raw`
-              const boldProcessed = line.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
-              const isBullet = /^\s*[-•]\s/.test(line);
-              const cleanLine = isBullet ? line.replace(/^\s*[-•]\s*/, "") : line;
-              const processedLine = isBullet
-                ? cleanLine.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
-                : boldProcessed;
-
-              if (!line.trim()) return <br key={index} />;
-
-              if (isBullet) {
-                return (
-                  <div key={index} className="research-bullet">
-                    <span className="bullet-dot">•</span>
-                    <span dangerouslySetInnerHTML={{ __html: processedLine }} />
-                  </div>
-                );
-              }
-
-              return (
-                <p
-                  key={index}
-                  dangerouslySetInnerHTML={{ __html: processedLine }}
-                  style={{ margin: "4px 0" }}
-                />
-              );` && null}
           </div>
 
           <div className="ai-quota-copy">

@@ -104,6 +104,26 @@ function findEmotionForCompletedTrade(
   return match?.emotion_tag ?? null;
 }
 
+function getMatchingRawTrade(
+  trade: CompletedTradeListItem,
+  rawTrades: TradeListItem[]
+): TradeListItem | null {
+  const entryKey = parseDateKey(trade.entry_date);
+  const symbol = trade.stock_symbol.toUpperCase();
+  return (
+    rawTrades.find(
+      (raw) =>
+        raw.stock_symbol.toUpperCase() === symbol &&
+        (!entryKey || parseDateKey(raw.trade_date) === entryKey)
+    ) ?? null
+  );
+}
+
+function hasFollowUpNote(value?: string | null): boolean {
+  const parsed = extractPlanMetadata(value ?? "");
+  return Boolean(parsed.text.trim());
+}
+
 function hoursSince(value: string): string {
   const created = new Date(value);
   if (Number.isNaN(created.getTime())) {
@@ -178,11 +198,13 @@ export default function JournalTab({
   savingTradeId,
   onSave,
   isSignedIn,
+  webAppUrl,
 }: {
   captureState: CaptureState | null;
   savingTradeId: number | null;
   onSave: (tradeId: number, emotionTag: string, note: string) => Promise<void>;
   isSignedIn: boolean;
+  webAppUrl: string;
 }) {
   const [completedTrades, setCompletedTrades] = useState<CompletedTradeListItem[]>([]);
   const [rawTrades, setRawTrades] = useState<TradeListItem[]>([]);
@@ -270,6 +292,13 @@ export default function JournalTab({
   }, [completedTrades, setups, todayKey, todaysTrades]);
 
   const visibleSetups = setups.slice(0, 3);
+  const needsEmotionTags = rawTrades.filter((trade) => !trade.emotion_tag).length;
+  const needsFollowUpNotes = rawTrades.filter((trade) => !hasFollowUpNote(trade.notes)).length;
+  const pendingSetupCount = setups.filter((setup) => !setup.linked_trade_id).length;
+
+  function openDashboardPath(path: string) {
+    void chrome.tabs.create({ url: `${webAppUrl}${path}` });
+  }
 
   return (
     <section className="journal-root">
@@ -310,16 +339,80 @@ export default function JournalTab({
         />
       ))}
 
+      {(needsEmotionTags > 0 || needsFollowUpNotes > 0 || pendingSetupCount > 0) ? (
+        <article className="placeholder-card journal-section">
+          <h2>Needs journaling</h2>
+          <div className="journal-list">
+            {needsEmotionTags > 0 ? (
+              <div className="journal-trade-card">
+                <div className="journal-trade-header">
+                  <span className="journal-symbol">Missing emotion tags</span>
+                  <span className="journal-emotion-pill emotion-neutral">{needsEmotionTags} trades</span>
+                </div>
+                <div className="journal-trade-meta">
+                  Recent trades still need an emotional tag before the lesson is usable.
+                </div>
+                <button
+                  type="button"
+                  className="journal-view-all"
+                  onClick={() => openDashboardPath("/dashboard/trades?emotion=missing")}
+                >
+                  Fix tags on dashboard →
+                </button>
+              </div>
+            ) : null}
+
+            {needsFollowUpNotes > 0 ? (
+              <div className="journal-trade-card">
+                <div className="journal-trade-header">
+                  <span className="journal-symbol">Missing follow-up notes</span>
+                  <span className="journal-emotion-pill emotion-neutral">{needsFollowUpNotes} trades</span>
+                </div>
+                <div className="journal-trade-meta">
+                  Add a short note so imported trades stay useful even without live capture context.
+                </div>
+                <button
+                  type="button"
+                  className="journal-view-all"
+                  onClick={() => openDashboardPath("/dashboard/trades?emotion=missing")}
+                >
+                  Review notes on dashboard →
+                </button>
+              </div>
+            ) : null}
+
+            {pendingSetupCount > 0 ? (
+              <div className="journal-trade-card">
+                <div className="journal-trade-header">
+                  <span className="journal-symbol">Pending setup review</span>
+                  <span className="journal-emotion-pill emotion-neutral">{pendingSetupCount} open</span>
+                </div>
+                <div className="journal-trade-meta">
+                  Some setups are still waiting for trade capture or dashboard follow-through.
+                </div>
+                <button
+                  type="button"
+                  className="journal-view-all"
+                  onClick={() => openDashboardPath("/dashboard#pre-trade-setups")}
+                >
+                  Review pending setups →
+                </button>
+              </div>
+            ) : null}
+          </div>
+        </article>
+      ) : null}
+
       <article className="placeholder-card journal-section">
         <h2>Completed Trades</h2>
         <div className="journal-list">
           {completedLoading ? <JournalSkeleton /> : null}
           {!completedLoading && completedTrades.length
-            ? completedTrades.map((trade) => (
+              ? completedTrades.map((trade) => (
                 <CompletedTradeCard
                   key={trade.id}
                   trade={trade}
-                  emotionTag={findEmotionForCompletedTrade(trade, rawTrades)}
+                  rawTrade={getMatchingRawTrade(trade, rawTrades)}
                 />
               ))
             : null}
@@ -337,7 +430,12 @@ export default function JournalTab({
         {visibleSetups.length ? (
           <div className="setup-list">
             {visibleSetups.map((setup) => (
-              <SetupCard key={setup.id} setup={setup} rawTrades={rawTrades} />
+              <SetupCard
+                key={setup.id}
+                setup={setup}
+                rawTrades={rawTrades}
+                webAppUrl={webAppUrl}
+              />
             ))}
             {setups.length > 3 ? <button className="journal-view-all">View all plans →</button> : null}
           </div>
@@ -351,13 +449,15 @@ export default function JournalTab({
 
 function CompletedTradeCard({
   trade,
-  emotionTag,
+  rawTrade,
 }: {
   trade: CompletedTradeListItem;
-  emotionTag: string | null;
+  rawTrade: TradeListItem | null;
 }) {
+  const emotionTag = rawTrade?.emotion_tag ?? null;
   const isWin = trade.pnl >= 0;
   const emotion = getEmotionMeta(emotionTag);
+  const hasNote = hasFollowUpNote(rawTrade?.notes);
 
   return (
     <article className={`journal-trade-card ${isWin ? "trade-win" : "trade-loss"}`}>
@@ -379,12 +479,23 @@ function CompletedTradeCard({
         <span className={`journal-emotion-pill emotion-${emotion.value}`}>
           {emotion.emoji} {emotion.label}
         </span>
-      ) : null}
+      ) : (
+        <span className="journal-emotion-pill emotion-neutral">Not tagged</span>
+      )}
+      {!hasNote ? <span className="setup-created">Follow-up note missing</span> : null}
     </article>
   );
 }
 
-function SetupCard({ setup, rawTrades }: { setup: TradeSetupItem; rawTrades: TradeListItem[] }) {
+function SetupCard({
+  setup,
+  rawTrades,
+  webAppUrl,
+}: {
+  setup: TradeSetupItem;
+  rawTrades: TradeListItem[];
+  webAppUrl: string;
+}) {
   const linked = Boolean(setup.linked_trade_id);
   const rr = getRrMeta(setup);
   const riskScore = setup.risk_score;
@@ -434,6 +545,17 @@ function SetupCard({ setup, rawTrades }: { setup: TradeSetupItem; rawTrades: Tra
       ) : null}
       {planVsActual ? <div className="setup-thesis">{planVsActual}</div> : null}
       {setup.thesis ? <div className="setup-thesis">{setup.thesis.slice(0, 60)}</div> : null}
+      <button
+        type="button"
+        className="journal-view-all"
+        onClick={() =>
+          void chrome.tabs.create({
+            url: `${webAppUrl}${linked ? "/dashboard#recent-trades" : "/dashboard#pre-trade-setups"}`,
+          })
+        }
+      >
+        {linked ? "Review on dashboard →" : "Review pending setups →"}
+      </button>
     </article>
   );
 }

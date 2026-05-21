@@ -20,6 +20,7 @@ const CATEGORY_LABELS: Record<Category, string> = {
   stock_research: "Stock Research",
   market_context: "Market Context",
   strategy_check: "Strategy Check",
+  portfolio: "Portfolio",
 };
 
 const CATEGORY_BADGES: Record<Category, string> = {
@@ -27,6 +28,7 @@ const CATEGORY_BADGES: Record<Category, string> = {
   stock_research: "badge-emerald",
   market_context: "badge-indigo",
   strategy_check: "badge-rose",
+  portfolio: "badge-indigo",
 };
 
 function renderInline(text: string) {

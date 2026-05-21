@@ -264,6 +264,38 @@ def classify_query(query: str) -> str:
     return "stock_research"
 
 
+def _get_category_prompt(category: str) -> str:
+    base = (
+        "Keep the answer under 220 words. Use exactly this structure with short labeled sections: "
+        "1. Direct answer 2. Your numbers 3. Pattern / risk note 4. What to review 5. Disclaimer. "
+        "Write like a trader's research copilot: specific, calm, and personal. "
+        "Use actual user data when available. Never give trade calls, entries, exits, or targets."
+    )
+
+    if category == "portfolio":
+        return (
+            f"{base} For portfolio questions, start by listing open positions first as bullet lines with "
+            "symbol, quantity, avg entry, and holding days. If there are no open positions, explicitly say all matched trades are closed."
+        )
+    if category == "stock_research":
+        return (
+            f"{base} For single-stock 52-week questions, explicitly use distance_to_52w_high_pct and "
+            "distance_to_52w_low_pct, then line that up with avg_entry_price, lowest_entry_price, and highest_entry_price when available."
+        )
+    if category == "strategy_check":
+        return f"{base} For strategy questions, turn the answer into a concise review checklist rather than generic theory."
+    if category == "my_trades":
+        return f"{base} For personal performance questions, focus on realized results, win rate, P&L, and repeat behavior patterns."
+    if category == "market_context":
+        return f"{base} For market context questions, explain the tape and risk conditions without turning it into a trade call."
+    return (
+        f"{base} For comparison questions, compare both symbols side-by-side, say which looks stronger today, "
+        "use 52-week distance context when available, and line it up with the user's historical entry range if present."
+    )
+
+    return "stock_research"
+
+
 def extract_symbols(query: str) -> list[str]:
     symbols: list[str] = []
     seen: set[str] = set()
@@ -322,7 +354,12 @@ async def ask_research_agent(query: str, user: User, db: Session) -> dict:
     )
     cached = _get_cache_entry(db, cache_key)
     if cached:
-        return {**cached, "cached": True}
+        cached_category = cached.get("category") if isinstance(cached, dict) else None
+        return {
+            **cached,
+            "category": cached_category or category or "stock_research",
+            "cached": True,
+        }
 
     queries_used = _count_queries_today(db, user.id, "research")
     limit = 50 if _is_pro_active(user) else 5
@@ -332,11 +369,11 @@ async def ask_research_agent(query: str, user: User, db: Session) -> dict:
     model = "gpt-4o" if _is_pro_active(user) else "gpt-4o-mini"
     system_prompt = (
         "You are IndiaCircle's SEBI-safe behavioral trading research assistant. "
-        "Keep responses under 200 words. Structure every answer as: 1. Direct answer 2. Your numbers "
-        "3. Pattern / risk note 4. What to review 5. Disclaimer. Use actual user data for personal questions. "
-        "List open positions directly for portfolio questions. Compare both stocks side-by-side for comparison questions. "
+        "Answer as a trader-focused research copilot, not a hype analyst. "
+        "Be concrete, structured, and personal when user data is available. "
+        f"{_get_category_prompt(category)} "
         "Use phrases like 'Your data shows...' and 'Use this as context, not a trade call.' "
-        f"Never give trade calls or advice. End with exactly: {DISCLAIMER}"
+        f"End with exactly: {DISCLAIMER}"
     )
     user_message = f"Question: {cleaned_query}\n\nContext:\n{context}"
 
@@ -733,6 +770,8 @@ def _rewrite_for_compliance(text: str) -> str:
     cleaned = re.sub(r"\bConsider reviewing reviewing\b", "Reviewing", cleaned, flags=re.IGNORECASE)
     cleaned = re.sub(r"\bworth reviewing reviewing\b", "worth reviewing", cleaned, flags=re.IGNORECASE)
     cleaned = re.sub(r"\bit is worth reviewing reviewing\b", "it is worth reviewing", cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(r"\bThe data suggests The data suggests\b", "The data suggests", cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(r"\bUse this as context, not a trade call\.\s*Use this as context, not a trade call\.", "Use this as context, not a trade call.", cleaned, flags=re.IGNORECASE)
     cleaned = re.sub(r"\s{2,}", " ", cleaned)
     return cleaned.strip()
 
@@ -745,5 +784,20 @@ def _ensure_compliant_response(text: str) -> str:
 
     if not cleaned:
         cleaned = "1. Direct answer: Your data shows limited context for this question.\n2. Your numbers: Not enough current data was available.\n3. Pattern / risk note: This is worth reviewing after more trades are logged.\n4. What to review: Check recent trades and market context together."
+
+    required_sections = [
+        "1. Direct answer:",
+        "2. Your numbers:",
+        "3. Pattern / risk note:",
+        "4. What to review:",
+    ]
+    if not all(section in cleaned for section in required_sections):
+        cleaned = (
+            "1. Direct answer: "
+            + cleaned.strip()
+            + "\n2. Your numbers: Review the numbers and open-position context shown above.\n"
+            + "3. Pattern / risk note: Use this as context, not a trade call.\n"
+            + "4. What to review: Compare this answer against your recent trades, sizing, and market conditions."
+        )
 
     return f"{cleaned}\n\n{DISCLAIMER}"

@@ -92,6 +92,8 @@ export async function getTrades(filters?: {
   end_date?: string;
   limit?: number;
   offset?: number;
+  emotion?: "missing";
+  review?: "losers-missing-emotion";
 }): Promise<Trade[]> {
   const params = new URLSearchParams();
   if (filters?.symbol) params.set("symbol", filters.symbol);
@@ -100,12 +102,24 @@ export async function getTrades(filters?: {
   if (filters?.limit !== undefined) params.set("limit", String(filters.limit));
   if (filters?.offset !== undefined)
     params.set("offset", String(filters.offset));
+  if (filters?.emotion) params.set("emotion", filters.emotion);
+  if (filters?.review) params.set("review", filters.review);
 
   const query = params.toString();
   const response = await apiFetch<PaginatedTradesResponse>(
     `/trades/${query ? `?${query}` : ""}`
   );
   return response.trades;
+}
+
+export async function updateTradeAnnotations(
+  tradeId: number,
+  payload: { emotion_tag: string | null; note: string | null }
+): Promise<Trade> {
+  return apiFetch<Trade>(`/trades/${tradeId}`, {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  });
 }
 
 export async function getTradesSummary(): Promise<TradesSummary> {

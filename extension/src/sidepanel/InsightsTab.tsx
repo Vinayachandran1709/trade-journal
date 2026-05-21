@@ -471,7 +471,13 @@ function isCostingPattern(pattern: PatternResponse, impact: { amount: number; te
   if (pattern.locked) {
     return false;
   }
+  if (impact && impact.amount > 0) {
+    return false;
+  }
   const text = `${pattern.title} ${pattern.description} ${getTraderFacingPatternTitle(pattern)}`.toLowerCase();
+  if (["sweet spot", "stronger", "best", "helping", "working better", "positive"].some((term) => text.includes(term))) {
+    return false;
+  }
   if (pattern.pattern_type === "holding_period") {
     return typeof pattern.data?.worst_avg_pnl === "number" &&
       typeof pattern.data?.best_avg_pnl === "number"
@@ -1014,12 +1020,35 @@ export default function InsightsTab({
     if (unlockedPatterns.length === 0) {
       return null;
     }
-    return [...unlockedPatterns].sort((left, right) => {
+    const costingPatterns = unlockedPatterns.filter((item) => item.isCosting);
+    const candidates = costingPatterns.length > 0 ? costingPatterns : unlockedPatterns;
+    return [...candidates].sort((left, right) => {
       const rightPriority = getMainFocusPriority(right.pattern, right.impact);
       const leftPriority = getMainFocusPriority(left.pattern, left.impact);
       return rightPriority - leftPriority;
     })[0];
   }, [patternsWithMeta]);
+
+  const groupedPatterns = useMemo(
+    () => [
+      {
+        key: "costing",
+        title: "Costing you",
+        items: patternsWithMeta.filter((item) => !item.pattern.locked && item.isCosting),
+      },
+      {
+        key: "helping",
+        title: "Helping you",
+        items: patternsWithMeta.filter((item) => !item.pattern.locked && item.isHelping && !item.isCosting),
+      },
+      {
+        key: "monitoring",
+        title: "Needs monitoring",
+        items: patternsWithMeta.filter((item) => !item.pattern.locked && !item.isCosting && !item.isHelping),
+      },
+    ].filter((group) => group.items.length > 0),
+    [patternsWithMeta]
+  );
 
   const avoidableLosses = useMemo(
     () => buildAvoidableLossesSummary(patternsWithMeta, unlocked, totalCompletedTrades),
@@ -1229,6 +1258,15 @@ export default function InsightsTab({
             </article>
           ) : null}
 
+          <div className="insights-group-row">
+            {groupedPatterns.map((group) => (
+              <div key={group.key} className="insights-group-chip">
+                <span>{group.title}</span>
+                <strong>{group.items.length}</strong>
+              </div>
+            ))}
+          </div>
+
           <div className="insights-pattern-list">
             {patternsWithMeta.map(({ pattern, confidence, impact, statusPill, exampleTrades }) => {
               const isExpanded = expanded[pattern.pattern_type] ?? false;
@@ -1265,7 +1303,7 @@ export default function InsightsTab({
                     ) : null}
 
                     <div className="insight-next-action">
-                      <span>Next action</span>
+                      <span>Rule</span>
                       <span>{getRecommendation(pattern, totalCompletedTrades)}</span>
                     </div>
 

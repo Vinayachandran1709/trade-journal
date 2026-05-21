@@ -320,8 +320,20 @@ function getNeedsAttention(
   completedTrades: CompletedTrade[],
   setups: TradeSetup[],
   patterns: PatternsEnvelope | null
-): Array<{ icon: string; text: string; priority: "high" | "medium" | "low" }> {
-  const items: Array<{ icon: string; text: string; priority: "high" | "medium" | "low" }> = [];
+): Array<{
+  icon: string;
+  text: string;
+  priority: "high" | "medium" | "low";
+  actionLabel: string;
+  href: string;
+}> {
+  const items: Array<{
+    icon: string;
+    text: string;
+    priority: "high" | "medium" | "low";
+    actionLabel: string;
+    href: string;
+  }> = [];
 
   const untaggedCount = rawTrades.filter((trade) => !trade.emotion_tag).length;
   if (untaggedCount > 3) {
@@ -329,6 +341,8 @@ function getNeedsAttention(
       icon: "😶",
       text: `${untaggedCount} trades missing emotion tags`,
       priority: "medium",
+      actionLabel: "Fix tags",
+      href: "/dashboard/trades?emotion=missing",
     });
   }
 
@@ -338,6 +352,8 @@ function getNeedsAttention(
       icon: "⏳",
       text: `${pendingSetups} setups awaiting trade capture`,
       priority: "low",
+      actionLabel: "Review setups",
+      href: "/dashboard#pre-trade-setups",
     });
   }
 
@@ -350,6 +366,8 @@ function getNeedsAttention(
       icon: "🔴",
       text: `${highSeverity.length} high-severity patterns detected`,
       priority: "high",
+      actionLabel: "Review patterns",
+      href: "/dashboard/analytics#patterns",
     });
   }
 
@@ -364,6 +382,8 @@ function getNeedsAttention(
       icon: "📝",
       text: "Several losing trades have no emotion tag — missed learning opportunity",
       priority: "medium",
+      actionLabel: "Review losing trades",
+      href: "/dashboard/trades?review=losers-missing-emotion",
     });
   }
 
@@ -798,11 +818,42 @@ function DashboardContent() {
         </article>
       </section>
 
+      <section id="quick-actions" className="mt-6 glass-card p-6">
+        <h2 className="text-xl font-black text-slate-950">Quick Actions</h2>
+        <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <Link
+            href="/import"
+            className="rounded-2xl border border-gray-100 bg-white px-4 py-4 text-sm font-semibold text-slate-700 transition hover:border-indigo-100 hover:bg-indigo-50/40"
+          >
+            Import Trades
+          </Link>
+          <Link
+            href="/dashboard/analytics"
+            className="rounded-2xl border border-gray-100 bg-white px-4 py-4 text-sm font-semibold text-slate-700 transition hover:border-indigo-100 hover:bg-indigo-50/40"
+          >
+            View Patterns
+          </Link>
+          <Link
+            href="/dashboard/mistakes"
+            className="rounded-2xl border border-gray-100 bg-white px-4 py-4 text-sm font-semibold text-slate-700 transition hover:border-indigo-100 hover:bg-indigo-50/40"
+          >
+            Review Mistakes
+          </Link>
+          <button
+            onClick={() => void handleExport()}
+            disabled={exporting}
+            className="rounded-2xl border border-gray-100 bg-white px-4 py-4 text-left text-sm font-semibold text-slate-700 transition hover:border-indigo-100 hover:bg-indigo-50/40 disabled:opacity-60"
+          >
+            {exporting ? "Exporting..." : "Export Journal"}
+          </button>
+        </div>
+      </section>
+
 
       {needsAttention.length ? (
         <section className="needs-attention-card mt-6">
-          <div className="text-lg font-black text-slate-950">⚡ Needs Attention</div>
-          <div className="mt-3 grid gap-1">
+          <div className="text-lg font-black text-slate-950">Needs Attention</div>
+          <div className="mt-3 grid gap-2">
             {needsAttention.map((item) => (
               <div key={`${item.icon}-${item.text}`} className="needs-attention-item">
                 <span>{item.icon}</span>
@@ -814,13 +865,19 @@ function DashboardContent() {
                       ? "Medium"
                       : "Low"}
                 </span>
+                <Link
+                  href={item.href}
+                  className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-indigo-700 ring-1 ring-indigo-100 transition hover:bg-indigo-50"
+                >
+                  {item.actionLabel}
+                </Link>
               </div>
             ))}
           </div>
         </section>
       ) : null}
 
-      <section className="mt-6 glass-card p-6">
+      <section id="weekly-focus" className="mt-6 glass-card p-6">
           <h2 className="text-xl font-black text-slate-950">{weekSummary.title}</h2>
           <div className="mt-4 grid gap-3">
             <div className="rounded-2xl bg-slate-50 p-4 text-sm font-semibold text-slate-700">
@@ -857,7 +914,7 @@ function DashboardContent() {
           </div>
       </section>
 
-      <section className="mt-6">
+      <section id="trader-dna" className="mt-6">
         {tradeCountForDna >= 20 ? (
           <div className="dna-card">
             <div className="grid gap-6 lg:grid-cols-2">
@@ -940,7 +997,7 @@ function DashboardContent() {
         )}
       </section>
 
-      <section className="mt-6 glass-card p-6">
+      <section id="recent-trades" className="mt-6 glass-card p-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <h2 className="text-xl font-black text-slate-950">Recent Trades</h2>
           <Link href="/dashboard/trades" className="text-sm font-bold text-indigo-600">
@@ -1005,7 +1062,7 @@ function DashboardContent() {
       </section>
 
       {setups.length > 0 ? (
-        <section className="mt-6 glass-card p-6">
+        <section id="pre-trade-setups" className="mt-6 glass-card p-6">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <h2 className="text-xl font-black text-slate-950">Pre-Trade Setups</h2>
             <Link href="/dashboard/trades" className="text-sm font-bold text-indigo-600">
@@ -1090,37 +1147,6 @@ function DashboardContent() {
           </div>
         </section>
       ) : null}
-
-      <section className="mt-6 glass-card p-6">
-        <h2 className="text-xl font-black text-slate-950">Quick Actions</h2>
-        <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          <Link
-            href="/import"
-            className="rounded-2xl border border-gray-100 bg-white px-4 py-4 text-sm font-semibold text-slate-700 transition hover:border-indigo-100 hover:bg-indigo-50/40"
-          >
-            📥 Import Trades
-          </Link>
-          <Link
-            href="/dashboard/analytics"
-            className="rounded-2xl border border-gray-100 bg-white px-4 py-4 text-sm font-semibold text-slate-700 transition hover:border-indigo-100 hover:bg-indigo-50/40"
-          >
-            📊 View Patterns
-          </Link>
-          <Link
-            href="/dashboard/mistakes"
-            className="rounded-2xl border border-gray-100 bg-white px-4 py-4 text-sm font-semibold text-slate-700 transition hover:border-indigo-100 hover:bg-indigo-50/40"
-          >
-            🔍 Review Mistakes
-          </Link>
-          <button
-            onClick={() => void handleExport()}
-            disabled={exporting}
-            className="rounded-2xl border border-gray-100 bg-white px-4 py-4 text-left text-sm font-semibold text-slate-700 transition hover:border-indigo-100 hover:bg-indigo-50/40 disabled:opacity-60"
-          >
-            📤 {exporting ? "Exporting..." : "Export Journal"}
-          </button>
-        </div>
-      </section>
     </div>
   );
 }
@@ -1132,3 +1158,10 @@ export default function DashboardPage() {
     </AuthGuard>
   );
 }
+
+
+
+
+
+
+

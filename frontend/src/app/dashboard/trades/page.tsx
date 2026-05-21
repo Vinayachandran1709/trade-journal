@@ -1,12 +1,18 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import AuthGuard from "@/components/AuthGuard";
-import { getTrades, getTradesSummary } from "@/lib/trades";
-import type { Trade, TradesSummary } from "@/types/trade";
+import {
+  getCompletedTrades,
+  getTrades,
+  getTradesSummary,
+  updateTradeAnnotations,
+} from "@/lib/trades";
+import type { CompletedTrade, Trade, TradesSummary } from "@/types/trade";
 
 const PAGE_SIZE = 20;
+const QUICK_EMOTIONS = ["confident", "fearful", "greedy", "revenge", "fomo", "neutral"] as const;
 
 function formatCurrency(value: number): string {
   return "₹" + value.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -35,13 +41,29 @@ function emotionClass(emotion?: string | null) {
   return "badge-indigo";
 }
 
+function emotionLabel(emotion?: string | null) {
+  return emotion ? emotion.replace(/_/g, " ") : "untagged";
+}
+
+function tradeReviewKey(trade: Pick<Trade, "stock_symbol" | "trade_date">) {
+  return `${trade.stock_symbol.toUpperCase()}-${trade.trade_date.slice(0, 10)}`;
+}
+
+function completedTradeReviewKey(trade: Pick<CompletedTrade, "stock_symbol" | "entry_date">) {
+  return `${trade.stock_symbol.toUpperCase()}-${trade.entry_date.slice(0, 10)}`;
+}
+
 function TradesContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [trades, setTrades] = useState<Trade[]>([]);
+  const [completedTrades, setCompletedTrades] = useState<CompletedTrade[]>([]);
   const [summary, setSummary] = useState<TradesSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [page, setPage] = useState(0);
+  const [savingTradeId, setSavingTradeId] = useState<number | null>(null);
+  const [drafts, setDrafts] = useState<Record<number, { emotion_tag: string; note: string }>>({});
 
   const [filters, setFilters] = useState({
     symbol: "",
@@ -54,35 +76,55 @@ function TradesContent() {
     end_date: "",
   });
 
-  const fetchTrades = useCallback(
+  const isMissingEmotionMode = searchParams.get("emotion") === "missing";
+  const isLosersMissingEmotionMode = searchParams.get("review") === "losers-missing-emotion";
+  const isResolutionMode = isMissingEmotionMode || isLosersMissingEmotionMode;
+
+  const fetchTradesPage = useCallback(
     async (currentFilters: typeof appliedFilters, currentPage: number) => {
       setLoading(true);
       setError("");
       try {
-        const [tradesData, summaryData] = await Promise.all([
+        const requestLimit = isResolutionMode ? 500 : PAGE_SIZE;
+        const requestOffset = isResolutionMode ? 0 : currentPage * PAGE_SIZE;
+
+        const [tradesData, summaryData, completedData] = await Promise.all([
           getTrades({
             ...(currentFilters.symbol ? { symbol: currentFilters.symbol } : {}),
             ...(currentFilters.start_date ? { start_date: currentFilters.start_date } : {}),
             ...(currentFilters.end_date ? { end_date: currentFilters.end_date } : {}),
-            limit: PAGE_SIZE,
-            offset: currentPage * PAGE_SIZE,
+            ...(isMissingEmotionMode ? { emotion: "missing" as const } : {}),
+            ...(isLosersMissingEmotionMode ? { review: "losers-missing-emotion" as const } : {}),
+            limit: requestLimit,
+            offset: requestOffset,
           }),
           getTradesSummary(),
+          isLosersMissingEmotionMode ? getCompletedTrades(500, 0) : Promise.resolve([]),
         ]);
+
         setTrades(tradesData);
         setSummary(summaryData);
+        setCompletedTrades(completedData);
+        setDrafts(
+          Object.fromEntries(
+            tradesData.map((trade) => [
+              trade.id,
+              { emotion_tag: trade.emotion_tag ?? "", note: trade.notes ?? "" },
+            ])
+          )
+        );
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to load trades");
       } finally {
         setLoading(false);
       }
     },
-    []
+    [isLosersMissingEmotionMode, isMissingEmotionMode, isResolutionMode]
   );
 
   useEffect(() => {
-    fetchTrades(appliedFilters, page);
-  }, [appliedFilters, page, fetchTrades]);
+    fetchTradesPage(appliedFilters, page);
+  }, [appliedFilters, page, fetchTradesPage]);
 
   function applyFilters() {
     setPage(0);
@@ -96,6 +138,50 @@ function TradesContent() {
     setPage(0);
   }
 
+  const visibleTrades = useMemo(() => {
+    if (!isLosersMissingEmotionMode) {
+      return trades;
+    }
+
+    const losingTradeKeys = new Set(
+      completedTrades
+        .filter((trade) => trade.pnl < 0)
+        .map((trade) => completedTradeReviewKey(trade))
+    );
+
+    return trades.filter(
+      (trade) => losingTradeKeys.has(tradeReviewKey(trade)) && !trade.emotion_tag
+    );
+  }, [completedTrades, isLosersMissingEmotionMode, trades]);
+
+  const pagedTrades = useMemo(() => {
+    if (!isResolutionMode) {
+      return visibleTrades;
+    }
+
+    const start = page * PAGE_SIZE;
+    return visibleTrades.slice(start, start + PAGE_SIZE);
+  }, [isResolutionMode, page, visibleTrades]);
+
+  async function handleQuickSave(tradeId: number) {
+    const draft = drafts[tradeId];
+    if (!draft) return;
+
+    setSavingTradeId(tradeId);
+    setError("");
+    try {
+      const updatedTrade = await updateTradeAnnotations(tradeId, {
+        emotion_tag: draft.emotion_tag || null,
+        note: draft.note || null,
+      });
+      setTrades((current) => current.map((trade) => (trade.id === tradeId ? updatedTrade : trade)));
+    } catch (nextError) {
+      setError(nextError instanceof Error ? nextError.message : "Unable to save trade annotation");
+    } finally {
+      setSavingTradeId(null);
+    }
+  }
+
   if (loading && trades.length === 0) return <Spinner />;
 
   return (
@@ -105,7 +191,13 @@ function TradesContent() {
           <div>
             <span className="badge badge-indigo">Journal</span>
             <h1 className="mt-4 text-4xl font-black tracking-tight text-slate-950">Your Trades</h1>
-            <p className="mt-2 text-gray-600">View, filter, and tag the raw material of your trading edge.</p>
+            <p className="mt-2 text-gray-600">
+              {isLosersMissingEmotionMode
+                ? "Review losing trades with missing emotions and close the journaling gap."
+                : isMissingEmotionMode
+                  ? "Quick-tag missing emotions and add a short follow-up note."
+                  : "View, filter, and tag the raw material of your trading edge."}
+            </p>
           </div>
           <button onClick={() => router.push("/import")} className="btn-primary">
             + Import Trades
@@ -116,11 +208,15 @@ function TradesContent() {
           <div className="mt-8 grid gap-4 sm:grid-cols-3">
             <div className="stat-card">
               <p className="text-sm font-bold text-gray-500">Total Trades</p>
-              <p className="mt-2 text-3xl font-black text-slate-950">{summary.total_trades.toLocaleString("en-IN")}</p>
+              <p className="mt-2 text-3xl font-black text-slate-950">
+                {summary.total_trades.toLocaleString("en-IN")}
+              </p>
             </div>
             <div className="stat-card">
               <p className="text-sm font-bold text-gray-500">Total Invested</p>
-              <p className="mt-2 text-3xl font-black text-slate-950">{formatCurrency(summary.total_invested)}</p>
+              <p className="mt-2 text-3xl font-black text-slate-950">
+                {formatCurrency(summary.total_invested)}
+              </p>
             </div>
             <div className="stat-card">
               <p className="text-sm font-bold text-gray-500">Unique Symbols</p>
@@ -168,6 +264,17 @@ function TradesContent() {
           </div>
         </div>
 
+        {isResolutionMode ? (
+          <div className="mt-6 rounded-2xl border border-indigo-100 bg-indigo-50 p-4 text-sm text-indigo-900">
+            <div className="font-bold">
+              {isLosersMissingEmotionMode ? "Losers missing emotion review" : "Missing emotion review"}
+            </div>
+            <div className="mt-1">
+              Use quick emotion tags and a short note to resolve journaling gaps directly from this table.
+            </div>
+          </div>
+        ) : null}
+
         {error && (
           <div className="mt-6 rounded-2xl bg-rose-50 p-4 text-sm font-semibold text-rose-700">
             {error}
@@ -175,13 +282,21 @@ function TradesContent() {
         )}
 
         <div className="mt-6">
-          {trades.length === 0 && !loading ? (
+          {visibleTrades.length === 0 && !loading ? (
             <div className="rounded-3xl border border-gray-100 bg-white p-12 text-center shadow-sm">
-              <p className="text-xl font-black text-slate-950">No trades yet</p>
-              <p className="mt-2 text-sm text-gray-500">Import your first trades to get started.</p>
-              <button className="btn-primary mt-6" onClick={() => router.push("/import")}>
-                Import Trades
-              </button>
+              <p className="text-xl font-black text-slate-950">
+                {isResolutionMode ? "Nothing to resolve right now" : "No trades yet"}
+              </p>
+              <p className="mt-2 text-sm text-gray-500">
+                {isResolutionMode
+                  ? "Your current filters did not find any unresolved journaling items."
+                  : "Import your first trades to get started."}
+              </p>
+              {!isResolutionMode ? (
+                <button className="btn-primary mt-6" onClick={() => router.push("/import")}>
+                  Import Trades
+                </button>
+              ) : null}
             </div>
           ) : (
             <>
@@ -189,32 +304,111 @@ function TradesContent() {
                 <table className="min-w-full divide-y divide-gray-100 text-sm">
                   <thead className="bg-slate-950 text-white">
                     <tr>
-                      {["Date", "Symbol", "Type", "Qty", "Price", "Total", "Emotion", "Broker", "Source"].map((col) => (
-                        <th key={col} className="px-5 py-4 text-left text-xs font-black uppercase tracking-wide text-slate-300">
+                      {[
+                        "Date",
+                        "Symbol",
+                        "Type",
+                        "Qty",
+                        "Price",
+                        "Total",
+                        "Emotion",
+                        "Broker",
+                        "Source",
+                        "Resolution",
+                      ].map((col) => (
+                        <th
+                          key={col}
+                          className="px-5 py-4 text-left text-xs font-black uppercase tracking-wide text-slate-300"
+                        >
                           {col}
                         </th>
                       ))}
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
-                    {trades.map((trade) => {
+                    {pagedTrades.map((trade) => {
                       const total = trade.quantity * trade.price;
                       const isBuy = trade.trade_type === "BUY";
+                      const draft = drafts[trade.id] ?? {
+                        emotion_tag: trade.emotion_tag ?? "",
+                        note: trade.notes ?? "",
+                      };
+                      const showResolution = isResolutionMode || !trade.emotion_tag;
+
                       return (
                         <tr key={trade.id} className="transition hover:bg-gray-50">
-                          <td className="whitespace-nowrap px-5 py-4 font-medium text-gray-600">{formatDate(trade.trade_date)}</td>
+                          <td className="whitespace-nowrap px-5 py-4 font-medium text-gray-600">
+                            {formatDate(trade.trade_date)}
+                          </td>
                           <td className="px-5 py-4 font-black text-slate-950">{trade.stock_symbol}</td>
                           <td className="px-5 py-4">
-                            <span className={`badge ${isBuy ? "badge-emerald" : "badge-rose"}`}>{trade.trade_type}</span>
+                            <span className={`badge ${isBuy ? "badge-emerald" : "badge-rose"}`}>
+                              {trade.trade_type}
+                            </span>
                           </td>
-                          <td className="px-5 py-4 font-semibold text-gray-700">{trade.quantity.toLocaleString("en-IN")}</td>
+                          <td className="px-5 py-4 font-semibold text-gray-700">
+                            {trade.quantity.toLocaleString("en-IN")}
+                          </td>
                           <td className="px-5 py-4 font-semibold text-gray-700">{formatCurrency(trade.price)}</td>
-                          <td className={`px-5 py-4 font-black ${isBuy ? "text-emerald-600" : "text-rose-600"}`}>{formatCurrency(total)}</td>
+                          <td className={`px-5 py-4 font-black ${isBuy ? "text-emerald-600" : "text-rose-600"}`}>
+                            {formatCurrency(total)}
+                          </td>
                           <td className="px-5 py-4">
-                            <span className={`badge ${emotionClass(trade.emotion_tag)}`}>{trade.emotion_tag || "untagged"}</span>
+                            <span className={`badge ${emotionClass(draft.emotion_tag || trade.emotion_tag)}`}>
+                              {emotionLabel(draft.emotion_tag || trade.emotion_tag)}
+                            </span>
                           </td>
                           <td className="px-5 py-4 text-gray-600">{trade.broker || "—"}</td>
                           <td className="px-5 py-4 text-gray-500">{trade.import_source || "—"}</td>
+                          <td className="px-5 py-4">
+                            {showResolution ? (
+                              <div className="min-w-[220px] space-y-3">
+                                <div className="flex flex-wrap gap-2">
+                                  {QUICK_EMOTIONS.map((emotion) => (
+                                    <button
+                                      key={emotion}
+                                      type="button"
+                                      onClick={() =>
+                                        setDrafts((current) => ({
+                                          ...current,
+                                          [trade.id]: { ...draft, emotion_tag: emotion },
+                                        }))
+                                      }
+                                      className={`rounded-full px-2.5 py-1 text-xs font-semibold transition ${
+                                        draft.emotion_tag === emotion
+                                          ? "bg-indigo-600 text-white"
+                                          : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                                      }`}
+                                    >
+                                      {emotion}
+                                    </button>
+                                  ))}
+                                </div>
+                                <input
+                                  type="text"
+                                  value={draft.note}
+                                  onChange={(event) =>
+                                    setDrafts((current) => ({
+                                      ...current,
+                                      [trade.id]: { ...draft, note: event.target.value },
+                                    }))
+                                  }
+                                  placeholder="Short review note"
+                                  className="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-xs font-medium text-slate-700 outline-none transition focus:border-indigo-500 focus:bg-white"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => void handleQuickSave(trade.id)}
+                                  disabled={savingTradeId === trade.id}
+                                  className="rounded-full bg-slate-950 px-3 py-1 text-xs font-semibold text-white transition hover:bg-slate-800 disabled:opacity-60"
+                                >
+                                  {savingTradeId === trade.id ? "Saving..." : "Save"}
+                                </button>
+                              </div>
+                            ) : (
+                              <span className="text-xs text-gray-400">No action needed</span>
+                            )}
+                          </td>
                         </tr>
                       );
                     })}
@@ -224,7 +418,8 @@ function TradesContent() {
 
               <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <p className="text-sm font-semibold text-gray-500">
-                  Showing {page * PAGE_SIZE + 1}–{page * PAGE_SIZE + trades.length} trades
+                  Showing {visibleTrades.length === 0 ? 0 : page * PAGE_SIZE + 1}–
+                  {Math.min(page * PAGE_SIZE + pagedTrades.length, visibleTrades.length)} trades
                 </p>
                 <div className="flex gap-2">
                   <button
@@ -236,7 +431,7 @@ function TradesContent() {
                   </button>
                   <button
                     className="btn-secondary disabled:opacity-50"
-                    disabled={trades.length < PAGE_SIZE || loading}
+                    disabled={page * PAGE_SIZE + pagedTrades.length >= visibleTrades.length || loading}
                     onClick={() => setPage((p) => p + 1)}
                   >
                     Next →

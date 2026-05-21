@@ -551,6 +551,7 @@ function MistakesContent() {
                     <th>Mistake</th>
                     <th>Count</th>
                     <th>P&amp;L Impact</th>
+                    <th>Avg loss</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -559,6 +560,9 @@ function MistakesContent() {
                       <td>{category.name}</td>
                       <td>{category.count}</td>
                       <td className="font-semibold text-rose-600">{formatSignedCurrency(category.totalPnl)}</td>
+                      <td className="font-semibold text-slate-700">
+                        {formatSignedCurrency(category.totalPnl / Math.max(category.count, 1))}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -595,6 +599,15 @@ function MistakesContent() {
                   lesson = `Weak-hour trade — consider reducing activity during ${weakHour.label || "your weak window"}.`;
                 }
 
+                const reasonBadges = [
+                  !setupMatch ? "No plan" : null,
+                  (emotion ?? "").toLowerCase().includes("revenge") ? "Revenge" : null,
+                  (emotion ?? "").toLowerCase().includes("fomo") ? "FOMO" : null,
+                  weakHour.matches(rawMatch) ? "Weak hour" : null,
+                  trade.holding_days === 0 ? "Intraday" : null,
+                  (emotion ?? "").toLowerCase().includes("overtrad") ? "Overtrading" : null,
+                ].filter((value): value is string => Boolean(value));
+
                 return (
                   <article key={trade.id} className="worst-trade-card">
                     <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
@@ -603,6 +616,15 @@ function MistakesContent() {
                       </h3>
                       <span className={`badge ${emotionClass(emotion)}`}>{emotionLabel(emotion)}</span>
                     </div>
+                    {reasonBadges.length ? (
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {reasonBadges.map((badge) => (
+                          <span key={badge} className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-700">
+                            {badge}
+                          </span>
+                        ))}
+                      </div>
+                    ) : null}
                     <div className="mt-4 grid gap-2 text-sm text-slate-600 sm:grid-cols-2">
                       <div>Plan: {setupMatch ? "Had checklist" : "No pre-trade plan"}</div>
                       <div>Holding: {trade.holding_days} days</div>
@@ -680,7 +702,19 @@ function MistakesContent() {
                         </tbody>
                       </table>
                     </div>
-                    <div className="mt-4 text-sm font-semibold text-slate-700">{adherence.label}</div>
+                    <div
+                      className={`mt-4 inline-flex rounded-full px-3 py-1 text-sm font-semibold ${
+                        adherence.label.includes("Chased entry")
+                          ? "bg-rose-100 text-rose-700"
+                          : adherence.tone === "good"
+                            ? "bg-emerald-100 text-emerald-700"
+                            : adherence.tone === "poor"
+                              ? "bg-rose-100 text-rose-700"
+                              : "bg-amber-100 text-amber-700"
+                      }`}
+                    >
+                      {adherence.label}
+                    </div>
                   </article>
                 );
               })}

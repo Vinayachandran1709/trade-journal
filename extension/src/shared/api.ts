@@ -436,7 +436,13 @@ export async function fetchMarketEarnings(): Promise<EarningsCalendarResponse> {
 }
 
 export interface ResearchAskResponse {
-  category: "my_trades" | "stock_research" | "market_context" | "strategy_check" | string;
+  category:
+    | "my_trades"
+    | "stock_research"
+    | "market_context"
+    | "strategy_check"
+    | "portfolio"
+    | string;
   query: string;
   response: string;
   context_used?: string[];

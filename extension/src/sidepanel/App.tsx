@@ -382,6 +382,7 @@ export default function App() {
           savingTradeId={savingTradeId}
           onSave={handleSaveCapture}
           isSignedIn={Boolean(user)}
+          webAppUrl={WEB_APP_URL}
         />
       )}
 

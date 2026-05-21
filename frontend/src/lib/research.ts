@@ -1,7 +1,7 @@
 import { apiFetch } from "@/lib/api";
 
 export interface ResearchResponse {
-  category: "my_trades" | "stock_research" | "market_context" | "strategy_check";
+  category: "my_trades" | "stock_research" | "market_context" | "strategy_check" | "portfolio";
   query: string;
   response: string;
   context_used: string[];
@@ -16,6 +16,7 @@ export interface SuggestionsResponse {
   stock_research: string[];
   market_context: string[];
   strategy_check: string[];
+  portfolio: string[];
 }
 
 export interface DailyBriefResponse {

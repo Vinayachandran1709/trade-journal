@@ -19,7 +19,11 @@ import {
   formatCurrency,
   formatPercent,
   getConfidenceMeta,
-  getRecommendation,
+  getPatternStatus,
+  getPatternStatusLabel,
+  getRuleLikeRecommendation,
+  getTraderFacingPatternDescription,
+  getTraderFacingPatternTitle,
   severityBadgeClass,
   severityBorderColor,
 } from "@/lib/behavioral-insights";
@@ -60,32 +64,6 @@ function getConfidenceExplanation(pattern: PatternResponse) {
     return "Pattern emerging, needs more trades for strong conclusion.";
   }
   return "Early signal — may change as more data comes in.";
-}
-
-function getPatternRecommendation(pattern: PatternResponse) {
-  const current = getRecommendation(pattern);
-  if (current) return current;
-
-  switch (pattern.pattern_type) {
-    case "time_of_day":
-      return "Consider reducing activity during your weak hours.";
-    case "day_of_week":
-      return "Be more selective on your weakest trading day.";
-    case "holding_period":
-      return "Align your trade targets with your optimal holding period.";
-    case "revenge_trading":
-      return "After a loss, wait at least 30 minutes before the next entry.";
-    case "overtrading":
-      return "Set a maximum daily trade count based on your data.";
-    case "sector_concentration":
-      return "Explore setups in other sectors to reduce concentration risk.";
-    case "winning_streak_tilt":
-      return "After 3+ wins, maintain your normal position sizing.";
-    case "losing_streak_tilt":
-      return "After consecutive losses, consider halving your next position size.";
-    default:
-      return "Your data shows a repeatable pattern here. Consider tracking it closely next week.";
-  }
 }
 
 function EquityCurve({ summary }: { summary: AnalyticsSummaryResponse }) {
@@ -486,7 +464,7 @@ function AnalyticsContent() {
               <div className="analytics-section-kicker">Behavioral Patterns</div>
               <h2 className="text-3xl font-black text-slate-950">What your trading history is repeating</h2>
               <p className="mt-2 max-w-2xl text-sm text-slate-600">
-                Confidence, financial impact, and a clean read on what your data suggests you consider adjusting.
+                See what is helping, what is costing, and which repeat behaviors deserve a rule on your dashboard.
               </p>
             </div>
           </div>
@@ -509,6 +487,17 @@ function AnalyticsContent() {
                       <div className="max-w-3xl">
                         <div className="flex flex-wrap items-center gap-3">
                           <span className={`badge ${severityBadgeClass(pattern.severity)}`}>{pattern.severity}</span>
+                          <span
+                            className={`rounded-full px-3 py-1 text-xs font-bold ${
+                              getPatternStatus(pattern, summary) === "costing"
+                                ? "bg-rose-50 text-rose-700"
+                                : getPatternStatus(pattern, summary) === "helping"
+                                  ? "bg-emerald-50 text-emerald-700"
+                                  : "bg-amber-50 text-amber-700"
+                            }`}
+                          >
+                            {getPatternStatusLabel(getPatternStatus(pattern, summary))}
+                          </span>
                           <span className={`insight-confidence ${confidence.className}`}>
                             {confidence.text}
                           </span>
@@ -516,8 +505,12 @@ function AnalyticsContent() {
                             {sampleSize || 0} trades
                           </span>
                         </div>
-                        <h3 className="mt-4 text-2xl font-black text-slate-950">{pattern.title}</h3>
-                        <p className="mt-3 text-sm leading-7 text-slate-600">{pattern.description}</p>
+                        <h3 className="mt-4 text-2xl font-black text-slate-950">
+                          {getTraderFacingPatternTitle(pattern)}
+                        </h3>
+                        <p className="mt-3 text-sm leading-7 text-slate-600">
+                          {getTraderFacingPatternDescription(pattern)}
+                        </p>
                         <p className="confidence-explanation">{getConfidenceExplanation(pattern)}</p>
                       </div>
                       <div className="flex min-w-[220px] flex-col items-start gap-3">
@@ -548,7 +541,7 @@ function AnalyticsContent() {
 
                     <div className="pattern-action-card">
                       <span className="mr-2">💡</span>
-                      {getPatternRecommendation(pattern)}
+                      {getRuleLikeRecommendation(pattern)}
                     </div>
 
                     <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">

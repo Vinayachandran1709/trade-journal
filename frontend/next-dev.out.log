@@ -17,3 +17,10 @@
  ✓ Starting...
  ✓ Ready in 5s
  ○ Compiling /welcome ...
+ ✓ Compiled /welcome in 25.6s (548 modules)
+ GET /welcome 200 in 26071ms
+ GET /dashboard/analytics 200 in 26131ms
+ GET /_next/static/webpack/f599dd7146951b4c.webpack.hot-update.json 404 in 26295ms
+ GET /_next/static/webpack/f599dd7146951b4c.webpack.hot-update.json 404 in 6279ms
+ GET /welcome 200 in 293ms
+ GET /dashboard/analytics 200 in 278ms
