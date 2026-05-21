@@ -799,15 +799,23 @@ export default function MarketTab({
   isSignedIn,
   captureState,
   onDataChange,
+  initialMarketData,
+  initialWatchlist,
+  initialPatternsEnvelope,
+  initialCompletedTrades,
 }: {
   isSignedIn: boolean;
   captureState: CaptureState | null;
   onDataChange?: (data: MarketDashboardData | null) => void;
+  initialMarketData?: MarketDashboardData | null;
+  initialWatchlist?: WatchlistResponse | null;
+  initialPatternsEnvelope?: PatternsEnvelope | null;
+  initialCompletedTrades?: CompletedTradeListItem[] | null;
 }) {
-  const [data, setData] = useState<MarketDashboardData | null>(null);
-  const [watchlist, setWatchlist] = useState<WatchlistResponse | null>(null);
-  const [patternsEnvelope, setPatternsEnvelope] = useState<PatternsEnvelope | null>(null);
-  const [completedTrades, setCompletedTrades] = useState<CompletedTradeListItem[]>([]);
+  const [data, setData] = useState<MarketDashboardData | null>(() => initialMarketData ? normalizeMarketDashboardData(initialMarketData) : null);
+  const [watchlist, setWatchlist] = useState<WatchlistResponse | null>(() => normalizeWatchlistResponse(initialWatchlist ?? null));
+  const [patternsEnvelope, setPatternsEnvelope] = useState<PatternsEnvelope | null>(initialPatternsEnvelope ?? null);
+  const [completedTrades, setCompletedTrades] = useState<CompletedTradeListItem[]>(() => normalizeCompletedTrades(initialCompletedTrades));
   const [stockIntel, setStockIntel] = useState<Record<string, TickerIntelResponse | null>>({});
   const [dismissedAlerts, setDismissedAlerts] = useState<string[]>([]);
   const [seenTimeWarning, setSeenTimeWarning] = useState(false);
@@ -1168,7 +1176,7 @@ export default function MarketTab({
       ) : null}
 
       {error ? (
-        <div className="mkt-inline-note">Showing cached market context while a refresh retries.</div>
+        <div className="mkt-inline-note">Showing the latest available market context while a refresh retries.</div>
       ) : null}
 
       {warnings.length > 0 ? (
@@ -1367,8 +1375,7 @@ export default function MarketTab({
       <div className="mkt-footer-bar">
         <span className="mkt-footer-time">
           {getFetchedTimeLabel(lastFetchedAtMs)}
-          {data.is_stale ? <span className="mkt-footer-cache-label"> (cached)</span> : null}
-        </span>
+          </span>
         <button
           aria-label="Refresh market data"
           className="mkt-refresh-button"

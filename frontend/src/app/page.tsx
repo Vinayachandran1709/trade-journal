@@ -172,7 +172,7 @@ function TypingLoop({ items }: { items: string[] }) {
 
 function ExtensionMockup() {
   return (
-    <div className="mx-auto max-w-4xl rounded-[2rem] border border-white/10 bg-slate-900/80 p-3 shadow-2xl shadow-indigo-950/40 backdrop-blur">
+    <div className="mx-auto max-w-5xl rounded-[2rem] border border-white/10 bg-slate-900/80 p-3 shadow-2xl shadow-indigo-950/40 backdrop-blur lg:scale-[1.04]">
       <div className="rounded-[1.5rem] border border-slate-700 bg-slate-950 p-4">
         <div className="flex items-center justify-between border-b border-slate-800 pb-4">
           <div>
@@ -192,8 +192,8 @@ function ExtensionMockup() {
             ["INDIA VIX", "13.42", "Moderate", "text-amber-300"],
           ].map(([label, value, change, color]) => (
             <div key={label} className="rounded-2xl border border-slate-800 bg-slate-900 p-4">
-              <p className="text-xs font-medium text-slate-500">{label}</p>
-              <p className="mt-2 text-xl font-black text-white">{value}</p>
+              <p className="text-xs font-medium text-slate-500 lg:text-sm">{label}</p>
+              <p className="mt-2 text-xl font-black text-white lg:text-2xl">{value}</p>
               <p className={`mt-1 text-sm font-semibold ${color}`}>{change}</p>
             </div>
           ))}
@@ -281,6 +281,11 @@ export default function Home() {
             see, and shows you exactly where you&apos;re bleeding money - and where
             you&apos;re winning. Works with Zerodha, Groww, and every Indian broker.
           </p>
+          <div className="mt-5 flex flex-wrap items-center justify-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-slate-300">
+            <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5">No API keys</span>
+            <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5">No broker credentials</span>
+            <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5">Analytics tool, not advisory</span>
+          </div>
           <div className="fade-in fade-in-delay-4 mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">
             <Link href="/signup" className="btn-primary w-full sm:w-auto">
               Get Started Free {"->"}
@@ -292,21 +297,25 @@ export default function Home() {
               See How It Works
             </Link>
           </div>
-          <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
-            <div className="flex -space-x-2">
-              {["VI", "AK", "SM", "RJ", "NP"].map((avatar, index) => (
-                <span
-                  key={avatar}
-                  className="flex h-9 w-9 items-center justify-center rounded-full border-2 border-slate-950 bg-gradient-to-br from-slate-700 to-indigo-500 text-[10px] font-bold text-white"
-                  style={{ zIndex: 10 - index }}
-                >
-                  {avatar}
-                </span>
-              ))}
+          <div className="mt-8 grid gap-3 lg:grid-cols-3">
+            <div className="proof-strip-card">
+              <div className="proof-stat-label">Pattern / money leak</div>
+              <p className="mt-2 text-sm font-semibold text-white">
+                A midday re-entry cluster is draining P&amp;L faster than your average losing setup.
+              </p>
             </div>
-            <p className="text-sm font-medium text-slate-300">
-              Join 100+ traders who stopped guessing
-            </p>
+            <div className="proof-strip-card">
+              <div className="proof-stat-label">Timing / behavior</div>
+              <p className="mt-2 text-sm font-semibold text-white">
+                Your weaker window shows up after lunch, not at the open, so review timing before size.
+              </p>
+            </div>
+            <div className="proof-strip-card">
+              <div className="proof-stat-label">Edge found</div>
+              <p className="mt-2 text-sm font-semibold text-white">
+                One setup family is doing the real work, which makes it easier to trade less and better.
+              </p>
+            </div>
           </div>
         </div>
         <div className="absolute inset-x-4 -bottom-24 sm:-bottom-28">
@@ -329,6 +338,21 @@ export default function Home() {
         </div>
       </section>
 
+      <section className="bg-white px-4 py-8 sm:px-6 lg:px-8">
+        <div className="section-container grid gap-3 md:grid-cols-4">
+          {[
+            "No broker password access",
+            "Private journal in your account",
+            "Built for Indian brokers",
+            "No buy or sell calls",
+          ].map((item) => (
+            <div key={item} className="neutral-shell-card px-4 py-4 text-sm font-semibold text-slate-700">
+              {item}
+            </div>
+          ))}
+        </div>
+      </section>
+
       <section className="section-padding bg-gray-50">
         <div className="section-container grid gap-10 lg:grid-cols-[1.15fr_0.85fr] lg:items-center">
           <div>
@@ -340,9 +364,7 @@ export default function Home() {
           </div>
           <div className="grid gap-4">
             {[
-              ["Rs 51,689 Cr", "Lost by retail F&O traders in FY24 (SEBI data)", "How much of this is yours?"],
-              ["95%", "of traders never review their past trades", "The 5% who do are the ones making money."],
-              ["3x", "more losses from afternoon trading vs morning", "Most traders don't even know they have a time-of-day problem."],
+              ["Rs 51,689 Cr", "Lost by retail F&O traders in FY24 (SEBI data)", "Behavior mistakes are expensive when they stay invisible."],
             ].map((item) => (
               <div key={item[0]} className="stat-card">
                 <p className="text-4xl font-black text-slate-950">{item[0]}</p>
@@ -350,48 +372,16 @@ export default function Home() {
                 <p className="mt-2 text-xs font-semibold italic text-indigo-600">{item[2]}</p>
               </div>
             ))}
+            <div className="stat-card">
+              <p className="text-lg font-black text-slate-950">What IndiaCircle does with that lesson</p>
+              <p className="mt-2 text-sm leading-6 text-gray-500">
+                It turns your own execution history into rules you can actually use before the next mistake repeats.
+              </p>
+            </div>
           </div>
         </div>
-        <div className="section-container mt-12 grid gap-4 sm:grid-cols-2">
-          <div className="rounded-xl border-l-[3px] border-rose-500 bg-white p-5 shadow-md">
-            <span className="text-xs font-bold uppercase tracking-wide text-rose-600">⚠️ Pattern Alert</span>
-            <p className="mt-2 text-sm font-bold text-slate-900">
-              Your revenge trades cost Rs 8,240 this month.
-            </p>
-            <p className="mt-1 text-xs text-slate-500">
-              Detected from 4 trades entered within 15 min of a loss.
-            </p>
-          </div>
-          <div className="rounded-xl border-l-[3px] border-amber-500 bg-white p-5 shadow-md">
-            <span className="text-xs font-bold uppercase tracking-wide text-amber-600">⚠️ Timing Alert</span>
-            <p className="mt-2 text-sm font-bold text-slate-900">
-              Win rate drops from 62% to 28% after 2 PM.
-            </p>
-            <p className="mt-1 text-xs text-slate-500">
-              Based on 3 months of your trading data.
-            </p>
-          </div>
-          <div className="rounded-xl border-l-[3px] border-emerald-500 bg-white p-5 shadow-md">
-            <span className="text-xs font-bold uppercase tracking-wide text-emerald-600">✅ Edge Found</span>
-            <p className="mt-2 text-sm font-bold text-slate-900">
-              Your Banking momentum setups win 68% of the time.
-            </p>
-            <p className="mt-1 text-xs text-slate-500">
-              Your strongest edge - focus here.
-            </p>
-          </div>
-          <div className="rounded-xl border-l-[3px] border-blue-500 bg-white p-5 shadow-md">
-            <span className="text-xs font-bold uppercase tracking-wide text-blue-600">🔍 AI Research</span>
-            <p className="mt-2 text-sm font-bold text-slate-900">
-              VEDL surged 4.2% - coal ministry policy update.
-            </p>
-            <p className="mt-1 text-xs text-slate-500">
-              Answered in 3 seconds, not 30 tabs.
-            </p>
-          </div>
-        </div>
-        <p className="mt-6 text-center text-xs text-slate-400">
-          Sample insights from IndiaCircle - based on real trading patterns
+        <p className="section-container sebi-footnote">
+          Source note: the SEBI-backed figure above refers to retail F&amp;O losses in FY24. IndiaCircle is an analytics and journaling product, not an investment advisor.
         </p>
       </section>
 
@@ -560,6 +550,9 @@ export default function Home() {
             <h2 className="mt-4 text-4xl font-black tracking-tight text-slate-950">
               Rs 599/month to stop repeating mistakes that cost you lakhs.
             </h2>
+            <p className="mt-4 text-sm font-semibold text-slate-600">
+              Avoiding even one impulsive mistake can cover months of subscription.
+            </p>
           </div>
           <div className="mt-12 grid gap-6 lg:grid-cols-2">
             <div className="rounded-2xl border border-gray-100 bg-white p-8 shadow-sm">

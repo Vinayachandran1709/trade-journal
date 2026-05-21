@@ -93,7 +93,7 @@ export async function getTrades(filters?: {
   limit?: number;
   offset?: number;
   emotion?: "missing";
-  review?: "losers-missing-emotion";
+  review?: "losers-missing-emotion" | "notes-missing";
 }): Promise<Trade[]> {
   const params = new URLSearchParams();
   if (filters?.symbol) params.set("symbol", filters.symbol);

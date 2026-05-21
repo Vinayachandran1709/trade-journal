@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import AuthGuard from "@/components/AuthGuard";
 import {
   getCompletedTrades,
   getTrades,
@@ -28,8 +27,10 @@ function formatDate(dateStr: string): string {
 
 function Spinner() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-50">
-      <div className="h-10 w-10 animate-spin rounded-full border-4 border-indigo-100 border-t-indigo-600" />
+    <div className="section-container py-10">
+      <div className="neutral-shell-card p-10 text-center text-sm font-semibold text-slate-500">
+        Loading your journal...
+      </div>
     </div>
   );
 }
@@ -78,7 +79,8 @@ function TradesContent() {
 
   const isMissingEmotionMode = searchParams.get("emotion") === "missing";
   const isLosersMissingEmotionMode = searchParams.get("review") === "losers-missing-emotion";
-  const isResolutionMode = isMissingEmotionMode || isLosersMissingEmotionMode;
+  const isNotesMissingMode = searchParams.get("review") === "notes-missing";
+  const isResolutionMode = isMissingEmotionMode || isLosersMissingEmotionMode || isNotesMissingMode;
 
   const fetchTradesPage = useCallback(
     async (currentFilters: typeof appliedFilters, currentPage: number) => {
@@ -95,6 +97,7 @@ function TradesContent() {
             ...(currentFilters.end_date ? { end_date: currentFilters.end_date } : {}),
             ...(isMissingEmotionMode ? { emotion: "missing" as const } : {}),
             ...(isLosersMissingEmotionMode ? { review: "losers-missing-emotion" as const } : {}),
+            ...(isNotesMissingMode ? { review: "notes-missing" as const } : {}),
             limit: requestLimit,
             offset: requestOffset,
           }),
@@ -119,7 +122,7 @@ function TradesContent() {
         setLoading(false);
       }
     },
-    [isLosersMissingEmotionMode, isMissingEmotionMode, isResolutionMode]
+    [isLosersMissingEmotionMode, isMissingEmotionMode, isNotesMissingMode, isResolutionMode]
   );
 
   useEffect(() => {
@@ -139,6 +142,10 @@ function TradesContent() {
   }
 
   const visibleTrades = useMemo(() => {
+    if (isNotesMissingMode) {
+      return trades.filter((trade) => !(trade.notes ?? "").trim());
+    }
+
     if (!isLosersMissingEmotionMode) {
       return trades;
     }
@@ -152,7 +159,7 @@ function TradesContent() {
     return trades.filter(
       (trade) => losingTradeKeys.has(tradeReviewKey(trade)) && !trade.emotion_tag
     );
-  }, [completedTrades, isLosersMissingEmotionMode, trades]);
+  }, [completedTrades, isLosersMissingEmotionMode, isNotesMissingMode, trades]);
 
   const pagedTrades = useMemo(() => {
     if (!isResolutionMode) {
@@ -194,6 +201,8 @@ function TradesContent() {
             <p className="mt-2 text-gray-600">
               {isLosersMissingEmotionMode
                 ? "Review losing trades with missing emotions and close the journaling gap."
+                : isNotesMissingMode
+                  ? "Add a short follow-up note so the lesson survives after the trade is gone."
                 : isMissingEmotionMode
                   ? "Quick-tag missing emotions and add a short follow-up note."
                   : "View, filter, and tag the raw material of your trading edge."}
@@ -267,7 +276,11 @@ function TradesContent() {
         {isResolutionMode ? (
           <div className="mt-6 rounded-2xl border border-indigo-100 bg-indigo-50 p-4 text-sm text-indigo-900">
             <div className="font-bold">
-              {isLosersMissingEmotionMode ? "Losers missing emotion review" : "Missing emotion review"}
+              {isLosersMissingEmotionMode
+                ? "Losers missing emotion review"
+                : isNotesMissingMode
+                  ? "Missing notes review"
+                  : "Missing emotion review"}
             </div>
             <div className="mt-1">
               Use quick emotion tags and a short note to resolve journaling gaps directly from this table.
@@ -447,9 +460,5 @@ function TradesContent() {
 }
 
 export default function TradesPage() {
-  return (
-    <AuthGuard>
-      <TradesContent />
-    </AuthGuard>
-  );
+  return <TradesContent />;
 }

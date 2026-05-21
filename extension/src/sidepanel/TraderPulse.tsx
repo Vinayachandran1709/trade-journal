@@ -27,6 +27,26 @@ type PulseAction = {
   href?: string;
 };
 
+function getTopPatternLine(patternsEnvelope: PatternsEnvelope | null | undefined): { label: string; href: string } | null {
+  const patterns = patternsEnvelope?.unlocked ? patternsEnvelope.patterns.filter((pattern) => !pattern.locked) : [];
+  if (!patterns.length) return null;
+
+  const riskPattern = patterns.find((pattern) =>
+    ["revenge_trading", "overtrading", "losing_streak_tilt", "time_of_day"].includes(pattern.pattern_type)
+  );
+  if (riskPattern) {
+    return {
+      label: `Top risk: ${riskPattern.title}`,
+      href: "/dashboard/mistakes",
+    };
+  }
+
+  return {
+    label: `Top edge: ${patterns[0].title}`,
+    href: "/dashboard/analytics#patterns",
+  };
+}
+
 function openWebPath(path: string) {
   void chrome.tabs.create({ url: `${WEB_APP_URL}${path}` });
 }
@@ -283,10 +303,7 @@ function getAction(args: {
     (threshold && captureStats.tradeCount > threshold) ||
     (losingPattern && captureStats.losingStreakCount >= 2)
   ) {
-    return {
-      kind: "warning",
-      text: "Check Insights tab for risk alerts",
-    };
+    return { kind: "link", text: "Review top risk on dashboard", href: "/dashboard/mistakes" };
   }
 
   const totalKnownTrades = summary?.total_trades ?? patternsEnvelope?.total_completed_trades ?? 0;
@@ -301,8 +318,8 @@ function getAction(args: {
   if (getSessionContext().kind === "post-market") {
     return {
       kind: "link",
-      text: "View full analytics on dashboard",
-      href: "/dashboard/analytics",
+      text: "Open patterns on dashboard",
+      href: "/dashboard/analytics#patterns",
     };
   }
 
@@ -365,6 +382,7 @@ export default function TraderPulse({
   const badge = getBadge(user, captureStats.tradeCount, marketData, patternsEnvelope, captureState);
   const metrics = getMetricsLine({ captureState, summary: analyticsSummary });
   const pulseAction = generatePulseAction(marketData, patternsEnvelope, captureState);
+  const topPatternLine = getTopPatternLine(patternsEnvelope);
   const action = getAction({
     user,
     patternsEnvelope,
@@ -416,6 +434,20 @@ export default function TraderPulse({
         >
           {pulseAction}
         </p>
+      ) : null}
+
+      {topPatternLine ? (
+        <div className="pulse-action">
+          <a
+            href={`${WEB_APP_URL}${topPatternLine.href}`}
+            onClick={(event) => {
+              event.preventDefault();
+              openWebPath(topPatternLine.href);
+            }}
+          >
+            {topPatternLine.label}
+          </a>
+        </div>
       ) : null}
 
       {metrics.length > 0 ? (

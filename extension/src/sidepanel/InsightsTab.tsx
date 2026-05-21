@@ -857,13 +857,19 @@ function InsightsSkeleton() {
 export default function InsightsTab({
   isSignedIn,
   webAppUrl,
+  initialPatternsData,
+  initialSummary,
+  initialCompletedTrades,
 }: {
   isSignedIn: boolean;
   webAppUrl: string;
+  initialPatternsData?: PatternsEnvelope | null;
+  initialSummary?: AnalyticsSummaryResponse | null;
+  initialCompletedTrades?: CompletedTradeListItem[] | null;
 }) {
-  const [patternsData, setPatternsData] = useState<PatternsEnvelope | null>(null);
-  const [summary, setSummary] = useState<AnalyticsSummaryResponse | null>(null);
-  const [completedTrades, setCompletedTrades] = useState<CompletedTradeListItem[]>([]);
+  const [patternsData, setPatternsData] = useState<PatternsEnvelope | null>(initialPatternsData ?? null);
+  const [summary, setSummary] = useState<AnalyticsSummaryResponse | null>(initialSummary ?? null);
+  const [completedTrades, setCompletedTrades] = useState<CompletedTradeListItem[]>(() => Array.isArray(initialCompletedTrades) ? initialCompletedTrades : []);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -891,9 +897,9 @@ export default function InsightsTab({
       if (!active) return;
       const safeCachedPatterns = normalizePatternsEnvelope(cachedPatterns);
       const safeCachedSummary = normalizeAnalyticsSummary(cachedSummary);
-      if (safeCachedPatterns) setPatternsData(safeCachedPatterns);
-      if (safeCachedSummary) setSummary(safeCachedSummary);
-      setLoading(!safeCachedPatterns);
+      if (safeCachedPatterns && !patternsData) setPatternsData(safeCachedPatterns);
+      if (safeCachedSummary && !summary) setSummary(safeCachedSummary);
+      setLoading(!safeCachedPatterns && !initialPatternsData);
 
       try {
         const token = await getAuthToken();

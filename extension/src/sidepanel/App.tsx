@@ -2,11 +2,20 @@ import { FormEvent, useEffect, useState } from "react";
 
 import {
   APIError,
+  fetchCompletedTrades,
   fetchCurrentUser,
+  fetchMarketDashboard,
+  fetchSetups,
+  fetchTrades,
+  fetchWatchlist,
   loginWithPassword,
   type AnalyticsSummaryResponse,
+  type CompletedTradeListItem,
   type MarketDashboardData,
   type PatternsEnvelope,
+  type TradeListItem,
+  type TradeSetupItem,
+  type WatchlistResponse,
 } from "../shared/api";
 import { clearAuthToken, getAuthToken, onAuthTokenChange, setAuthToken } from "../shared/auth";
 import { getCaptureState, type CaptureState } from "../shared/captures";
@@ -26,6 +35,12 @@ const WEB_APP_URL = (import.meta.env.VITE_WEB_APP_URL || "https://indiacircle.in
 type TabId = "market" | "ai" | "insights" | "captures" | "calculators" | "account";
 type ViewState = "loading" | "signed_out" | "signed_in";
 type SubmitState = "ready" | "submitting";
+type PrewarmState = {
+  watchlist: WatchlistResponse | null;
+  completedTrades: CompletedTradeListItem[];
+  rawTrades: TradeListItem[];
+  setups: TradeSetupItem[];
+};
 
 function getFriendlyAuthError(error: unknown): string {
   if (error instanceof APIError) {
@@ -139,6 +154,12 @@ export default function App() {
   const [marketData, setMarketData] = useState<MarketDashboardData | null>(null);
   const [patternsEnvelope, setPatternsEnvelope] = useState<PatternsEnvelope | null>(null);
   const [analyticsSummary, setAnalyticsSummary] = useState<AnalyticsSummaryResponse | null>(null);
+  const [prewarmState, setPrewarmState] = useState<PrewarmState>({
+    watchlist: null,
+    completedTrades: [],
+    rawTrades: [],
+    setups: [],
+  });
 
   useEffect(() => {
     let active = true;
@@ -158,16 +179,32 @@ export default function App() {
             setCaptureState(nextCaptureState);
             setPatternsEnvelope(null);
             setAnalyticsSummary(null);
+            setPrewarmState({ watchlist: null, completedTrades: [], rawTrades: [], setups: [] });
             setViewState("signed_out");
           }
           return;
         }
 
-        const [currentUser, nextCaptureState, nextPatterns, nextSummary] = await Promise.all([
+        const [
+          currentUser,
+          nextCaptureState,
+          nextPatterns,
+          nextSummary,
+          nextMarketData,
+          nextWatchlist,
+          nextCompletedTrades,
+          nextRawTrades,
+          nextSetups,
+        ] = await Promise.all([
           fetchCurrentUser(token),
           getCaptureState(),
           getCachedBehaviorPatterns(token),
           getCachedAnalyticsSummary(token),
+          fetchMarketDashboard(token).catch(() => null),
+          fetchWatchlist(token).catch(() => null),
+          fetchCompletedTrades(token, { limit: 20 }).catch(() => []),
+          fetchTrades(token, { limit: 20 }).catch(() => []),
+          fetchSetups(token, { limit: 4 }).catch(() => []),
         ]);
 
         if (active) {
@@ -178,6 +215,13 @@ export default function App() {
           setCaptureState(nextCaptureState);
           setPatternsEnvelope(nextPatterns);
           setAnalyticsSummary(nextSummary);
+          setMarketData(nextMarketData);
+          setPrewarmState({
+            watchlist: nextWatchlist,
+            completedTrades: Array.isArray(nextCompletedTrades) ? nextCompletedTrades : [],
+            rawTrades: Array.isArray(nextRawTrades) ? nextRawTrades : [],
+            setups: Array.isArray(nextSetups) ? nextSetups : [],
+          });
           setViewState("signed_in");
         }
       } catch (error) {
@@ -189,6 +233,8 @@ export default function App() {
           setCaptureState(nextCaptureState);
           setPatternsEnvelope(null);
           setAnalyticsSummary(null);
+          setMarketData(null);
+          setPrewarmState({ watchlist: null, completedTrades: [], rawTrades: [], setups: [] });
           setBannerError(null);
           setAuthError(getFriendlyAuthError(error));
           setViewState("signed_out");
@@ -243,14 +289,26 @@ export default function App() {
       setAuthError(null);
       setViewState("signed_in");
 
-      const [nextCaptureState, nextPatterns, nextSummary] = await Promise.all([
+      const [nextCaptureState, nextPatterns, nextSummary, nextMarketData, nextWatchlist, nextCompletedTrades, nextRawTrades, nextSetups] = await Promise.all([
         getCaptureState(),
         getCachedBehaviorPatterns(tokenResponse.access_token),
         getCachedAnalyticsSummary(tokenResponse.access_token),
+        fetchMarketDashboard(tokenResponse.access_token).catch(() => null),
+        fetchWatchlist(tokenResponse.access_token).catch(() => null),
+        fetchCompletedTrades(tokenResponse.access_token, { limit: 20 }).catch(() => []),
+        fetchTrades(tokenResponse.access_token, { limit: 20 }).catch(() => []),
+        fetchSetups(tokenResponse.access_token, { limit: 4 }).catch(() => []),
       ]);
       setCaptureState(nextCaptureState);
       setPatternsEnvelope(nextPatterns);
       setAnalyticsSummary(nextSummary);
+      setMarketData(nextMarketData);
+      setPrewarmState({
+        watchlist: nextWatchlist,
+        completedTrades: Array.isArray(nextCompletedTrades) ? nextCompletedTrades : [],
+        rawTrades: Array.isArray(nextRawTrades) ? nextRawTrades : [],
+        setups: Array.isArray(nextSetups) ? nextSetups : [],
+      });
     } catch (error) {
       await clearAuthToken().catch(() => undefined);
       await storageRemove("cached_email").catch(() => undefined);
@@ -273,6 +331,8 @@ export default function App() {
       setBannerError(null);
       setPatternsEnvelope(null);
       setAnalyticsSummary(null);
+      setMarketData(null);
+      setPrewarmState({ watchlist: null, completedTrades: [], rawTrades: [], setups: [] });
       setPassword("");
       setAuthError(null);
       setViewState("signed_out");
@@ -383,6 +443,9 @@ export default function App() {
           onSave={handleSaveCapture}
           isSignedIn={Boolean(user)}
           webAppUrl={WEB_APP_URL}
+          initialCompletedTrades={prewarmState.completedTrades}
+          initialRawTrades={prewarmState.rawTrades}
+          initialSetups={prewarmState.setups}
         />
       )}
 
@@ -391,6 +454,10 @@ export default function App() {
           isSignedIn={Boolean(user)}
           captureState={captureState}
           onDataChange={setMarketData}
+          initialMarketData={marketData}
+          initialWatchlist={prewarmState.watchlist}
+          initialPatternsEnvelope={patternsEnvelope}
+          initialCompletedTrades={prewarmState.completedTrades}
         />
       )}
 
@@ -400,6 +467,9 @@ export default function App() {
         <InsightsTab
           isSignedIn={Boolean(user)}
           webAppUrl={WEB_APP_URL}
+          initialPatternsData={patternsEnvelope}
+          initialSummary={analyticsSummary}
+          initialCompletedTrades={prewarmState.completedTrades}
         />
       )}
 

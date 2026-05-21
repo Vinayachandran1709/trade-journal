@@ -85,6 +85,30 @@
     @apply inline-flex items-center justify-center text-center rounded-xl px-6 py-3 text-sm font-semibold text-gray-600 transition-all duration-200 hover:bg-gray-100;
   }
 
+  .nav-pill-active {
+    @apply rounded-full bg-indigo-50 px-3 py-1.5 text-indigo-700;
+  }
+
+  .dashboard-shell {
+    @apply min-h-screen bg-gray-50;
+  }
+
+  .neutral-shell-card {
+    @apply rounded-2xl border border-gray-100 bg-white shadow-sm;
+  }
+
+  .proof-strip-card {
+    @apply rounded-2xl border border-white/10 bg-white/5 px-4 py-4 text-left backdrop-blur;
+  }
+
+  .proof-stat-label {
+    @apply text-[11px] font-black uppercase tracking-[0.18em] text-slate-400;
+  }
+
+  .sebi-footnote {
+    @apply mt-4 text-xs leading-6 text-slate-500;
+  }
+
   .command-center {
     @apply mx-auto max-w-6xl px-4 py-8;
   }

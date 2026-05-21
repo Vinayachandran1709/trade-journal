@@ -55,19 +55,33 @@ export default function Navbar() {
     router.push("/login");
   };
 
-  const navLinks = [
-    { href: "/pricing", label: "Pricing" },
-    { href: "/research", label: "Research" },
-    { href: "/download", label: "Download" },
-    ...(loggedIn
-      ? [
-          { href: "/dashboard", label: "Dashboard" },
-          { href: "/dashboard/trades", label: "Trades" },
-          { href: "/dashboard/analytics", label: "Patterns" },
-          { href: "/dashboard/mistakes", label: "Mistakes" },
-        ]
-      : []),
+  const publicRoutes = ["/", "/pricing", "/research", "/download"];
+  const appRoutes = [
+    "/dashboard",
+    "/dashboard/trades",
+    "/dashboard/analytics",
+    "/dashboard/mistakes",
+    "/account",
   ];
+  const onPublicRoute = publicRoutes.includes(pathname);
+  const onAppRoute = appRoutes.some((route) => pathname === route || pathname.startsWith(`${route}/`));
+
+  const navLinks = onAppRoute
+    ? [
+        { href: "/dashboard", label: "Dashboard" },
+        { href: "/dashboard/trades", label: "Trades" },
+        { href: "/dashboard/analytics", label: "Patterns" },
+        { href: "/dashboard/mistakes", label: "Mistakes" },
+      ]
+    : [
+        { href: "/pricing", label: "Pricing" },
+        { href: "/research", label: "Research" },
+        { href: "/download", label: "Download" },
+      ];
+
+  function isActive(href: string) {
+    return pathname === href || pathname.startsWith(`${href}/`);
+  }
 
   const onDarkHero = pathname === "/" || pathname === "/download";
   const solid = scrolled || !onDarkHero;
@@ -94,7 +108,13 @@ export default function Navbar() {
               key={link.href}
               href={link.href}
               className={`text-sm font-semibold transition ${
-                solid ? "text-gray-700 hover:text-indigo-600" : "text-slate-200 hover:text-white"
+                isActive(link.href)
+                  ? solid
+                    ? "nav-pill-active"
+                    : "rounded-full bg-white/12 px-3 py-1.5 text-white"
+                  : solid
+                    ? "text-gray-700 hover:text-indigo-600"
+                    : "text-slate-200 hover:text-white"
               }`}
             >
               {link.label}
@@ -105,6 +125,11 @@ export default function Navbar() {
         <div className="hidden items-center gap-3 md:flex">
           {loggedIn ? (
             <>
+              {!onAppRoute ? (
+                <Link href="/dashboard" className="btn-primary">
+                  Open App
+                </Link>
+              ) : null}
               <Link href="/account" className={desktopGhostClass}>
                 Account
               </Link>
@@ -157,7 +182,11 @@ export default function Navbar() {
               key={link.href}
               href={link.href}
               onClick={() => setMobileOpen(false)}
-              className="block rounded-xl px-4 py-3 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+              className={`block rounded-xl px-4 py-3 text-sm font-semibold ${
+                isActive(link.href)
+                  ? "bg-indigo-50 text-indigo-700"
+                  : "text-gray-700 hover:bg-gray-50"
+              }`}
             >
               {link.label}
             </Link>
@@ -166,6 +195,15 @@ export default function Navbar() {
         <div className="mt-4 border-t border-gray-100 pt-4">
           {loggedIn ? (
             <div className="grid gap-2">
+              {!onAppRoute ? (
+                <Link
+                  href="/dashboard"
+                  onClick={() => setMobileOpen(false)}
+                  className="btn-primary w-full"
+                >
+                  Open App
+                </Link>
+              ) : null}
               <Link
                 href="/account"
                 onClick={() => setMobileOpen(false)}

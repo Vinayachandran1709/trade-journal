@@ -199,16 +199,22 @@ export default function JournalTab({
   onSave,
   isSignedIn,
   webAppUrl,
+  initialCompletedTrades,
+  initialRawTrades,
+  initialSetups,
 }: {
   captureState: CaptureState | null;
   savingTradeId: number | null;
   onSave: (tradeId: number, emotionTag: string, note: string) => Promise<void>;
   isSignedIn: boolean;
   webAppUrl: string;
+  initialCompletedTrades?: CompletedTradeListItem[] | null;
+  initialRawTrades?: TradeListItem[] | null;
+  initialSetups?: TradeSetupItem[] | null;
 }) {
-  const [completedTrades, setCompletedTrades] = useState<CompletedTradeListItem[]>([]);
-  const [rawTrades, setRawTrades] = useState<TradeListItem[]>([]);
-  const [setups, setSetups] = useState<TradeSetupItem[]>([]);
+  const [completedTrades, setCompletedTrades] = useState<CompletedTradeListItem[]>(() => normalizeCompletedTrades(initialCompletedTrades));
+  const [rawTrades, setRawTrades] = useState<TradeListItem[]>(() => normalizeRawTrades(initialRawTrades));
+  const [setups, setSetups] = useState<TradeSetupItem[]>(() => normalizeSetups(initialSetups));
   const [completedLoading, setCompletedLoading] = useState(false);
   const [completedError, setCompletedError] = useState<string | null>(null);
 
@@ -236,9 +242,9 @@ export default function JournalTab({
       if (!active) return;
       const safeCompleted = normalizeCompletedTrades(cachedCompleted);
       const safeSetups = normalizeSetups(cachedSetups);
-      setCompletedTrades(safeCompleted);
-      setSetups(safeSetups);
-      setCompletedLoading(safeCompleted.length === 0);
+      setCompletedTrades((current) => (current.length ? current : safeCompleted));
+      setSetups((current) => (current.length ? current : safeSetups));
+      setCompletedLoading(safeCompleted.length === 0 && normalizeCompletedTrades(initialCompletedTrades).length === 0);
 
       try {
         const token = await getAuthToken();
@@ -374,7 +380,7 @@ export default function JournalTab({
                 <button
                   type="button"
                   className="journal-view-all"
-                  onClick={() => openDashboardPath("/dashboard/trades?emotion=missing")}
+                  onClick={() => openDashboardPath("/dashboard/trades?review=notes-missing")}
                 >
                   Review notes on dashboard →
                 </button>
@@ -437,7 +443,7 @@ export default function JournalTab({
                 webAppUrl={webAppUrl}
               />
             ))}
-            {setups.length > 3 ? <button className="journal-view-all">View all plans →</button> : null}
+            {setups.length > 3 ? <button className="journal-view-all" onClick={() => openDashboardPath("/dashboard#pre-trade-setups")}>View all plans →</button> : null}
           </div>
         ) : (
           <p>No pre-trade setups logged yet. Plans created from the checklist will appear here.</p>
