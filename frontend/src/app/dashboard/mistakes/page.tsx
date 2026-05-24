@@ -10,7 +10,6 @@ import {
   getAvoidableLossEstimate,
   getBiggestLeakSummary,
   getMostExpensiveBehavior,
-  getRecommendation,
   getTopMistakeToWatch,
 } from "@/lib/behavioral-insights";
 import type { CompletedTrade, Trade, TradeSetup } from "@/types/trade";

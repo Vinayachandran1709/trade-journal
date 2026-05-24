@@ -1,7 +1,6 @@
 "use client";
 
-import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { getMe } from "@/lib/auth";
 import { getAnalyticsSummary, getPatterns, type AnalyticsSummaryResponse, type PatternResponse, type PatternsEnvelope } from "@/lib/analytics";
 import { readSessionCache, writeSessionCache } from "@/lib/client-cache";

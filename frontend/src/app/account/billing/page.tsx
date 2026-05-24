@@ -78,7 +78,7 @@ function BillingContent() {
 
       {cancelDone && (
         <div className="mt-4 rounded-lg bg-green-50 px-4 py-3 text-sm text-green-700">
-          Subscription cancelled. You'll retain Pro access until the expiry date.
+          Subscription cancelled. You&apos;ll retain Pro access until the expiry date.
         </div>
       )}
 
@@ -117,7 +117,7 @@ function BillingContent() {
       {!isPro && !isCancelled && (
         <div className="mt-4 rounded-xl border border-gray-200 bg-white p-6">
           <p className="text-sm text-gray-500">
-            You're on the Free plan for trade review and sample market context.{" "}
+            You&apos;re on the Free plan for trade review and sample market context.{" "}
             <Link href="/pricing" className="text-indigo-600 hover:underline">
               Upgrade to Pro
             </Link>{" "}
@@ -130,7 +130,7 @@ function BillingContent() {
         <div className="mt-6 rounded-xl border border-red-100 bg-white p-6">
           <h2 className="font-semibold text-red-700">Cancel Subscription</h2>
           <p className="mt-2 text-sm text-gray-500">
-            You'll keep Pro access until your current billing period ends. No
+            You&apos;ll keep Pro access until your current billing period ends. No
             refunds for partial months.
           </p>
           {confirmCancel ? (

@@ -55,10 +55,6 @@ type AttentionItem = {
   priority: "high" | "medium" | "low";
 };
 
-function toNumber(value: unknown): number {
-  return typeof value === "number" && Number.isFinite(value) ? value : 0;
-}
-
 function matchRawTrade(rawTrades: Trade[], trade: CompletedTrade) {
   return (
     rawTrades.find(
