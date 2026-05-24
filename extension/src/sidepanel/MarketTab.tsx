@@ -30,6 +30,7 @@ const REFRESH_INTERVAL_MARKET = 30_000;
 const REFRESH_INTERVAL_OFF = 120_000;
 const LAST_MARKET_DATA_KEY = "cachedMarketDashboard";
 const LAST_MARKET_WATCHLIST_KEY = "lastMarketWatchlist";
+const WEB_APP_URL = (import.meta.env.VITE_WEB_APP_URL || "https://indiacircle.in").replace(/\/$/, "");
 const LEGACY_MARKET_DATA_KEY = "lastMarketData";
 const DISMISSED_ALERTS_KEY_PREFIX = "riskAlertDismissed";
 const SEEN_ALERTS_KEY_PREFIX = "riskAlertSeen";
@@ -443,6 +444,36 @@ function getFocusSectors(
   }
 
   return leaders.join(" and ");
+}
+
+function getRetailNarrativeItems(args: {
+  sectorPerformance: Record<string, { change_pct: number | null } | undefined>;
+  patterns: PatternResponse[] | undefined;
+}): string[] {
+  const { sectorPerformance, patterns } = args;
+  const ranked = Object.entries(sectorPerformance)
+    .map(([sector, value]) => ({ sector, changePct: value?.change_pct ?? Number.NEGATIVE_INFINITY }))
+    .filter((entry) => Number.isFinite(entry.changePct))
+    .sort((left, right) => right.changePct - left.changePct);
+
+  const items: string[] = [];
+  if (ranked[0]?.changePct > 0.6) {
+    items.push(`${ranked[0].sector} is attracting more attention today.`);
+  }
+  if (ranked[1]?.changePct > 0.4) {
+    items.push(`${ranked[1].sector} is part of the stronger rotation pocket.`);
+  }
+
+  const timePattern = findPattern(patterns, "time_of_day");
+  if (timePattern?.data?.worst_bucket) {
+    items.push(`Your data says late chase entries around ${String(timePattern.data.worst_bucket)} underperform.`);
+  }
+
+  if (items.length < 3) {
+    items.push("Use this feed as market context, not a trade call.");
+  }
+
+  return items.slice(0, 3);
 }
 
 function getStockTag(stock: {
@@ -1233,6 +1264,25 @@ export default function MarketTab({
         </div>
       </div>
 
+      <div className="mkt-section">
+        <div className="mkt-section-heading-row">
+          <div>
+            <h3 className="mkt-section-title">Retail Narrative Feed</h3>
+            <p className="mkt-section-subcopy">Beta</p>
+          </div>
+          <button className="journal-view-all" onClick={() => void chrome.tabs.create({ url: `${WEB_APP_URL}/research` })}>
+            Open Research →
+          </button>
+        </div>
+        <div className="grid gap-2">
+          {getRetailNarrativeItems({ sectorPerformance, patterns: patternsEnvelope?.patterns }).map((item) => (
+            <div key={item} className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-700">
+              {item}
+            </div>
+          ))}
+        </div>
+      </div>
+
       <MarketConfidence confidence={data.confidence} />
 
       {showYourStocks ? (
@@ -1374,8 +1424,8 @@ export default function MarketTab({
 
       <div className="mkt-footer-bar">
         <span className="mkt-footer-time">
-          {getFetchedTimeLabel(lastFetchedAtMs)}
-          </span>
+          Updated {getFetchedTimeLabel(lastFetchedAtMs)}
+        </span>
         <button
           aria-label="Refresh market data"
           className="mkt-refresh-button"

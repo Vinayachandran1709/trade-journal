@@ -55,28 +55,20 @@ export default function Navbar() {
     router.push("/login");
   };
 
-  const publicRoutes = ["/", "/pricing", "/research", "/download"];
-  const appRoutes = [
-    "/dashboard",
-    "/dashboard/trades",
-    "/dashboard/analytics",
-    "/dashboard/mistakes",
-    "/account",
-  ];
-  const onPublicRoute = publicRoutes.includes(pathname);
-  const onAppRoute = appRoutes.some((route) => pathname === route || pathname.startsWith(`${route}/`));
-
-  const navLinks = onAppRoute
+  const navLinks = loggedIn
     ? [
         { href: "/dashboard", label: "Dashboard" },
         { href: "/dashboard/trades", label: "Trades" },
         { href: "/dashboard/analytics", label: "Patterns" },
         { href: "/dashboard/mistakes", label: "Mistakes" },
-      ]
-    : [
-        { href: "/pricing", label: "Pricing" },
         { href: "/research", label: "Research" },
         { href: "/download", label: "Download" },
+      ]
+    : [
+        { href: "/", label: "Product" },
+        { href: "/research", label: "Research Preview" },
+        { href: "/download", label: "Download" },
+        { href: "/pricing", label: "Pricing" },
       ];
 
   function isActive(href: string) {
@@ -110,8 +102,8 @@ export default function Navbar() {
               className={`text-sm font-semibold transition ${
                 isActive(link.href)
                   ? solid
-                    ? "nav-pill-active"
-                    : "rounded-full bg-white/12 px-3 py-1.5 text-white"
+                    ? "nav-pill-active underline decoration-2 underline-offset-8"
+                    : "rounded-full bg-white/12 px-3 py-1.5 text-white underline decoration-2 underline-offset-8"
                   : solid
                     ? "text-gray-700 hover:text-indigo-600"
                     : "text-slate-200 hover:text-white"
@@ -125,11 +117,6 @@ export default function Navbar() {
         <div className="hidden items-center gap-3 md:flex">
           {loggedIn ? (
             <>
-              {!onAppRoute ? (
-                <Link href="/dashboard" className="btn-primary">
-                  Open App
-                </Link>
-              ) : null}
               <Link href="/account" className={desktopGhostClass}>
                 Account
               </Link>
@@ -143,10 +130,10 @@ export default function Navbar() {
           ) : (
             <>
               <Link href="/login" className={desktopGhostClass}>
-                Login
+                Sign In
               </Link>
               <Link href="/signup" className="btn-primary">
-                Sign Up
+                Get Started
               </Link>
             </>
           )}
@@ -195,15 +182,6 @@ export default function Navbar() {
         <div className="mt-4 border-t border-gray-100 pt-4">
           {loggedIn ? (
             <div className="grid gap-2">
-              {!onAppRoute ? (
-                <Link
-                  href="/dashboard"
-                  onClick={() => setMobileOpen(false)}
-                  className="btn-primary w-full"
-                >
-                  Open App
-                </Link>
-              ) : null}
               <Link
                 href="/account"
                 onClick={() => setMobileOpen(false)}
@@ -222,14 +200,14 @@ export default function Navbar() {
                 onClick={() => setMobileOpen(false)}
                 className="btn-ghost w-full"
               >
-                Login
+                Sign In
               </Link>
               <Link
                 href="/signup"
                 onClick={() => setMobileOpen(false)}
                 className="btn-primary w-full"
               >
-                Sign Up
+                Get Started
               </Link>
             </div>
           )}

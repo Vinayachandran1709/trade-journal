@@ -5,36 +5,41 @@ import { useState } from "react";
 
 const FREE_FEATURES = [
   "Import up to 100 trades",
-  "Zerodha & Groww CSV import",
-  "P&L summary",
-  "Basic trade history",
+  "CSV imports and trade review",
+  "P&L summary and trade history",
+  "Research preview access",
+  "Build your sample before upgrading",
 ];
 
 const PRO_FEATURES = [
   "Unlimited trade imports",
+  "Live market sidebar",
+  "AI Research / Why Is It Moving",
+  "Trade Guard risk scoring",
+  "Behavioral patterns",
+  "Mistakes review",
   "Auto-capture from 10+ brokers",
-  "AI pattern analysis",
-  "Behavioral insights & alerts",
-  "Trade emotion tagging",
+  "Emotion tags",
   "Advanced P&L analytics",
-  "Priority support",
 ];
 
 const COMPARISON_ROWS = [
   { label: "Trade imports", free: "Up to 100", pro: "Unlimited" },
   { label: "Brokers supported", free: "Zerodha, Groww", pro: "10+ brokers" },
   { label: "Auto-capture extension", free: false, pro: true },
-  { label: "AI pattern analysis", free: false, pro: true },
-  { label: "Behavioral insights", free: false, pro: true },
+  { label: "Live market sidebar", free: false, pro: true },
+  { label: "AI Research / Why Is It Moving", free: false, pro: true },
+  { label: "Behavioral patterns", free: false, pro: true },
+  { label: "Trade Guard risk scoring", free: false, pro: true },
+  { label: "Mistakes review", free: false, pro: true },
   { label: "Emotion tagging", free: false, pro: true },
   { label: "Advanced P&L analytics", free: false, pro: true },
-  { label: "Priority support", free: false, pro: true },
 ];
 
 const FAQS = [
   ["Can I start without a card?", "Yes. The free plan does not require a credit card."],
   ["Can I use the FOUNDING coupon?", "Yes. Apply FOUNDING during checkout to unlock the founding offer."],
-  ["Can I cancel Pro?", "Yes. Your journal stays available and your plan can be changed from billing."],
+  ["Can I cancel Pro?", "Yes. Your account and review history stay available, and billing can be managed from your account."],
 ];
 
 function Check() {
@@ -67,11 +72,10 @@ export default function PricingPage() {
         <div className="mt-14 text-center">
           <span className="badge badge-indigo">Pricing</span>
           <h1 className="mx-auto mt-5 max-w-3xl text-5xl font-black tracking-tight text-slate-950">
-            Simple plans for serious trading review
+            Plans for traders who want faster context and fewer bad trades
           </h1>
           <p className="mx-auto mt-4 max-w-2xl text-lg leading-8 text-gray-600">
-            Start with a journal. Upgrade when you want AI pattern analysis,
-            auto-capture, and risk context.
+            Start free with imports and review. Upgrade for auto-capture, live sidebar intelligence, AI patterns, and Trade Guard.
           </p>
 
           <div className="mt-8 inline-flex rounded-full border border-gray-200 bg-white p-1 shadow-sm">
@@ -102,7 +106,7 @@ export default function PricingPage() {
               <span className="pb-2 text-sm font-semibold text-gray-500">/forever</span>
             </div>
             <p className="mt-4 text-sm leading-6 text-gray-500">
-              The basics for importing trades and reviewing your activity.
+              Review your trades. Build your sample.
             </p>
             <ul className="mt-8 space-y-4">
               {FREE_FEATURES.map((feature) => (
@@ -125,7 +129,7 @@ export default function PricingPage() {
                 <span className="pb-2 text-sm font-semibold text-gray-500">{proSuffix}</span>
               </div>
               <p className="mt-4 text-sm leading-6 text-gray-500">
-                Everything needed for auto-capture, pattern detection, and richer analytics.
+                Trade with live context and behavioral guardrails.
               </p>
               <ul className="mt-8 space-y-4">
                 {PRO_FEATURES.map((feature) => (

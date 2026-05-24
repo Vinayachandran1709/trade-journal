@@ -301,6 +301,9 @@ export default function JournalTab({
   const needsEmotionTags = rawTrades.filter((trade) => !trade.emotion_tag).length;
   const needsFollowUpNotes = rawTrades.filter((trade) => !hasFollowUpNote(trade.notes)).length;
   const pendingSetupCount = setups.filter((setup) => !setup.linked_trade_id).length;
+  const completedWithoutPlan = completedTrades.filter(
+    (trade) => !setups.find((setup) => setup.linked_trade_id === trade.id)
+  ).length;
 
   function openDashboardPath(path: string) {
     void chrome.tabs.create({ url: `${webAppUrl}${path}` });
@@ -311,11 +314,11 @@ export default function JournalTab({
       <article className="session-summary">
         <div className="session-summary-grid">
           <div>
-            <h3>{sessionSummary.hasTodayActivity ? "Today's Journal" : "Ready for today's trading journal"}</h3>
+            <h3>{sessionSummary.hasTodayActivity ? "Today's Review" : "Ready for today's review loop"}</h3>
             <div className="session-stats">
               {sessionSummary.hasTodayActivity
-                ? "What you did today, what is still open, and whether the plan held."
-                : "Open your broker order page. Captured trades will appear here automatically after execution."}
+                ? "What you did today, what is still open, and where execution quality needs review."
+                : "Open your broker order page. Captured trades and review context will appear here automatically after execution."}
             </div>
           </div>
           <div className="session-summary-metrics">
@@ -345,9 +348,18 @@ export default function JournalTab({
         />
       ))}
 
-      {(needsEmotionTags > 0 || needsFollowUpNotes > 0 || pendingSetupCount > 0) ? (
+      {(needsEmotionTags > 0 || needsFollowUpNotes > 0 || pendingSetupCount > 0 || completedWithoutPlan > 0) ? (
         <article className="placeholder-card journal-section">
-          <h2>Needs journaling</h2>
+          <div className="flex items-center justify-between gap-3">
+            <h2>Needs Review</h2>
+            <button
+              type="button"
+              className="journal-view-all"
+              onClick={() => openDashboardPath("/dashboard/trades?emotion=missing")}
+            >
+              Review on dashboard →
+            </button>
+          </div>
           <div className="journal-list">
             {needsEmotionTags > 0 ? (
               <div className="journal-trade-card">
@@ -405,13 +417,32 @@ export default function JournalTab({
                 </button>
               </div>
             ) : null}
+
+            {completedWithoutPlan > 0 ? (
+              <div className="journal-trade-card">
+                <div className="journal-trade-header">
+                  <span className="journal-symbol">Completed trades without plan</span>
+                  <span className="journal-emotion-pill emotion-neutral">{completedWithoutPlan} trades</span>
+                </div>
+                <div className="journal-trade-meta">
+                  These completed trades still need plan or checklist context before the lesson is complete.
+                </div>
+                <button
+                  type="button"
+                  className="journal-view-all"
+                  onClick={() => openDashboardPath("/dashboard#pre-trade-setups")}
+                >
+                  Review setups on dashboard →
+                </button>
+              </div>
+            ) : null}
           </div>
         </article>
       ) : null}
 
-      <article className="placeholder-card journal-section">
-        <h2>Completed Trades</h2>
-        <div className="journal-list">
+        <article className="placeholder-card journal-section">
+          <h2>Completed Trades</h2>
+          <div className="journal-list">
           {completedLoading ? <JournalSkeleton /> : null}
           {!completedLoading && completedTrades.length
               ? completedTrades.map((trade) => (
@@ -425,7 +456,7 @@ export default function JournalTab({
           {!completedLoading && !completedTrades.length ? (
             <p>
               {completedError ??
-                "No completed round-trips yet. Once a BUY and SELL are matched, your P&L will appear here."}
+                "No completed round-trips yet. Once a BUY and SELL are matched, your review-ready P&L will appear here."}
             </p>
           ) : null}
         </div>

@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { FormEvent, Suspense, useEffect, useMemo, useState } from "react";
-import AuthGuard from "@/components/AuthGuard";
 import {
   askResearch,
   getDailyBrief,
@@ -12,6 +11,7 @@ import {
   type ResearchResponse,
   type SuggestionsResponse,
 } from "@/lib/research";
+import { isAuthenticated } from "@/lib/auth";
 
 type Category = keyof SuggestionsResponse;
 
@@ -247,7 +247,7 @@ function ResearchContent() {
             </div>
             <p className="mt-5 text-xs font-semibold text-gray-500">
               Queries remaining: {result.queries_remaining}/{result.queries_limit} today
-              {result.cached ? " · Cached response" : ""}
+              {result.cached ? " · Recently answered" : ""}
             </p>
             <form onSubmit={handleSubmit} className="mt-6 flex flex-col gap-2 sm:flex-row">
               <input
@@ -291,12 +291,89 @@ function ResearchContent() {
   );
 }
 
-export default function ResearchPage() {
+function ResearchPreview() {
+  const previewQuestions = [
+    "Why is TCS down today?",
+    "Why are PSU banks trending?",
+    "Between INFY and TCS, which looks stronger today?",
+    "How did I do this month?",
+    "What mistake pattern is costing me money?",
+  ];
+
   return (
-    <AuthGuard>
-      <Suspense fallback={<div className="min-h-screen bg-gray-50 pt-28" />}>
-        <ResearchContent />
-      </Suspense>
-    </AuthGuard>
+    <main className="min-h-screen bg-gray-50 pt-16">
+      <section className="bg-slate-950 px-4 py-12 text-white sm:px-6 lg:px-8">
+        <div className="section-container">
+          <span className="badge bg-white/10 text-white ring-1 ring-white/10">Research Preview</span>
+          <h1 className="mt-5 max-w-4xl text-4xl font-black tracking-tight sm:text-5xl">
+            Ask why a stock is moving — then connect it to your own trading history.
+          </h1>
+          <p className="mt-4 max-w-2xl text-lg leading-8 text-slate-300">
+            IndiaCircle turns market context into reviewable intelligence and connects it to your own trade behavior after import or auto-capture.
+          </p>
+          <Link href="/signup" className="btn-primary mt-8">
+            Sign up to connect your trade history
+          </Link>
+          <p className="mt-4 max-w-3xl text-sm text-slate-400">
+            Public examples are for product preview. Personalized answers unlock after trade import or auto-capture.
+          </p>
+        </div>
+      </section>
+
+      <section className="section-padding bg-white">
+        <div className="section-container grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {previewQuestions.map((question) => (
+            <article key={question} className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
+              <div className="text-xs font-black uppercase tracking-[0.16em] text-indigo-500">Example question</div>
+              <h2 className="mt-3 text-xl font-black text-slate-950">{question}</h2>
+              <p className="mt-3 text-sm leading-6 text-slate-600">
+                Sample research preview: IndiaCircle can connect market narrative, trade review, and behavioral context in one answer.
+              </p>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="section-padding bg-gray-50">
+        <div className="section-container grid gap-4 lg:grid-cols-3">
+          <article className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
+            <div className="text-xs font-black uppercase tracking-[0.16em] text-emerald-500">Market Intelligence Feed</div>
+            <p className="mt-3 text-sm leading-6 text-slate-700">
+              Example output: sector narratives, FII/DII context, earnings reactions, and retail attention previews.
+            </p>
+          </article>
+          <article className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
+            <div className="text-xs font-black uppercase tracking-[0.16em] text-rose-500">Behavioral Analytics</div>
+            <p className="mt-3 text-sm leading-6 text-slate-700">
+              Sample insight: your late-session entries are the costliest repeat behavior in low-conviction markets.
+            </p>
+          </article>
+          <article className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
+            <div className="text-xs font-black uppercase tracking-[0.16em] text-indigo-500">Trade History Context</div>
+            <p className="mt-3 text-sm leading-6 text-slate-700">
+              Personalized answers become stronger once IndiaCircle can read your own imported or auto-captured history.
+            </p>
+          </article>
+        </div>
+      </section>
+    </main>
+  );
+}
+
+export default function ResearchPage() {
+  const [loggedIn, setLoggedIn] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    setLoggedIn(isAuthenticated());
+  }, []);
+
+  if (loggedIn == null) {
+    return <div className="min-h-screen bg-gray-50 pt-28" />;
+  }
+
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-gray-50 pt-28" />}>
+      {loggedIn ? <ResearchContent /> : <ResearchPreview />}
+    </Suspense>
   );
 }

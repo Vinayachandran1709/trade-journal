@@ -65,11 +65,10 @@ export default function DownloadPage() {
               Get IndiaCircle for your browser
             </h1>
             <p className="mt-5 text-lg leading-8 text-slate-300">
-              Auto-capture trades directly from Zerodha, Groww, and 10+ broker
-              platforms. No manual CSV exports needed.
+              Open live market context, behavioral coaching, Trade Guard, and auto-capture directly beside Zerodha, Groww, and 10+ broker platforms.
             </p>
             <p className="mt-4 text-sm font-semibold text-slate-400">
-              Also works on Brave and Opera
+              No broker credentials required · Analytics only, not investment advice
             </p>
           </div>
           <ExtensionMock />
@@ -111,8 +110,8 @@ export default function DownloadPage() {
             <div className="grid gap-4">
               {[ 
                 ["1", "Add to your browser", "Click the store button and approve the extension install."],
-                ["2", "Open Journal Side Panel", "Click the IndiaCircle icon to open your journal and copilot beside the page you are trading on."],
-                ["3", "Visit your broker and trade normally", "Keep IndiaCircle beside Zerodha, Groww, Dhan, Angel One, Upstox, or 5Paisa while auto-capture continues in the background."],
+                ["2", "Open IndiaCircle Side Panel", "Click the IndiaCircle icon to open live market context and behavioral coaching beside the page you are trading on."],
+                ["3", "Visit your broker and trade normally", "Keep IndiaCircle beside Zerodha, Groww, Dhan, Angel One, Upstox, or 5Paisa while auto-capture and review context continue in the background."],
               ].map(([step, title, desc]) => (
                 <div key={step} className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
                   <span className="gradient-text text-4xl font-black">{step}</span>
@@ -127,7 +126,7 @@ export default function DownloadPage() {
             <h2 className="text-xl font-black text-slate-950">System requirements</h2>
             <p className="mt-3 text-sm text-gray-600">Chrome 88+, Edge 88+, Brave, Opera</p>
             <p className="mt-2 text-sm text-gray-500">
-              Pinning is optional, but recommended for one-click access.
+              Works with 10+ Indian brokers and is built for Indian retail traders.
             </p>
             <Link href="/welcome" className="btn-secondary mt-6">View onboarding guide</Link>
           </div>

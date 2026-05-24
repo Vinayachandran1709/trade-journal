@@ -147,7 +147,7 @@ export default function App() {
           <p className="eyebrow">IndiaCircle</p>
           <h1>IndiaCircle</h1>
           <p className="subcopy">
-            Sign in, open your side panel, and jump to your dashboard from one compact popup.
+            Sign in, open live market context, and jump into your behavioral workspace from one compact popup.
           </p>
         </div>
 

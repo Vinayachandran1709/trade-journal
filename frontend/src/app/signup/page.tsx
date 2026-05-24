@@ -196,7 +196,7 @@ export default function SignupPage() {
                   Create your account
                 </h1>
                 <p className="mt-2 text-sm leading-6 text-gray-500">
-                  Start auto-capturing trades and finding behavior patterns today.
+                  Start with live market context, Trade Guard, and behavioral coaching built for Indian traders.
                 </p>
               </div>
 
@@ -270,7 +270,7 @@ export default function SignupPage() {
                   Tell us what you trade
                 </h1>
                 <p className="mt-2 text-sm leading-6 text-gray-500">
-                  We&apos;ll use this to prioritize relevant sectors and broker workflows.
+                  We&apos;ll use this to prioritize relevant sectors, broker workflows, and personal risk intelligence.
                 </p>
               </div>
 

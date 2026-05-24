@@ -1,5 +1,6 @@
 import type { AnalyticsSummaryResponse, PatternResponse } from "@/lib/analytics";
 import type { CompletedTrade, Trade } from "@/types/trade";
+import type { TradeSetup } from "@/types/trade";
 import type { User } from "@/types/user";
 
 const CURRENCY_FORMATTER = new Intl.NumberFormat("en-IN", {
@@ -59,6 +60,34 @@ export type PatternSummaryCard = {
   patternType: string | null;
 };
 
+export type PatternProgressionStatus = "Improving" | "Stable" | "Worsening" | "Tracking";
+
+export type TraderInsight = {
+  title: string;
+  detail: string;
+  href: string;
+};
+
+export type WeeklyCoachingBlock = {
+  strongestEdge: string;
+  biggestLeak: string;
+  oneRule: string;
+};
+
+export type TradingIdentitySummary = {
+  summary: string;
+  strongestEdge: string;
+  biggestWeakness: string;
+  bestCondition: string;
+  worstCondition: string;
+  bestSector: string;
+  riskState: string;
+};
+
+export type AvoidableLossEstimate =
+  | { state: "unavailable"; label: string; detail: string }
+  | { state: "ready"; amount: number; label: string; detail: string };
+
 function toNumber(value: unknown): number | null {
   if (typeof value === "number" && Number.isFinite(value)) {
     return value;
@@ -98,6 +127,39 @@ export function severityBorderColor(severity: string): string {
 
 function getPatternSampleSize(pattern: PatternResponse): number {
   return toNumber(pattern.data?.sample_size) ?? toNumber(pattern.data?.trade_count) ?? 0;
+}
+
+function getWeekdayShort(dateValue: string): string {
+  const date = new Date(dateValue);
+  if (Number.isNaN(date.getTime())) return "--";
+  return new Intl.DateTimeFormat("en-IN", { weekday: "short" }).format(date);
+}
+
+function matchPatternTrade(pattern: PatternResponse, trade: CompletedTrade): boolean {
+  switch (pattern.pattern_type) {
+    case "holding_period": {
+      const worstBucket = String(pattern.data?.worst_bucket ?? "").toLowerCase();
+      if (worstBucket.includes("intra")) return trade.holding_days <= 1;
+      if (worstBucket.includes("swing")) return trade.holding_days > 1 && trade.holding_days <= 7;
+      if (worstBucket.includes("position") || worstBucket.includes("week")) return trade.holding_days > 7;
+      return false;
+    }
+    case "day_of_week": {
+      const worstBucket = String(pattern.data?.worst_bucket ?? "").toLowerCase();
+      return getWeekdayShort(trade.exit_date).toLowerCase().startsWith(worstBucket.slice(0, 3));
+    }
+    case "sector_concentration": {
+      const sector = String(pattern.data?.sector ?? "").toUpperCase();
+      return sector ? (SECTOR_MAP[trade.stock_symbol.toUpperCase()] ?? "").toUpperCase() === sector : false;
+    }
+    default:
+      return false;
+  }
+}
+
+function averagePnl(trades: CompletedTrade[]): number | null {
+  if (!trades.length) return null;
+  return trades.reduce((sum, trade) => sum + trade.pnl, 0) / trades.length;
 }
 
 export function getConfidenceMeta(pattern: PatternResponse) {
@@ -306,14 +368,24 @@ export function getPatternProofTrades(
 
   if (pattern.pattern_type === "holding_period") {
     const worstBucket = String(pattern.data?.worst_bucket ?? "").toLowerCase();
-    return sorted
+    const matches = sorted
       .filter((trade) => {
         if (worstBucket.includes("intra")) return trade.holding_days <= 1;
         if (worstBucket.includes("swing")) return trade.holding_days > 1 && trade.holding_days <= 7;
         if (worstBucket.includes("position") || worstBucket.includes("week")) return trade.holding_days > 7;
-        return true;
+        return false;
       })
       .slice(0, 3);
+    return matches.length >= 2 ? matches : [];
+  }
+
+  if (pattern.pattern_type === "day_of_week" || pattern.pattern_type === "sector_concentration") {
+    const matches = sorted.filter((trade) => matchPatternTrade(pattern, trade)).slice(0, 3);
+    return matches.length >= 2 ? matches : [];
+  }
+
+  if (pattern.pattern_type === "time_of_day") {
+    return [];
   }
 
   return sorted.slice(0, 3);
@@ -437,6 +509,39 @@ export function getAvoidableImpactSummary(
   return `Estimated avoidable swing: ${formatCurrency(total)}/month`;
 }
 
+export function getPatternProgressionStatus(
+  pattern: PatternResponse,
+  completedTrades: CompletedTrade[]
+): PatternProgressionStatus {
+  if (completedTrades.length < 12) {
+    return "Tracking";
+  }
+
+  const sorted = [...completedTrades].sort(
+    (left, right) => new Date(right.exit_date).getTime() - new Date(left.exit_date).getTime()
+  );
+  const matched = sorted.filter((trade) => matchPatternTrade(pattern, trade));
+  if (matched.length >= 6) {
+    const recent = matched.slice(0, 5);
+    const previous = matched.slice(5, 10);
+    if (previous.length >= 3) {
+      const recentAvg = averagePnl(recent);
+      const previousAvg = averagePnl(previous);
+      if (recentAvg != null && previousAvg != null) {
+        const delta = recentAvg - previousAvg;
+        if (delta > 250) return "Improving";
+        if (delta < -250) return "Worsening";
+        return "Stable";
+      }
+    }
+  }
+
+  const impact = estimatePatternImpact(pattern, null);
+  if (impact && impact.amount < 0 && pattern.severity === "high") return "Worsening";
+  if (impact && impact.amount > 0) return "Improving";
+  return "Tracking";
+}
+
 export function getScoreFraming(args: {
   summary: AnalyticsSummaryResponse | null;
   trades: Trade[];
@@ -471,6 +576,207 @@ export function getScoreFraming(args: {
         : "Consistency still forming";
 
   return { drag, nextFix, strength };
+}
+
+export function getTodayTraderInsight(args: {
+  summary: AnalyticsSummaryResponse | null;
+  trades: Trade[];
+  completedTrades: CompletedTrade[];
+  patterns: PatternResponse[];
+  setups: TradeSetup[];
+}): TraderInsight {
+  const { summary, trades, completedTrades, patterns, setups } = args;
+  const visiblePatterns = patterns.filter((pattern) => !pattern.locked);
+  const biggestLeak = getBiggestLeakSummary(visiblePatterns, summary);
+  const strongestEdge = getStrongestEdgeSummary(visiblePatterns, summary);
+  const missingEmotionCount = trades.filter((trade) => !trade.emotion_tag).length;
+  const missingNotesCount = trades.filter((trade) => !(trade.notes ?? "").trim()).length;
+  const lateSessionLosses = completedTrades.filter((trade) => {
+    const hour = new Date(trade.exit_date).getHours();
+    return Number.isFinite(hour) && hour >= 14 && trade.pnl < 0;
+  }).length;
+  const unplannedCompletedTrades = completedTrades.filter(
+    (trade) => !setups.find((setup) => setup.linked_trade_id === trade.id)
+  ).length;
+
+  if (biggestLeak.patternType) {
+    return {
+      title: biggestLeak.title,
+      detail: biggestLeak.detail,
+      href: "/dashboard/analytics#patterns",
+    };
+  }
+
+  if (missingEmotionCount > 0 || missingNotesCount > 0) {
+    return {
+      title: "Your review discipline still has open loops",
+      detail: `${missingEmotionCount} trades are missing emotion tags and ${missingNotesCount} still need a note.`,
+      href: "/dashboard/trades?emotion=missing",
+    };
+  }
+
+  if (lateSessionLosses >= 2) {
+    return {
+      title: "Late-session decisions are still the main watchpoint",
+      detail: "Your recent losses cluster later in the session, so context and selectivity matter more there.",
+      href: "/dashboard/mistakes",
+    };
+  }
+
+  if (unplannedCompletedTrades >= 3) {
+    return {
+      title: "Execution is outpacing planning",
+      detail: `${unplannedCompletedTrades} completed trades still have no linked setup or checklist context.`,
+      href: "/dashboard#pre-trade-setups",
+    };
+  }
+
+  if (strongestEdge.patternType) {
+    return {
+      title: strongestEdge.title,
+      detail: strongestEdge.detail,
+      href: "/dashboard/analytics#patterns",
+    };
+  }
+
+  return {
+    title: "Import more trades to unlock your first trader insight",
+    detail: "IndiaCircle needs more completed trades and review data to surface your strongest behavioral edge.",
+    href: "/import",
+  };
+}
+
+export function getWeeklyCoachingBlock(args: {
+  summary: AnalyticsSummaryResponse | null;
+  patterns: PatternResponse[];
+  trades: Trade[];
+  completedTrades: CompletedTrade[];
+}): WeeklyCoachingBlock {
+  const { summary, patterns, trades, completedTrades } = args;
+  const visiblePatterns = patterns.filter((pattern) => !pattern.locked);
+  const strongestEdge = getStrongestEdgeSummary(visiblePatterns, summary);
+  const biggestLeak = getBiggestLeakSummary(visiblePatterns, summary);
+  const missingReviews = trades.filter((trade) => !trade.emotion_tag || !(trade.notes ?? "").trim()).length;
+
+  const oneRule =
+    biggestLeak.patternType
+      ? biggestLeak.action
+      : missingReviews > 0
+        ? "Close one missing review item before the next live session."
+        : completedTrades.length > 0
+          ? "Keep size and timing aligned with the setups that are already working."
+          : "Import more trades to make your next weekly rule specific.";
+
+  return {
+    strongestEdge: strongestEdge.title,
+    biggestLeak: biggestLeak.title,
+    oneRule,
+  };
+}
+
+export function getTradingIdentitySummary(args: {
+  summary: AnalyticsSummaryResponse | null;
+  patterns: PatternResponse[];
+  completedTrades: CompletedTrade[];
+}): TradingIdentitySummary {
+  const { summary, patterns, completedTrades } = args;
+  const visiblePatterns = patterns.filter((pattern) => !pattern.locked);
+  const strongestEdge = getStrongestEdgeSummary(visiblePatterns, summary);
+  const biggestLeak = getBiggestLeakSummary(visiblePatterns, summary);
+  const bestSector = buildTraderProfile({
+    user: null,
+    trades: [],
+    completedTrades,
+    patterns: visiblePatterns,
+  }).strongestSector;
+  const bestCondition = strongestEdge.patternType ? strongestEdge.title : "Still forming";
+  const worstCondition = biggestLeak.patternType ? biggestLeak.title : "No dominant leak yet";
+  const riskState =
+    biggestLeak.patternType && visiblePatterns.some((pattern) => pattern.severity === "high")
+      ? "Risk elevated"
+      : strongestEdge.patternType
+        ? "Risk controlled"
+        : "Tracking";
+
+  return {
+    summary: `Your strongest edge is ${strongestEdge.title.toLowerCase()}. Your biggest leak is ${biggestLeak.title.toLowerCase()}.`,
+    strongestEdge: strongestEdge.title,
+    biggestWeakness: biggestLeak.title,
+    bestCondition,
+    worstCondition,
+    bestSector,
+    riskState,
+  };
+}
+
+export function getAvoidableLossEstimate(args: {
+  categories: Array<{ name: string; totalPnl: number }>;
+  trades: Trade[];
+  completedTrades: CompletedTrade[];
+  summary: AnalyticsSummaryResponse | null;
+}): AvoidableLossEstimate {
+  const { categories, trades, completedTrades, summary } = args;
+  const losingTrades = completedTrades.filter((trade) => trade.pnl < 0).length;
+  const missingReviewSignals = trades.some((trade) => !trade.emotion_tag || !(trade.notes ?? "").trim());
+  const avoidableAmount = categories.reduce(
+    (sum, item) => sum + (item.totalPnl < 0 ? Math.abs(item.totalPnl) : 0),
+    0
+  );
+
+  if (avoidableAmount > 0) {
+    return {
+      state: "ready",
+      amount: avoidableAmount,
+      label: `${formatCurrency(avoidableAmount)} potentially avoidable this month`,
+      detail: "This estimate is based on repeat loss patterns already visible in your review data.",
+    };
+  }
+
+  if (losingTrades > 0 && (missingReviewSignals || !summary || completedTrades.length < 10)) {
+    return {
+      state: "unavailable",
+      label: "Avoidable loss estimate unavailable",
+      detail: "More completed trades or review data are needed before this estimate is reliable.",
+    };
+  }
+
+  return {
+    state: "unavailable",
+    label: "Avoidable loss estimate unavailable",
+    detail: "No evidence-linked avoidable-loss cluster is reliable enough yet.",
+  };
+}
+
+export function getMostExpensiveBehavior(
+  categories: Array<{ name: string; totalPnl: number }>
+): string {
+  const worst = [...categories].sort((left, right) => left.totalPnl - right.totalPnl)[0];
+  return worst ? worst.name : "No dominant expensive behavior yet";
+}
+
+export function getTopMistakeToWatch(args: {
+  patterns: PatternResponse[];
+  categories: Array<{ name: string; totalPnl: number }>;
+  trades: Trade[];
+}): string {
+  const { patterns, categories, trades } = args;
+  const visiblePatterns = patterns.filter((pattern) => !pattern.locked);
+  const timePattern = visiblePatterns.find((pattern) => pattern.pattern_type === "time_of_day");
+  if (timePattern?.data?.worst_bucket) {
+    return `Avoid late-session chases during ${String(timePattern.data.worst_bucket)}.`;
+  }
+
+  const expensive = getMostExpensiveBehavior(categories);
+  if (expensive !== "No dominant expensive behavior yet") {
+    return `Watch ${expensive.toLowerCase()} today.`;
+  }
+
+  const missingEmotionCount = trades.filter((trade) => !trade.emotion_tag).length;
+  if (missingEmotionCount > 0) {
+    return "Review untagged trades before repeating the same emotional pattern.";
+  }
+
+  return "Use context, not impulse, when the tape feels noisy.";
 }
 
 function getHoldingBucket(days: number): "Intraday" | "Swing" | "Positional" {

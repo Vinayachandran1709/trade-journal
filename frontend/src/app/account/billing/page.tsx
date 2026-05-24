@@ -117,11 +117,11 @@ function BillingContent() {
       {!isPro && !isCancelled && (
         <div className="mt-4 rounded-xl border border-gray-200 bg-white p-6">
           <p className="text-sm text-gray-500">
-            You're on the Free plan.{" "}
+            You're on the Free plan for trade review and sample market context.{" "}
             <Link href="/pricing" className="text-indigo-600 hover:underline">
               Upgrade to Pro
             </Link>{" "}
-            to unlock all features.
+            to unlock live sidebar intelligence, Trade Guard, and deeper behavioral coaching.
           </p>
         </div>
       )}

@@ -78,11 +78,10 @@ function WelcomeContent() {
         <div className="text-center">
           <span className="badge badge-indigo">Setup</span>
           <h1 className="mt-5 text-5xl font-black tracking-tight text-slate-950">
-            Your AI trading copilot is ready
+            Your trading intelligence sidebar is ready
           </h1>
           <p className="mx-auto mt-4 max-w-2xl text-lg leading-8 text-gray-600">
-            Open IndiaCircle beside your broker to auto-capture trades, review your journal,
-            and use AI insights.
+            Open IndiaCircle beside your broker for live market context, Trade Guard, behavioral coaching, and AI-powered review.
           </p>
         </div>
 
@@ -99,13 +98,13 @@ function WelcomeContent() {
             ],
             [
               "2",
-              "Open Journal Side Panel",
-              "IndiaCircle opens beside your broker so your journal, AI research, and insights stay in view while you trade.",
+              "Open IndiaCircle Side Panel",
+              "IndiaCircle opens beside your broker so market context, AI research, and behavioral insights stay in view while you trade.",
             ],
             [
               "3",
               "Visit your broker",
-              "Trade normally on Zerodha, Groww, Dhan, Angel One, Upstox, or 5Paisa while auto-capture keeps your journal updated.",
+              "Trade normally on Zerodha, Groww, Dhan, Angel One, Upstox, or 5Paisa while auto-capture keeps your review history current.",
             ],
           ].map(([num, title, desc]) => (
             <div key={num} className="relative rounded-3xl border border-gray-100 bg-white p-7 shadow-sm">
@@ -121,7 +120,7 @@ function WelcomeContent() {
             <div>
               <h2 className="text-3xl font-black">Open IndiaCircle where you trade</h2>
               <p className="mt-3 text-sm leading-6 text-slate-300">
-                The side panel is the main product surface. Click Open Journal Side Panel to
+                The side panel is the main product surface. Click Open IndiaCircle Side Panel to
                 connect your session and launch IndiaCircle beside the page you are trading on.
               </p>
               <div className="mt-5 rounded-2xl border border-amber-400/30 bg-amber-300/10 p-4">
@@ -141,7 +140,7 @@ function WelcomeContent() {
                     disabled={opening}
                     className="btn-primary"
                   >
-                    {opening ? "Opening..." : "Open Journal Side Panel"}
+                    {opening ? "Opening..." : "Open IndiaCircle Side Panel"}
                   </button>
                 ) : (
                   <>
@@ -183,10 +182,10 @@ function WelcomeContent() {
                 </div>
                 <div className="flex items-center justify-between rounded-xl bg-slate-800 px-4 py-3">
                   <span>Extension</span>
-                  <span className="text-indigo-300">Journal Side Panel</span>
+                  <span className="text-indigo-300">Market Intelligence Sidebar</span>
                 </div>
                 <div className="rounded-xl bg-slate-800 px-4 py-3 text-slate-300">
-                  Auto-capture, journal, market context, and AI research stay beside your broker.
+                  Live market context, Trade Guard, behavioral coaching, and AI research stay beside your broker.
                 </div>
               </div>
             </div>

@@ -5,7 +5,14 @@ import { useEffect, useMemo, useState } from "react";
 import { getAnalyticsSummary, getPatterns, type AnalyticsSummaryResponse, type PatternsEnvelope } from "@/lib/analytics";
 import { readSessionCache, writeSessionCache } from "@/lib/client-cache";
 import { getCompletedTrades, getTradeSetups, getTrades } from "@/lib/trades";
-import { formatCurrency, getBiggestLeakSummary, getRecommendation } from "@/lib/behavioral-insights";
+import {
+  formatCurrency,
+  getAvoidableLossEstimate,
+  getBiggestLeakSummary,
+  getMostExpensiveBehavior,
+  getRecommendation,
+  getTopMistakeToWatch,
+} from "@/lib/behavioral-insights";
 import type { CompletedTrade, Trade, TradeSetup } from "@/types/trade";
 
 const MISTAKES_CACHE_KEY = "dashboard-mistakes-cache";
@@ -260,10 +267,28 @@ export default function MistakesPage() {
   const worstTrades = completedTrades.filter((trade) => trade.pnl < 0).sort((left, right) => left.pnl - right.pnl).slice(0, 4);
   const linkedSetups = setups.filter((setup) => setup.linked_trade_id).slice(0, 4);
   const biggestLeak = getBiggestLeakSummary((patterns?.patterns ?? []).filter((pattern) => !pattern.locked), summary);
+  const avoidableEstimate = getAvoidableLossEstimate({
+    categories: mistakeCategories,
+    trades: rawTrades,
+    completedTrades,
+    summary,
+  });
+  const mostExpensiveBehavior = getMostExpensiveBehavior(mistakeCategories);
+  const topMistakeToWatch = getTopMistakeToWatch({
+    patterns: (patterns?.patterns ?? []).filter((pattern) => !pattern.locked),
+    categories: mistakeCategories,
+    trades: rawTrades,
+  });
   const correctionPlan = mistakeCategories.slice(0, 3).map((item) => ({
     leak: item.name,
     rule: biggestLeak.patternType ? biggestLeak.action : "Write one rule before the next similar trade.",
     why: `${formatCurrency(Math.abs(item.totalPnl))} lost across ${item.count} trades.`,
+    status:
+      item.name.toLowerCase().includes("missing")
+        ? "Pending"
+        : Math.abs(item.totalPnl) > Math.abs(avoidableLosses) / 4
+          ? "Improving"
+          : "Fixed",
   }));
 
   return (
@@ -276,16 +301,32 @@ export default function MistakesPage() {
         <p className="mt-2 max-w-3xl text-sm text-slate-600">This page turns avoidable losses into fixes you can actually act on in the journal.</p>
       </section>
 
+      <section className="mt-8 glass-card p-6">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <span className="badge badge-rose">Top mistake to watch today</span>
+            <h2 className="mt-4 text-2xl font-black text-slate-950">{topMistakeToWatch}</h2>
+            <p className="mt-2 text-sm text-slate-600">Use this as a behavioral reminder, not a trade call.</p>
+          </div>
+          <Link href="/dashboard/analytics#patterns" className="btn-secondary">
+            Review patterns
+          </Link>
+        </div>
+      </section>
+
       <section className="mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <article className="mistake-summary-card">
-          <div className="text-sm font-bold text-gray-500">Avoidable losses</div>
-          <div className="mt-3 text-3xl font-black text-rose-600">{avoidableLosses < 0 ? formatCurrency(Math.abs(avoidableLosses)) : "₹0"}</div>
-          <p className="mt-2 text-sm text-gray-500">{avoidableLosses < 0 ? "Evidence-linked avoidable behavior found in this review window." : "No repeat avoidable-loss cluster is obvious yet."}</p>
+          <div className="text-sm font-bold text-gray-500">Estimated Avoidable Loss</div>
+          <div className="mt-3 text-3xl font-black text-rose-600">
+            {avoidableEstimate.state === "ready" ? formatCurrency(avoidableEstimate.amount) : "Unavailable"}
+          </div>
+          <p className="mt-2 text-sm font-semibold text-slate-800">{avoidableEstimate.label}</p>
+          <p className="mt-1 text-sm text-gray-500">{avoidableEstimate.detail}</p>
         </article>
         <article className="mistake-summary-card">
-          <div className="text-sm font-bold text-gray-500">Main leak</div>
-          <div className="mt-3 text-2xl font-black text-slate-950">{biggestLeak.title}</div>
-          <p className="mt-2 text-sm text-gray-500">{biggestLeak.action}</p>
+          <div className="text-sm font-bold text-gray-500">Most expensive behavior</div>
+          <div className="mt-3 text-2xl font-black text-slate-950">{mostExpensiveBehavior}</div>
+          <p className="mt-2 text-sm text-gray-500">This is the behavior cluster costing the most in the current review window.</p>
         </article>
         <article className="mistake-summary-card">
           <div className="text-sm font-bold text-gray-500">Worst trade</div>
@@ -367,10 +408,9 @@ export default function MistakesPage() {
                     <div>Date: {new Date(trade.exit_date).toLocaleDateString("en-IN")}</div>
                   </div>
                   <div className="mt-4 flex flex-wrap gap-2">
-                    <Link href="/dashboard/trades?review=losers-missing-emotion" className="btn-secondary">Tag trade</Link>
+                    <Link href="/dashboard/trades?emotion=missing" className="btn-secondary">Add emotion</Link>
                     <Link href="/dashboard/trades?review=notes-missing" className="btn-secondary">Add note</Link>
-                    <Link href="/dashboard/trades" className="btn-secondary">Open in journal</Link>
-                    <Link href="/dashboard#pre-trade-setups" className="btn-secondary">Compare with plan</Link>
+                    <Link href="/dashboard#pre-trade-setups" className="btn-secondary">Review setup</Link>
                   </div>
                 </article>
               );
@@ -423,7 +463,12 @@ export default function MistakesPage() {
             <div key={`${item.leak}-${index}`} className="correction-item">
               <span className="correction-number">{index + 1}</span>
               <div>
-                <div className="font-semibold text-slate-950">Leak: {item.leak}</div>
+                <div className="flex flex-wrap items-center gap-2 font-semibold text-slate-950">
+                  <span>Leak: {item.leak}</span>
+                  <span className={`badge ${item.status === "Pending" ? "badge-rose" : item.status === "Improving" ? "badge-indigo" : "badge-emerald"}`}>
+                    {item.status}
+                  </span>
+                </div>
                 <div>Corrective rule: {item.rule}</div>
                 <div>Why it matters: {item.why}</div>
               </div>

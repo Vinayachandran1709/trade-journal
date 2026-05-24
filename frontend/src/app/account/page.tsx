@@ -97,11 +97,12 @@ function AccountContent() {
         {/* Subscription */}
         <div className="rounded-xl border border-gray-200 bg-white p-6">
           <h2 className="text-xs font-semibold uppercase tracking-wide text-gray-400">
-            Subscription
+            Access
           </h2>
           <div className="mt-4 flex items-center justify-between">
             <div>
               <p className="font-semibold">{planLabel}</p>
+              <p className="mt-0.5 text-sm text-gray-500">Live market context, behavioral coaching, and Trade Guard access.</p>
               {user?.subscription_expires_at && (
                 <p className="mt-0.5 text-sm text-gray-500">
                   {status === "pro_cancelled" ? "Expires" : "Renews"}{" "}

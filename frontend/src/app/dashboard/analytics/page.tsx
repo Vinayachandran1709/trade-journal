@@ -16,6 +16,7 @@ import {
   getStrongestEdgeSummary,
   getPatternMetricTiles,
   getPatternProofTrades,
+  getPatternProgressionStatus,
   getPatternStatus,
   getPatternStatusGroupTitle,
   getPatternStatusLabel,
@@ -27,6 +28,7 @@ import {
   getConfidenceMeta,
   getScoreFraming,
   getAvoidableImpactSummary,
+  getTradingIdentitySummary,
 } from "@/lib/behavioral-insights";
 import { getCompletedTrades, getTrades } from "@/lib/trades";
 import type { CompletedTrade, Trade } from "@/types/trade";
@@ -173,6 +175,11 @@ export default function AnalyticsPage() {
   const performanceScore = buildPerformanceScore({ summary, completedTrades, trades });
   const biggestLeak = getBiggestLeakSummary(sortedPatterns, summary);
   const strongestEdge = getStrongestEdgeSummary(sortedPatterns, summary);
+  const identitySummary = getTradingIdentitySummary({
+    summary,
+    patterns: sortedPatterns,
+    completedTrades,
+  });
   const scoreFraming = getScoreFraming({ summary, trades, patterns: sortedPatterns });
   const groupedPatterns = [
     {
@@ -246,6 +253,25 @@ export default function AnalyticsPage() {
       <section className="analytics-profile-card mt-8">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
           <div>
+            <div className="analytics-section-kicker">Trading Identity Summary</div>
+            <h2 className="text-3xl font-black text-slate-950">This system understands how you trade</h2>
+            <p className="mt-2 max-w-2xl text-sm text-slate-600">{identitySummary.summary}</p>
+          </div>
+          <div className="rounded-2xl bg-indigo-50 px-4 py-3 text-sm font-semibold text-indigo-700">{identitySummary.riskState}</div>
+        </div>
+        <div className="analytics-profile-grid mt-8">
+          <div className="analytics-profile-stat"><span>Strongest edge</span><strong>{identitySummary.strongestEdge}</strong></div>
+          <div className="analytics-profile-stat"><span>Biggest weakness</span><strong>{identitySummary.biggestWeakness}</strong></div>
+          <div className="analytics-profile-stat"><span>Best setup / condition</span><strong>{identitySummary.bestCondition}</strong></div>
+          <div className="analytics-profile-stat"><span>Worst setup / behavior</span><strong>{identitySummary.worstCondition}</strong></div>
+          <div className="analytics-profile-stat"><span>Best sector</span><strong>{identitySummary.bestSector}</strong></div>
+          <div className="analytics-profile-stat"><span>Current risk state</span><strong>{identitySummary.riskState}</strong></div>
+        </div>
+      </section>
+
+      <section className="analytics-profile-card mt-8">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+          <div>
             <div className="analytics-section-kicker">Trader Profile</div>
             <h2 className="text-3xl font-black text-slate-950">Your trading DNA profile</h2>
             <p className="mt-2 max-w-2xl text-sm text-slate-600">A live profile built from completed trades, journaling habits, and behavioral patterns.</p>
@@ -313,35 +339,53 @@ export default function AnalyticsPage() {
                   const tracked = trackedPatterns.includes(pattern.pattern_type);
                   const metricTiles = getPatternMetricTiles(pattern);
                   const proofTrades = getPatternProofTrades(pattern, completedTrades);
+                  const progression = getPatternProgressionStatus(pattern, completedTrades);
+                  const status = getPatternStatus(pattern, summary);
+                  const isCosting = status === "costing";
+                  const isHelping = status === "helping";
 
                   return (
                     <article
                       key={pattern.pattern_type}
-                      className="rounded-[1.5rem] border border-gray-100 bg-white p-6 shadow-sm"
-                      style={{ borderLeft: `4px solid ${severityBorderColor(pattern.severity)}` }}
+                      className={`rounded-[1.5rem] border bg-white p-6 shadow-sm ${
+                        isCosting
+                          ? "border-rose-200 bg-rose-50/20"
+                          : isHelping
+                            ? "border-emerald-100 bg-emerald-50/10"
+                            : "border-gray-100"
+                      }`}
+                      style={{ borderLeft: `${pattern.severity === "high" ? 6 : 4}px solid ${severityBorderColor(pattern.severity)}` }}
                     >
                       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                         <div className="max-w-3xl">
                           <div className="flex flex-wrap items-center gap-3">
                             <span className={`badge ${severityBadgeClass(pattern.severity)}`}>{pattern.severity}</span>
-                            <span className={`badge ${getPatternStatus(pattern, summary) === "costing" ? "badge-rose" : getPatternStatus(pattern, summary) === "helping" ? "badge-emerald" : "badge-indigo"}`}>
-                              {getPatternStatusLabel(getPatternStatus(pattern, summary))}
+                            <span className={`badge ${isCosting ? "badge-rose" : isHelping ? "badge-emerald" : "badge-indigo"}`}>
+                              {getPatternStatusLabel(status)}
                             </span>
                             <span className={`insight-confidence ${confidence.className}`}>{confidence.text}</span>
+                            <span className={`badge ${progression === "Improving" ? "badge-emerald" : progression === "Worsening" ? "badge-rose" : "badge-indigo"}`}>
+                              {progression}
+                            </span>
                           </div>
                           <h3 className="mt-4 text-2xl font-black text-slate-950">{getTraderFacingPatternTitle(pattern)}</h3>
                           <p className="mt-3 text-sm leading-7 text-slate-600">{getTraderFacingPatternDescription(pattern)}</p>
+                          <div className="mt-4 flex flex-wrap gap-3 text-sm">
+                            {impact ? (
+                              <span className={`rounded-full px-3 py-1 font-bold ${impact.amount >= 0 ? "bg-emerald-50 text-emerald-700" : "bg-rose-50 text-rose-700"}`}>
+                                {impact.text}
+                              </span>
+                            ) : null}
+                            <span className={`rounded-full px-3 py-1 font-bold ${isCosting ? "bg-rose-50 text-rose-700" : isHelping ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-700"}`}>
+                              {isCosting ? "Costing money" : isHelping ? "Helping you" : "Tracking"}
+                            </span>
+                          </div>
                           <div className="pattern-action-card mt-4">
-                            <span className="mr-2">Rule:</span>
+                            <span className="mr-2">Interpretation:</span>
                             {getRuleLikeRecommendation(pattern)}
                           </div>
                         </div>
                         <div className="flex min-w-[220px] flex-col items-start gap-3">
-                          {impact ? (
-                            <div className={`w-full rounded-3xl px-5 py-4 text-lg font-black ${impact.amount >= 0 ? "bg-emerald-50 text-emerald-700" : "bg-rose-50 text-rose-700"}`}>
-                              {impact.text}
-                            </div>
-                          ) : null}
                           <button
                             type="button"
                             onClick={() => toggleTrackedPattern(pattern.pattern_type)}
@@ -352,6 +396,26 @@ export default function AnalyticsPage() {
                         </div>
                       </div>
 
+                      {proofTrades.length ? (
+                        <div className="mt-5 rounded-2xl bg-slate-50 p-4">
+                          <div className="text-xs font-black uppercase tracking-[0.14em] text-slate-500">Proof trades</div>
+                          <div className="mt-3 grid gap-3 md:grid-cols-3">
+                            {proofTrades.map((trade) => (
+                              <div key={trade.id} className="rounded-2xl bg-white p-4 text-sm">
+                                <div className="font-black text-slate-950">{trade.stock_symbol}</div>
+                                <div className="mt-1 text-slate-500">{new Date(trade.exit_date).toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short" })}</div>
+                                <div className={`mt-2 font-black ${trade.pnl >= 0 ? "text-emerald-600" : "text-rose-600"}`}>{formatCurrency(trade.pnl)}</div>
+                                <div className="mt-1 text-slate-500">{trade.holding_days} day hold</div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="mt-5 rounded-2xl bg-slate-50 p-4 text-sm text-slate-500">
+                          Still gathering trade examples.
+                        </div>
+                      )}
+
                       <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
                         {metricTiles.map((tile) => (
                           <div key={`${pattern.pattern_type}-${tile.label}`} className="rounded-2xl bg-slate-50 px-4 py-3 text-sm">
@@ -360,22 +424,6 @@ export default function AnalyticsPage() {
                           </div>
                         ))}
                       </div>
-
-                      {proofTrades.length ? (
-                        <div className="mt-5 rounded-2xl bg-slate-50 p-4">
-                          <div className="text-xs font-black uppercase tracking-[0.14em] text-slate-500">Proof trades</div>
-                          <div className="mt-3 grid gap-3 md:grid-cols-3">
-                            {proofTrades.map((trade) => (
-                              <div key={trade.id} className="rounded-2xl bg-white p-4 text-sm">
-                                <div className="font-black text-slate-950">{trade.stock_symbol}</div>
-                                <div className="mt-1 text-slate-500">{new Date(trade.exit_date).toLocaleDateString("en-IN")}</div>
-                                <div className={`mt-2 font-black ${trade.pnl >= 0 ? "text-emerald-600" : "text-rose-600"}`}>{formatCurrency(trade.pnl)}</div>
-                                <div className="mt-1 text-slate-500">{trade.holding_days} day hold</div>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      ) : null}
                     </article>
                   );
                 })}

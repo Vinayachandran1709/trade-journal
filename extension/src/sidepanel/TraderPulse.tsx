@@ -326,6 +326,27 @@ function getAction(args: {
   return null;
 }
 
+function getTopRiskToday(args: {
+  patternsEnvelope: PatternsEnvelope | null | undefined;
+  captureState: CaptureState | null;
+}): string | null {
+  const patterns = args.patternsEnvelope?.unlocked ? args.patternsEnvelope.patterns : [];
+  const captureStats = getCapturePerformanceStats(args.captureState);
+  const timePattern = findPattern(patterns, "time_of_day");
+  if (timePattern?.data?.worst_bucket) {
+    return `Top Risk Today: review late-session behavior around ${String(timePattern.data.worst_bucket)}.`;
+  }
+  if (captureStats.losingStreakCount >= 2) {
+    return "Top Risk Today: loss streak pressure can distort the next decision.";
+  }
+  const overtradingPattern = findPattern(patterns, "overtrading");
+  const threshold = getOvertradingThreshold(overtradingPattern);
+  if (threshold && captureStats.tradeCount >= threshold) {
+    return "Top Risk Today: overtrading risk is rising with activity.";
+  }
+  return null;
+}
+
 function parseEventDate(value: string): number {
   const parsed = new Date(value).getTime();
   return Number.isFinite(parsed) ? parsed : Number.MAX_SAFE_INTEGER;
@@ -405,6 +426,7 @@ export default function TraderPulse({
         .sort((left, right) => parseEventDate(left.date) - parseEventDate(right.date))[0] ?? null,
     [earningsEvents, recentSymbols]
   );
+  const topRiskToday = getTopRiskToday({ patternsEnvelope, captureState });
 
   useEffect(() => {
     let active = true;
@@ -435,6 +457,8 @@ export default function TraderPulse({
           {pulseAction}
         </p>
       ) : null}
+
+      {topRiskToday ? <div className="pulse-top-risk">{topRiskToday}</div> : null}
 
       {topPatternLine ? (
         <div className="pulse-action">

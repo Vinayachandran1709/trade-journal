@@ -23,7 +23,8 @@ import {
   getBiggestLeakSummary,
   getStrongestEdgeSummary,
   getScoreFraming,
-  getPatternProofTrades,
+  getTodayTraderInsight,
+  getWeeklyCoachingBlock,
 } from "@/lib/behavioral-insights";
 import type { CompletedTrade, Trade, TradeSetup } from "@/types/trade";
 import type { User } from "@/types/user";
@@ -97,6 +98,41 @@ function getScoreGradient(score: number) {
   return `conic-gradient(${color} 0% ${score}%, #e2e8f0 ${score}% 100%)`;
 }
 
+function getKpiNarrative(args: {
+  keyName: "pnl" | "winRate" | "discipline" | "performance";
+  summary: AnalyticsSummaryResponse | null;
+  scoreFraming: ReturnType<typeof getScoreFraming>;
+  rawTrades: Trade[];
+}) {
+  const { keyName, summary, scoreFraming, rawTrades } = args;
+  const taggedPct = rawTrades.length
+    ? rawTrades.filter((trade) => Boolean(trade.emotion_tag)).length / rawTrades.length
+    : 0;
+
+  switch (keyName) {
+    case "pnl":
+      return {
+        headline: (summary?.total_pnl ?? 0) >= 0 ? "Month positive" : "Month under pressure",
+        detail: `Main review: ${scoreFraming.drag}.`,
+      };
+    case "winRate":
+      return {
+        headline: (summary?.win_rate ?? 0) >= 0.5 ? "Win rate holding up" : "Win rate needs cleaner selectivity",
+        detail: `Strength: ${scoreFraming.strength}.`,
+      };
+    case "discipline":
+      return {
+        headline: taggedPct >= 0.65 ? "Discipline review is improving" : "Discipline review is still patchy",
+        detail: `Main issue: ${taggedPct >= 0.65 ? "keep the review habit consistent" : "missing emotional reviews"}.`,
+      };
+    default:
+      return {
+        headline: scoreFraming.strength !== "Consistency still forming" ? "Performance improving" : "Performance still forming",
+        detail: `Main drag: ${scoreFraming.drag}.`,
+      };
+  }
+}
+
 function getWeekSummary(
   completedTrades: CompletedTrade[],
   rawTrades: Trade[],
@@ -131,7 +167,7 @@ function getWeekSummary(
     secondary: `Journal gaps this week: ${missingEmotions} missing emotion tags · ${missingNotes} missing notes`,
     tertiary: pendingSetups > 0 ? `${pendingSetups} setup${pendingSetups === 1 ? "" : "s"} still waiting for capture.` : "No pending setups right now.",
     route: missingNotes > 0 ? "/dashboard/trades?review=notes-missing" : "/dashboard/trades",
-    routeLabel: missingNotes > 0 ? "Review journaling gaps" : "Open trade journal",
+      routeLabel: missingNotes > 0 ? "Review missing reviews" : "Open trade review",
     focus: ruleText,
   };
 }
@@ -324,6 +360,19 @@ export default function DashboardPage() {
   });
   const biggestLeak = getBiggestLeakSummary(visiblePatterns, summary);
   const strongestEdge = getStrongestEdgeSummary(visiblePatterns, summary);
+  const todayInsight = getTodayTraderInsight({
+    summary,
+    trades: rawTrades,
+    completedTrades,
+    patterns: visiblePatterns,
+    setups,
+  });
+  const weeklyCoaching = getWeeklyCoachingBlock({
+    summary,
+    patterns: visiblePatterns,
+    trades: rawTrades,
+    completedTrades,
+  });
   const weekRule = biggestLeak.patternType ? biggestLeak.action : "Tag recent trades and keep the next rule simple.";
   const weekSummary = getWeekSummary(completedTrades, rawTrades, setups, weekRule);
   const needsAttention = getNeedsAttention(
@@ -334,6 +383,10 @@ export default function DashboardPage() {
     biggestLeak.detail
   );
   const today = new Date();
+  const pnlNarrative = getKpiNarrative({ keyName: "pnl", summary, scoreFraming, rawTrades });
+  const winRateNarrative = getKpiNarrative({ keyName: "winRate", summary, scoreFraming, rawTrades });
+  const disciplineNarrative = getKpiNarrative({ keyName: "discipline", summary, scoreFraming, rawTrades });
+  const performanceNarrative = getKpiNarrative({ keyName: "performance", summary, scoreFraming, rawTrades });
 
   async function handleExport() {
     setExporting(true);
@@ -356,9 +409,22 @@ export default function DashboardPage() {
         <div className="mb-6 rounded-2xl bg-rose-50 p-4 text-sm font-semibold text-rose-700">{error}</div>
       ) : null}
 
+      <section className="glass-card p-6">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+          <div className="max-w-3xl">
+            <span className="badge badge-indigo">Today&apos;s Trader Insight</span>
+            <h2 className="mt-4 text-2xl font-black text-slate-950">{todayInsight.title}</h2>
+            <p className="mt-3 text-sm leading-7 text-slate-600">{todayInsight.detail}</p>
+          </div>
+          <Link href={todayInsight.href} className="btn-secondary">
+            Review insight
+          </Link>
+        </div>
+      </section>
+
       <section className="glass-card flex flex-col gap-6 p-6 lg:flex-row lg:items-center lg:justify-between">
         <div>
-          <span className="badge badge-indigo">Trading cockpit</span>
+          <span className="badge badge-indigo">Behavioral command center</span>
           <h1 className="mt-4 text-3xl font-black text-slate-950">Welcome back, {firstName}</h1>
           <p className="mt-2 text-sm text-slate-500">
             {DATE_FORMATTER.format(today)} · {DAY_FORMATTER.format(today)}
@@ -386,24 +452,28 @@ export default function DashboardPage() {
         <article className="glass-card p-5">
           <div className="text-sm font-bold text-gray-500">This month P&amp;L</div>
           <div className={`mt-3 text-3xl font-black ${pnlClass(summary?.total_pnl ?? 0)}`}>{formatCurrency(summary?.total_pnl ?? 0)}</div>
-          <p className="mt-2 text-sm text-gray-500">Realized from completed trades already matched in the journal.</p>
+          <p className="mt-2 text-sm font-semibold text-slate-800">{pnlNarrative.headline}</p>
+          <p className="mt-1 text-sm text-gray-500">{pnlNarrative.detail}</p>
+        </article>
+        <article className="glass-card p-5">
+          <div className="text-sm font-bold text-gray-500">Performance score</div>
+          <div className="mt-3 text-3xl font-black text-slate-950">{performanceScore}</div>
+          <p className="mt-2 text-sm font-semibold text-slate-800">{performanceNarrative.headline}</p>
+          <p className="mt-1 text-sm text-gray-500">{performanceNarrative.detail}</p>
         </article>
         <article className="glass-card p-5">
           <div className="text-sm font-bold text-gray-500">Win rate</div>
           <div className="mt-3 text-3xl font-black text-slate-950">{formatPercent(summary?.win_rate ?? 0)}</div>
-          <p className="mt-2 text-sm text-gray-500">Across {summary?.total_trades ?? 0} completed trades.</p>
+          <p className="mt-2 text-sm font-semibold text-slate-800">{winRateNarrative.headline}</p>
+          <p className="mt-1 text-sm text-gray-500">{winRateNarrative.detail}</p>
         </article>
         <article className="glass-card p-5">
-          <div className="text-sm font-bold text-gray-500">Journal coverage</div>
+          <div className="text-sm font-bold text-gray-500">Discipline score</div>
           <div className="mt-3 text-3xl font-black text-slate-950">
             {rawTrades.length ? `${Math.round((rawTrades.filter((trade) => Boolean(trade.emotion_tag)).length / rawTrades.length) * 100)}%` : "--"}
           </div>
-          <p className="mt-2 text-sm text-gray-500">Emotion tags on the trades feeding your behavioral reads.</p>
-        </article>
-        <article className="glass-card p-5">
-          <div className="text-sm font-bold text-gray-500">Open setups</div>
-          <div className="mt-3 text-3xl font-black text-slate-950">{setups.filter((setup) => !setup.linked_trade_id).length}</div>
-          <p className="mt-2 text-sm text-gray-500">Plans still waiting for capture, execution, or review.</p>
+          <p className="mt-2 text-sm font-semibold text-slate-800">{disciplineNarrative.headline}</p>
+          <p className="mt-1 text-sm text-gray-500">{disciplineNarrative.detail}</p>
         </article>
       </section>
 
@@ -428,6 +498,32 @@ export default function DashboardPage() {
             Open patterns →
           </Link>
         </article>
+      </section>
+
+      <section className="mt-6 glass-card p-6">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+          <div>
+            <span className="badge badge-emerald">Weekly Coaching Block</span>
+            <h2 className="mt-4 text-2xl font-black text-slate-950">Your review loop for this week</h2>
+          </div>
+          <Link href="/dashboard/analytics#patterns" className="btn-secondary">
+            Open patterns
+          </Link>
+        </div>
+        <div className="mt-5 grid gap-4 lg:grid-cols-3">
+          <div className="rounded-2xl bg-emerald-50 p-4 text-sm text-slate-800">
+            <div className="text-xs font-black uppercase tracking-[0.16em] text-emerald-600">Strongest edge</div>
+            <p className="mt-2 font-semibold">{weeklyCoaching.strongestEdge}</p>
+          </div>
+          <div className="rounded-2xl bg-rose-50 p-4 text-sm text-slate-800">
+            <div className="text-xs font-black uppercase tracking-[0.16em] text-rose-600">Biggest leak</div>
+            <p className="mt-2 font-semibold">{weeklyCoaching.biggestLeak}</p>
+          </div>
+          <div className="rounded-2xl bg-indigo-50 p-4 text-sm text-slate-800">
+            <div className="text-xs font-black uppercase tracking-[0.16em] text-indigo-600">One rule this week</div>
+            <p className="mt-2 font-semibold">{weeklyCoaching.oneRule}</p>
+          </div>
+        </div>
       </section>
 
       {needsAttention.length ? (
@@ -470,6 +566,28 @@ export default function DashboardPage() {
           <div className="rounded-2xl bg-slate-50 p-4 text-sm text-slate-700">{weekSummary.secondary}</div>
           <div className="rounded-2xl bg-slate-50 p-4 text-sm text-slate-700">{weekSummary.tertiary}</div>
           <div className="rounded-2xl bg-indigo-50 p-4 text-sm font-semibold text-indigo-900">Weekly rule: {weekSummary.focus}</div>
+        </div>
+      </section>
+
+      <section className="mt-6 glass-card p-6">
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <span className="badge badge-indigo">Market context preview</span>
+            <h2 className="mt-4 text-2xl font-black text-slate-950">Retail Narrative Feed</h2>
+            <p className="mt-2 text-sm text-slate-600">Beta context cards to support review, not a trade call.</p>
+          </div>
+        </div>
+        <div className="mt-5 grid gap-3 lg:grid-cols-4">
+          {[
+            "Banking narrative is active today",
+            "Retail attention rising in PSU names",
+            "Avoid treating social hype as confirmation",
+            "Use this as context, not a trade call",
+          ].map((item) => (
+            <div key={item} className="rounded-2xl border border-gray-100 bg-slate-50 p-4 text-sm font-semibold text-slate-700">
+              {item}
+            </div>
+          ))}
         </div>
       </section>
 

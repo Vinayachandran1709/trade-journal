@@ -19,7 +19,7 @@ import {
 } from "../shared/api";
 import { clearAuthToken, getAuthToken, onAuthTokenChange, setAuthToken } from "../shared/auth";
 import { getCaptureState, type CaptureState } from "../shared/captures";
-import { storageRemove, storageSet } from "../shared/chrome";
+import { storageGet, storageRemove, storageSet } from "../shared/chrome";
 import type { User } from "../shared/types";
 import AccountTab from "./AccountTab";
 import AiTab from "./AiTab";
@@ -36,11 +36,21 @@ type TabId = "market" | "ai" | "insights" | "captures" | "calculators" | "accoun
 type ViewState = "loading" | "signed_out" | "signed_in";
 type SubmitState = "ready" | "submitting";
 type PrewarmState = {
+  marketData: MarketDashboardData | null;
   watchlist: WatchlistResponse | null;
   completedTrades: CompletedTradeListItem[];
   rawTrades: TradeListItem[];
   setups: TradeSetupItem[];
+  patterns: PatternsEnvelope | null;
+  summary: AnalyticsSummaryResponse | null;
 };
+
+const LAST_MARKET_DATA_KEY = "cachedMarketDashboard";
+const LAST_MARKET_WATCHLIST_KEY = "lastMarketWatchlist";
+const CACHED_COMPLETED_TRADES_KEY = "cachedCompletedTrades";
+const CACHED_JOURNAL_SETUPS_KEY = "cachedJournalSetups";
+const CACHED_INSIGHTS_PATTERNS_KEY = "cachedInsightsPatterns";
+const CACHED_INSIGHTS_SUMMARY_KEY = "cachedInsightsSummary";
 
 function getFriendlyAuthError(error: unknown): string {
   if (error instanceof APIError) {
@@ -82,10 +92,9 @@ function LoggedOutPanel({
     <main className="sidepanel-shell sidepanel-shell--auth">
       <section className="hero-card auth-hero-card">
         <p className="eyebrow">IndiaCircle</p>
-        <h1>Open your AI trading copilot</h1>
+        <h1>Open your trading intelligence sidebar</h1>
         <p className="hero-copy">
-          Sign in once to auto-capture trades, review your journal, and use AI insights
-          beside your broker.
+          Sign in once to open market context during the session and behavioral coaching after the close beside your broker.
         </p>
       </section>
 
@@ -155,10 +164,13 @@ export default function App() {
   const [patternsEnvelope, setPatternsEnvelope] = useState<PatternsEnvelope | null>(null);
   const [analyticsSummary, setAnalyticsSummary] = useState<AnalyticsSummaryResponse | null>(null);
   const [prewarmState, setPrewarmState] = useState<PrewarmState>({
+    marketData: null,
     watchlist: null,
     completedTrades: [],
     rawTrades: [],
     setups: [],
+    patterns: null,
+    summary: null,
   });
 
   useEffect(() => {
@@ -166,20 +178,49 @@ export default function App() {
 
     async function hydrate(tokenOverride?: string | null) {
       try {
+        const [cachedMarketData, cachedWatchlist, cachedCompletedTrades, cachedSetups, cachedPatterns, cachedSummary] =
+          await Promise.all([
+            storageGet<MarketDashboardData>(LAST_MARKET_DATA_KEY).catch(() => null),
+            storageGet<WatchlistResponse>(LAST_MARKET_WATCHLIST_KEY).catch(() => null),
+            storageGet<CompletedTradeListItem[]>(CACHED_COMPLETED_TRADES_KEY).catch(() => []),
+            storageGet<TradeSetupItem[]>(CACHED_JOURNAL_SETUPS_KEY).catch(() => []),
+            storageGet<PatternsEnvelope>(CACHED_INSIGHTS_PATTERNS_KEY).catch(() => null),
+            storageGet<AnalyticsSummaryResponse>(CACHED_INSIGHTS_SUMMARY_KEY).catch(() => null),
+          ]);
+        if (active) {
+          setMarketData(cachedMarketData);
+          setPrewarmState({
+            marketData: cachedMarketData,
+            watchlist: cachedWatchlist,
+            completedTrades: Array.isArray(cachedCompletedTrades) ? cachedCompletedTrades : [],
+            rawTrades: [],
+            setups: Array.isArray(cachedSetups) ? cachedSetups : [],
+            patterns: cachedPatterns,
+            summary: cachedSummary,
+          });
+          setPatternsEnvelope(cachedPatterns);
+          setAnalyticsSummary(cachedSummary);
+        }
+
         const token =
           typeof tokenOverride === "string" || tokenOverride === null
             ? tokenOverride
             : await getAuthToken();
 
         if (!token) {
+          const backgroundToken = await chrome.runtime
+            .sendMessage({ type: "auth:get-token" })
+            .then((response) => (response?.ok ? (response.token as string | null) : null))
+            .catch(() => null);
+          if (backgroundToken) {
+            return hydrate(backgroundToken);
+          }
+
           const nextCaptureState = await getCaptureState();
           if (active) {
             setUser(null);
             setBannerError(null);
             setCaptureState(nextCaptureState);
-            setPatternsEnvelope(null);
-            setAnalyticsSummary(null);
-            setPrewarmState({ watchlist: null, completedTrades: [], rawTrades: [], setups: [] });
             setViewState("signed_out");
           }
           return;
@@ -217,10 +258,13 @@ export default function App() {
           setAnalyticsSummary(nextSummary);
           setMarketData(nextMarketData);
           setPrewarmState({
+            marketData: nextMarketData,
             watchlist: nextWatchlist,
             completedTrades: Array.isArray(nextCompletedTrades) ? nextCompletedTrades : [],
             rawTrades: Array.isArray(nextRawTrades) ? nextRawTrades : [],
             setups: Array.isArray(nextSetups) ? nextSetups : [],
+            patterns: nextPatterns,
+            summary: nextSummary,
           });
           setViewState("signed_in");
         }
@@ -231,10 +275,6 @@ export default function App() {
         if (active) {
           setUser(null);
           setCaptureState(nextCaptureState);
-          setPatternsEnvelope(null);
-          setAnalyticsSummary(null);
-          setMarketData(null);
-          setPrewarmState({ watchlist: null, completedTrades: [], rawTrades: [], setups: [] });
           setBannerError(null);
           setAuthError(getFriendlyAuthError(error));
           setViewState("signed_out");
@@ -304,10 +344,13 @@ export default function App() {
       setAnalyticsSummary(nextSummary);
       setMarketData(nextMarketData);
       setPrewarmState({
+        marketData: nextMarketData,
         watchlist: nextWatchlist,
         completedTrades: Array.isArray(nextCompletedTrades) ? nextCompletedTrades : [],
         rawTrades: Array.isArray(nextRawTrades) ? nextRawTrades : [],
         setups: Array.isArray(nextSetups) ? nextSetups : [],
+        patterns: nextPatterns,
+        summary: nextSummary,
       });
     } catch (error) {
       await clearAuthToken().catch(() => undefined);
@@ -332,7 +375,7 @@ export default function App() {
       setPatternsEnvelope(null);
       setAnalyticsSummary(null);
       setMarketData(null);
-      setPrewarmState({ watchlist: null, completedTrades: [], rawTrades: [], setups: [] });
+      setPrewarmState({ marketData: null, watchlist: null, completedTrades: [], rawTrades: [], setups: [], patterns: null, summary: null });
       setPassword("");
       setAuthError(null);
       setViewState("signed_out");
@@ -375,9 +418,9 @@ export default function App() {
       <main className="sidepanel-shell sidepanel-shell--auth">
         <section className="hero-card auth-hero-card">
           <p className="eyebrow">IndiaCircle</p>
-          <h1>Open your AI trading copilot</h1>
+          <h1>Connecting to IndiaCircle…</h1>
           <p className="hero-copy">
-            Loading your extension session and getting your journal workspace ready.
+            Loading your market context, review state, and behavioral workspace.
           </p>
         </section>
       </main>
@@ -454,9 +497,9 @@ export default function App() {
           isSignedIn={Boolean(user)}
           captureState={captureState}
           onDataChange={setMarketData}
-          initialMarketData={marketData}
+          initialMarketData={marketData ?? prewarmState.marketData}
           initialWatchlist={prewarmState.watchlist}
-          initialPatternsEnvelope={patternsEnvelope}
+          initialPatternsEnvelope={patternsEnvelope ?? prewarmState.patterns}
           initialCompletedTrades={prewarmState.completedTrades}
         />
       )}
@@ -467,8 +510,8 @@ export default function App() {
         <InsightsTab
           isSignedIn={Boolean(user)}
           webAppUrl={WEB_APP_URL}
-          initialPatternsData={patternsEnvelope}
-          initialSummary={analyticsSummary}
+          initialPatternsData={patternsEnvelope ?? prewarmState.patterns}
+          initialSummary={analyticsSummary ?? prewarmState.summary}
           initialCompletedTrades={prewarmState.completedTrades}
         />
       )}
@@ -489,7 +532,7 @@ export default function App() {
           <div className="pro-banner-text">
             <span className="pro-banner-title">Unlock Pro</span>
             <span className="pro-banner-desc">
-              AI analysis, unlimited imports and 10+ brokers
+              Live sidebar intelligence, behavioral coaching, and 10+ brokers
             </span>
           </div>
           <button
