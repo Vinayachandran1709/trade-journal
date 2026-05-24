@@ -170,6 +170,32 @@ function getAvoidableLosses(categories: MistakeCategory[]) {
   return categories.reduce((sum, item) => sum + item.totalPnl, 0);
 }
 
+function buildTradeReviewActions(rawTrade: Trade | null) {
+  const actions: Array<{ label: string; href: string }> = [];
+  const tradeParam = rawTrade ? `&tradeId=${rawTrade.id}` : "";
+
+  if (!rawTrade?.emotion_tag) {
+    actions.push({
+      label: "Add emotion",
+      href: `/dashboard/trades?emotion=missing${tradeParam}`,
+    });
+  }
+
+  if (!(rawTrade?.notes ?? "").trim()) {
+    actions.push({
+      label: "Add note",
+      href: `/dashboard/trades?review=notes-missing${tradeParam}`,
+    });
+  }
+
+  actions.push({
+    label: "Review setup",
+    href: "/dashboard#pre-trade-setups",
+  });
+
+  return actions;
+}
+
 function MistakesSkeleton() {
   return (
     <div className="section-container py-10">
@@ -297,7 +323,7 @@ export default function MistakesPage() {
       <section className="rounded-[2rem] border border-gray-100 bg-white p-8 shadow-sm">
         <span className="badge badge-rose">Correction Workflow</span>
         <h1 className="mt-4 text-4xl font-black tracking-tight text-slate-950">Where did you lose money unnecessarily?</h1>
-        <p className="mt-2 max-w-3xl text-sm text-slate-600">This page turns avoidable losses into fixes you can actually act on in the journal.</p>
+        <p className="mt-2 max-w-3xl text-sm text-slate-600">This page turns avoidable losses into fixes you can actually act on in your review workflow.</p>
       </section>
 
       <section className="mt-8 glass-card p-6">
@@ -325,17 +351,17 @@ export default function MistakesPage() {
         <article className="mistake-summary-card">
           <div className="text-sm font-bold text-gray-500">Most expensive behavior</div>
           <div className="mt-3 text-2xl font-black text-slate-950">{mostExpensiveBehavior}</div>
-          <p className="mt-2 text-sm text-gray-500">This is the behavior cluster costing the most in the current review window.</p>
+          <p className="mt-2 text-sm text-gray-500">This is the process failure or behavior cluster doing the most damage in the current review window.</p>
         </article>
         <article className="mistake-summary-card">
           <div className="text-sm font-bold text-gray-500">Worst trade</div>
           <div className="mt-3 text-2xl font-black text-rose-600">{worstTrade ? `${worstTrade.stock_symbol} · ${formatCurrency(Math.abs(worstTrade.pnl))}` : "No losing trade yet"}</div>
-          <p className="mt-2 text-sm text-gray-500">{worstTrade ? new Date(worstTrade.exit_date).toLocaleDateString("en-IN") : "Your biggest loss will appear here."}</p>
+          <p className="mt-2 text-sm text-gray-500">{worstTrade ? `${new Date(worstTrade.exit_date).toLocaleDateString("en-IN")} · Review the surrounding process, not just the outcome.` : "Your biggest loss will appear here."}</p>
         </article>
         <article className="mistake-summary-card">
           <div className="text-sm font-bold text-gray-500">Trades without plan</div>
           <div className="mt-3 text-3xl font-black text-slate-950">{completedTrades.filter((trade) => !setups.find((setup) => setup.linked_trade_id === trade.id)).length}</div>
-          <p className="mt-2 text-sm text-gray-500">No-checklist losers count as avoidable until proven otherwise.</p>
+          <p className="mt-2 text-sm text-gray-500">Trades without saved plan context are harder to learn from and easier to repeat poorly.</p>
         </article>
       </section>
 
@@ -401,15 +427,17 @@ export default function MistakesPage() {
                     </div>
                   ) : null}
                   <div className="mt-4 grid gap-2 text-sm text-slate-600 sm:grid-cols-2">
-                    <div>Why this was avoidable: {reasons[0] ?? "The plan and execution drifted apart."}</div>
+                    <div>This trade broke your normal process: {reasons[0] ?? "The plan and execution drifted apart."}</div>
                     <div>Holding: {trade.holding_days} days</div>
-                    <div>Entry {formatCurrency(trade.entry_price)} → Exit {formatCurrency(trade.exit_price)}</div>
+                    <div>{!rawMatch?.emotion_tag ? "This loss happened without emotional context." : "Review the note and emotional context attached to this trade."}</div>
                     <div>Date: {new Date(trade.exit_date).toLocaleDateString("en-IN")}</div>
                   </div>
                   <div className="mt-4 flex flex-wrap gap-2">
-                    <Link href="/dashboard/trades?emotion=missing" className="btn-secondary">Add emotion</Link>
-                    <Link href="/dashboard/trades?review=notes-missing" className="btn-secondary">Add note</Link>
-                    <Link href="/dashboard#pre-trade-setups" className="btn-secondary">Review setup</Link>
+                    {buildTradeReviewActions(rawMatch).map((action) => (
+                      <Link key={`${trade.id}-${action.label}`} href={action.href} className="btn-secondary">
+                        {action.label}
+                      </Link>
+                    ))}
                   </div>
                 </article>
               );

@@ -29,7 +29,7 @@ function Spinner() {
   return (
     <div className="section-container py-10">
       <div className="neutral-shell-card p-10 text-center text-sm font-semibold text-slate-500">
-        Loading your journal...
+        Loading your trade review...
       </div>
     </div>
   );
@@ -80,6 +80,7 @@ function TradesContent() {
   const isMissingEmotionMode = searchParams.get("emotion") === "missing";
   const isLosersMissingEmotionMode = searchParams.get("review") === "losers-missing-emotion";
   const isNotesMissingMode = searchParams.get("review") === "notes-missing";
+  const targetedTradeId = Number(searchParams.get("tradeId") ?? "");
   const isResolutionMode = isMissingEmotionMode || isLosersMissingEmotionMode || isNotesMissingMode;
 
   const fetchTradesPage = useCallback(
@@ -170,6 +171,35 @@ function TradesContent() {
     return visibleTrades.slice(start, start + PAGE_SIZE);
   }, [isResolutionMode, page, visibleTrades]);
 
+  useEffect(() => {
+    if (!Number.isFinite(targetedTradeId) || targetedTradeId <= 0) {
+      return;
+    }
+
+    const targetIndex = visibleTrades.findIndex((trade) => trade.id === targetedTradeId);
+    if (targetIndex < 0) {
+      return;
+    }
+
+    const targetPage = Math.floor(targetIndex / PAGE_SIZE);
+    if (targetPage !== page) {
+      setPage(targetPage);
+    }
+  }, [page, targetedTradeId, visibleTrades]);
+
+  useEffect(() => {
+    if (!Number.isFinite(targetedTradeId) || targetedTradeId <= 0) {
+      return;
+    }
+
+    const frame = window.requestAnimationFrame(() => {
+      const row = document.getElementById(`trade-row-${targetedTradeId}`);
+      row?.scrollIntoView({ behavior: "smooth", block: "center" });
+    });
+
+    return () => window.cancelAnimationFrame(frame);
+  }, [page, pagedTrades, targetedTradeId]);
+
   async function handleQuickSave(tradeId: number) {
     const draft = drafts[tradeId];
     if (!draft) return;
@@ -196,16 +226,16 @@ function TradesContent() {
       <div className="mx-auto max-w-7xl">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
-            <span className="badge badge-indigo">Journal</span>
+            <span className="badge badge-indigo">Trade Review</span>
             <h1 className="mt-4 text-4xl font-black tracking-tight text-slate-950">Your Trades</h1>
             <p className="mt-2 text-gray-600">
               {isLosersMissingEmotionMode
-                ? "Review losing trades with missing emotions and close the journaling gap."
+                ? "Review losing trades with missing emotions and close the review gap quickly."
                 : isNotesMissingMode
                   ? "Add a short follow-up note so the lesson survives after the trade is gone."
                 : isMissingEmotionMode
                   ? "Quick-tag missing emotions and add a short follow-up note."
-                  : "View, filter, and tag the raw material of your trading edge."}
+                  : "View, filter, and update the raw material behind your trading edge."}
             </p>
           </div>
           <button onClick={() => router.push("/import")} className="btn-primary">
@@ -283,7 +313,7 @@ function TradesContent() {
                   : "Missing emotion review"}
             </div>
             <div className="mt-1">
-              Use quick emotion tags and a short note to resolve journaling gaps directly from this table.
+              Use quick emotion tags and a short note to resolve review gaps directly from this table.
             </div>
           </div>
         ) : null}
@@ -302,7 +332,7 @@ function TradesContent() {
               </p>
               <p className="mt-2 text-sm text-gray-500">
                 {isResolutionMode
-                  ? "Your current filters did not find any unresolved journaling items."
+                      ? "Your current filters did not find any unresolved review items."
                   : "Import your first trades to get started."}
               </p>
               {!isResolutionMode ? (
@@ -349,7 +379,13 @@ function TradesContent() {
                       const showResolution = isResolutionMode || !trade.emotion_tag;
 
                       return (
-                        <tr key={trade.id} className="transition hover:bg-gray-50">
+                        <tr
+                          id={`trade-row-${trade.id}`}
+                          key={trade.id}
+                          className={`transition hover:bg-gray-50 ${
+                            trade.id === targetedTradeId ? "bg-indigo-50/80" : ""
+                          }`}
+                        >
                           <td className="whitespace-nowrap px-5 py-4 font-medium text-gray-600">
                             {formatDate(trade.trade_date)}
                           </td>

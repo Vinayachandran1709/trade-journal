@@ -27,7 +27,7 @@ import type {
   ExternalAuthHandoffMessage,
 } from "../shared/types";
 
-const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "http://localhost:8000").replace(/\/$/, "");
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "https://indiacircle.in").replace(/\/$/, "");
 const WEB_APP_URL = (import.meta.env.VITE_WEB_APP_URL || "https://indiacircle.in").replace(/\/$/, "");
 const TICKER_INTEL_TIMEOUT_MS = 8_000;
 const TICKER_QUOTE_TIMEOUT_MS = 6_000;

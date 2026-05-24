@@ -6,9 +6,9 @@ import Navbar from "@/components/Navbar";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "IndiaCircle - AI Trading Copilot for Indian Stock Market",
+  title: "IndiaCircle - Market Intelligence & Behavioral Coaching for Indian Traders",
   description:
-    "Auto-capture trades from 10+ Indian brokers. AI-powered insights, behavioral patterns, and smart risk assessment — all in one Chrome extension.",
+    "Live market context during the session and behavioral coaching after the close. IndiaCircle helps Indian retail traders review risk, discipline, and repeat mistakes without sharing broker credentials.",
 };
 
 export default function RootLayout({

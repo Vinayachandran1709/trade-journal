@@ -320,7 +320,7 @@ export default function AnalyticsPage() {
           <div>
             <div className="analytics-section-kicker">Behavioral Patterns</div>
             <h2 className="text-3xl font-black text-slate-950">What your trading history is repeating</h2>
-            <p className="mt-2 max-w-2xl text-sm text-slate-600">Each card shows the money signal, the rule, and a couple of proof trades instead of a raw data dump.</p>
+            <p className="mt-2 max-w-2xl text-sm text-slate-600">Each card starts with the human insight, then shows the impact, proof trades, and supporting stats only after the main read is clear.</p>
           </div>
         </div>
 
@@ -346,12 +346,12 @@ export default function AnalyticsPage() {
                   return (
                     <article
                       key={pattern.pattern_type}
-                      className={`rounded-[1.5rem] border bg-white p-6 shadow-sm ${
+                      className={`pattern-card rounded-[1.5rem] border bg-white p-6 shadow-sm ${
                         isCosting
-                          ? "border-rose-200 bg-rose-50/20"
+                          ? "pattern-card-costing border-rose-200 bg-rose-50/20"
                           : isHelping
-                            ? "border-emerald-100 bg-emerald-50/10"
-                            : "border-gray-100"
+                            ? "pattern-card-helping border-emerald-100 bg-emerald-50/10"
+                            : "pattern-card-monitoring border-gray-100"
                       }`}
                       style={{ borderLeft: `${pattern.severity === "high" ? 6 : 4}px solid ${severityBorderColor(pattern.severity)}` }}
                     >
@@ -380,7 +380,7 @@ export default function AnalyticsPage() {
                             </span>
                           </div>
                           <div className="pattern-action-card mt-4">
-                            <span className="mr-2">Interpretation:</span>
+                            <span className="mr-2">Review rule:</span>
                             {getRuleLikeRecommendation(pattern)}
                           </div>
                         </div>
@@ -415,14 +415,17 @@ export default function AnalyticsPage() {
                         </div>
                       )}
 
-                      <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
-                        {metricTiles.map((tile) => (
-                          <div key={`${pattern.pattern_type}-${tile.label}`} className="rounded-2xl bg-slate-50 px-4 py-3 text-sm">
-                            <div className="text-xs font-bold uppercase tracking-[0.14em] text-slate-500">{tile.label}</div>
-                            <div className="mt-2 font-bold text-slate-950">{tile.value}</div>
-                          </div>
-                        ))}
-                      </div>
+                      <details className="pattern-supporting-stats mt-5">
+                        <summary>Supporting stats</summary>
+                        <div className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+                          {metricTiles.map((tile) => (
+                            <div key={`${pattern.pattern_type}-${tile.label}`} className="pattern-metric-tile rounded-2xl bg-slate-50 px-4 py-3 text-sm">
+                              <div className="text-xs font-bold uppercase tracking-[0.14em] text-slate-500">{tile.label}</div>
+                              <div className="mt-2 font-bold text-slate-950">{tile.value}</div>
+                            </div>
+                          ))}
+                        </div>
+                      </details>
                     </article>
                   );
                 })}

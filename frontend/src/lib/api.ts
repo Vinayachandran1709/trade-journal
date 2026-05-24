@@ -1,5 +1,5 @@
 function resolveApiUrl(): string {
-  const configured = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api").replace(
+  const configured = (process.env.NEXT_PUBLIC_API_URL || "https://indiacircle.in/api").replace(
     /\/$/,
     ""
   );

@@ -282,6 +282,30 @@
     @apply mt-3 rounded-lg border border-blue-100 bg-blue-50 p-3 text-sm text-blue-800;
   }
 
+  .pattern-card {
+    @apply transition-shadow duration-200;
+  }
+
+  .pattern-card-costing {
+    box-shadow: 0 8px 24px rgba(244, 63, 94, 0.08);
+  }
+
+  .pattern-card-helping {
+    box-shadow: 0 8px 24px rgba(16, 185, 129, 0.08);
+  }
+
+  .pattern-supporting-stats {
+    @apply rounded-2xl border border-slate-100 bg-slate-50/60 p-4;
+  }
+
+  .pattern-supporting-stats summary {
+    @apply cursor-pointer text-sm font-bold text-slate-700;
+  }
+
+  .pattern-metric-tile {
+    @apply border border-slate-100 bg-white/80;
+  }
+
   .score-explanation {
     @apply mt-2 grid gap-1 text-xs text-gray-500;
   }

@@ -33,7 +33,7 @@ import TraderPulse from "./TraderPulse";
 const WEB_APP_URL = (import.meta.env.VITE_WEB_APP_URL || "https://indiacircle.in").replace(/\/$/, "");
 
 type TabId = "market" | "ai" | "insights" | "captures" | "calculators" | "account";
-type ViewState = "loading" | "signed_out" | "signed_in";
+type ViewState = "signed_out" | "signed_in";
 type SubmitState = "ready" | "submitting";
 type PrewarmState = {
   marketData: MarketDashboardData | null;
@@ -150,7 +150,8 @@ function LoggedOutPanel({
 
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
-  const [viewState, setViewState] = useState<ViewState>("loading");
+  const [viewState, setViewState] = useState<ViewState>("signed_out");
+  const [authChecking, setAuthChecking] = useState(true);
   const [bannerError, setBannerError] = useState<string | null>(null);
   const [authError, setAuthError] = useState<string | null>(null);
   const [submitState, setSubmitState] = useState<SubmitState>("ready");
@@ -177,6 +178,9 @@ export default function App() {
     let active = true;
 
     async function hydrate(tokenOverride?: string | null) {
+      if (active) {
+        setAuthChecking(true);
+      }
       try {
         const [cachedMarketData, cachedWatchlist, cachedCompletedTrades, cachedSetups, cachedPatterns, cachedSummary] =
           await Promise.all([
@@ -222,6 +226,7 @@ export default function App() {
             setBannerError(null);
             setCaptureState(nextCaptureState);
             setViewState("signed_out");
+            setAuthChecking(false);
           }
           return;
         }
@@ -267,6 +272,7 @@ export default function App() {
             summary: nextSummary,
           });
           setViewState("signed_in");
+          setAuthChecking(false);
         }
       } catch (error) {
         await clearAuthToken().catch(() => undefined);
@@ -278,6 +284,7 @@ export default function App() {
           setBannerError(null);
           setAuthError(getFriendlyAuthError(error));
           setViewState("signed_out");
+          setAuthChecking(false);
         }
       }
     }
@@ -328,6 +335,7 @@ export default function App() {
       setBannerError(null);
       setAuthError(null);
       setViewState("signed_in");
+      setAuthChecking(false);
 
       const [nextCaptureState, nextPatterns, nextSummary, nextMarketData, nextWatchlist, nextCompletedTrades, nextRawTrades, nextSetups] = await Promise.all([
         getCaptureState(),
@@ -360,6 +368,7 @@ export default function App() {
       setAnalyticsSummary(null);
       setAuthError(getFriendlyAuthError(error));
       setViewState("signed_out");
+      setAuthChecking(false);
     } finally {
       setSubmitState("ready");
     }
@@ -379,6 +388,7 @@ export default function App() {
       setPassword("");
       setAuthError(null);
       setViewState("signed_out");
+      setAuthChecking(false);
     } finally {
       setIsLoggingOut(false);
     }
@@ -413,7 +423,7 @@ export default function App() {
     }
   }
 
-  if (viewState === "loading") {
+  if (authChecking) {
     return (
       <main className="sidepanel-shell sidepanel-shell--auth">
         <section className="hero-card auth-hero-card">

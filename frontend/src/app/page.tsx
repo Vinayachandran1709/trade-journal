@@ -209,7 +209,7 @@ export default function Home() {
             "No broker credentials required",
             "Built for Indian retail traders",
             "AI-powered market context + behavioral analytics",
-            "Analytics only, not advisory",
+            "Analytics only, not investment advice",
           ].map((item) => (
             <div key={item} className="neutral-shell-card px-4 py-4 text-sm font-semibold text-slate-700">
               {item}
@@ -336,7 +336,7 @@ export default function Home() {
           <div>
             <p className="text-xl font-black text-slate-950">IndiaCircle</p>
             <p className="mt-3 text-sm text-gray-500">Market intelligence + behavioral intelligence for Indian traders</p>
-            <p className="mt-2 text-xs text-gray-400">© 2026 IndiaCircle. Not a SEBI-registered investment advisor.</p>
+            <p className="mt-2 text-xs text-gray-400">© 2026 IndiaCircle. Not a SEBI-registered investment advisor. Analytics only. Not investment advice.</p>
           </div>
           <div className="flex flex-wrap gap-4 text-sm font-semibold text-gray-600">
             {[
