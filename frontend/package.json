@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "clean": "powershell -NoProfile -ExecutionPolicy Bypass -Command \"if (Test-Path '.next') { Remove-Item -LiteralPath '.next' -Recurse -Force -ErrorAction SilentlyContinue }\"",
+    "clean": "rimraf .next",
     "predev": "npm run clean",
     "prebuild": "npm run clean",
     "dev": "next dev",
@@ -25,6 +25,7 @@
     "eslint": "^8.57.0",
     "eslint-config-next": "^14.2.21",
     "postcss": "^8.4.49",
+    "rimraf": "^6.0.1",
     "tailwindcss": "^3.4.17",
     "typescript": "^5.7.2",
     "vitest": "^2.1.9"
