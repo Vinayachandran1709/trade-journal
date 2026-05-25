@@ -70,7 +70,7 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, rootDir, "");
   const apiBaseUrl = (env.VITE_API_BASE_URL || "").trim();
   const webAppUrl = (env.VITE_WEB_APP_URL || "").trim();
-  const strictProdUrls = mode === "production" && Boolean(process.env.CI || process.env.VERCEL);
+  const strictProdUrls = mode === "production";
 
   if (strictProdUrls) {
     validateProductionUrl(apiBaseUrl, "VITE_API_BASE_URL");

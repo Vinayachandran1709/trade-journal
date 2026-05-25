@@ -39,7 +39,8 @@ const TICKER_CACHE_TTL_MS = 5 * 60 * 1_000;
 const STOCK_DICTIONARY_CACHE_KEY = "stockDictionaryCache";
 const PREWARM_DELAY_MS = 500;
 const DAILY_SUMMARY_KEY = "dailySummary";
-const DAILY_SUMMARY_POLL_INTERVAL_MS = 15_000;
+const DAILY_SUMMARY_HEARTBEAT_MS = 3_000;
+const DAILY_SUMMARY_REFRESH_DEBOUNCE_MS = 1_000;
 const PREWARM_TICKERS = [
   "RELIANCE",
   "TCS",
@@ -75,14 +76,17 @@ interface TickerCacheEntry {
   cachedAt: number;
 }
 
+let dailySummaryRefreshInFlight: Promise<void> | null = null;
+let lastDailySummaryRefreshAt = 0;
+
 void syncActionSurface();
 void prewarmTickerCache();
 void fetchStockDictionaryWithCache().catch(() => undefined);
 void reinjectTickerHighlighterIntoOpenTabs().catch(() => undefined);
-void pollDailySummary().catch(() => undefined);
+void refreshDailySummary(true).catch(() => undefined);
 setInterval(() => {
-  void pollDailySummary().catch(() => undefined);
-}, DAILY_SUMMARY_POLL_INTERVAL_MS);
+  void refreshDailySummary().catch(() => undefined);
+}, DAILY_SUMMARY_HEARTBEAT_MS);
 
 chrome.runtime.onInstalled.addListener((details) => {
   void syncActionSurface();
@@ -111,7 +115,7 @@ chrome.storage.onChanged.addListener((changes, areaName) => {
   const nextToken = (changes[AUTH_TOKEN_KEY].newValue as string | undefined) ?? null;
   void configureActionSurface(nextToken);
   if (nextToken) {
-    void pollDailySummary().catch(() => undefined);
+    void refreshDailySummary(true).catch(() => undefined);
   } else {
     void storageRemove(DAILY_SUMMARY_KEY).catch(() => undefined);
   }
@@ -164,6 +168,26 @@ async function pollDailySummary(): Promise<void> {
   } catch (error) {
     console.error("Error fetching daily summary:", error);
   }
+}
+
+async function refreshDailySummary(force = false): Promise<void> {
+  const now = Date.now();
+  const isDebounced =
+    !force && now - lastDailySummaryRefreshAt < DAILY_SUMMARY_REFRESH_DEBOUNCE_MS;
+
+  if (isDebounced) {
+    return dailySummaryRefreshInFlight ?? Promise.resolve();
+  }
+
+  if (dailySummaryRefreshInFlight) {
+    return dailySummaryRefreshInFlight;
+  }
+
+  lastDailySummaryRefreshAt = now;
+  dailySummaryRefreshInFlight = pollDailySummary().finally(() => {
+    dailySummaryRefreshInFlight = null;
+  });
+  return dailySummaryRefreshInFlight;
 }
 
 function getTrustedExternalOrigin(url?: string): string | null {
@@ -247,6 +271,7 @@ async function handleExternalMessage(
     await setAuthToken(token);
     await storageSet("cached_email", user.email);
     await configureActionSurface(token);
+    await refreshDailySummary(true);
     sendResponse({
       ok: true,
       user,
@@ -294,6 +319,7 @@ async function handleMessage(
         await setAuthToken(token);
         await storageSet("cached_email", user.email);
         await configureActionSurface(token);
+        await refreshDailySummary(true);
         sendResponse({
           ok: true,
           user,
@@ -329,6 +355,13 @@ async function handleMessage(
         return;
       }
       case "broker:page-detected": {
+        await refreshDailySummary();
+        sendResponse({ ok: true });
+        return;
+      }
+      case "risk:refresh-summary": {
+        const payload = message.payload as { force?: boolean } | undefined;
+        await refreshDailySummary(Boolean(payload?.force));
         sendResponse({ ok: true });
         return;
       }
@@ -373,6 +406,7 @@ async function handleMessage(
         };
         await setCaptureState(nextState);
         await updateBadge(nextState.trades.length);
+        await refreshDailySummary(true);
         sendResponse({
           ok: true,
           importedCount: result.imported_count,
@@ -412,6 +446,7 @@ async function handleMessage(
           lastError: null,
         };
         await setCaptureState(nextState);
+        await refreshDailySummary(true);
         sendResponse({ ok: true, captureState: nextState, trades: [updatedTrade] });
         return;
       }

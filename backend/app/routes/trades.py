@@ -202,19 +202,26 @@ def get_trades_summary(
 
     total_trades = len(trades)
     total_invested = sum(
-        trade.price * trade.quantity
-        for trade in trades
-        if trade.trade_type == "BUY"
+        (
+            trade.price * trade.quantity
+            for trade in trades
+            if trade.trade_type == "BUY"
+        ),
+        start=Decimal("0.00"),
     )
     unique_symbols = len({trade.stock_symbol for trade in trades})
-    net_pnl_today = sum(Decimal(str(trade.net_pnl or 0)) for trade in completed_trades)
+    net_pnl_today = sum(
+        (Decimal(str(trade.net_pnl or 0)) for trade in completed_trades),
+        start=Decimal("0.00"),
+    )
+    max_loss_threshold = Decimal(str(daily_loss_limit or 0))
 
     return TradesSummary(
         total_trades=total_trades,
-        total_invested=Decimal(str(total_invested)),
+        total_invested=total_invested,
         unique_symbols=unique_symbols,
-        net_pnl_today=Decimal(str(net_pnl_today)),
-        max_loss_threshold=Decimal(str(daily_loss_limit or 0)),
+        net_pnl_today=net_pnl_today,
+        max_loss_threshold=max_loss_threshold,
     )
 
 

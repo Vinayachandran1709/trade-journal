@@ -1,4 +1,4 @@
-const DEFAULT_PRODUCTION_API_URL = "https://indiacircle.in/api";
+const DEFAULT_DEVELOPMENT_API_URL = "http://localhost:8000/api";
 const LOCALHOST_PATTERN =
   /^https?:\/\/(?:localhost|127\.0\.0\.1|\[::1\])(?::\d+)?(?:\/|$)/i;
 
@@ -7,19 +7,7 @@ function isProductionBuild(): boolean {
 }
 
 function shouldEnforceProductionUrl(): boolean {
-  if (!isProductionBuild()) {
-    return false;
-  }
-
-  if (process.env.CI || process.env.VERCEL) {
-    return true;
-  }
-
-  if (typeof window === "undefined") {
-    return false;
-  }
-
-  return !["localhost", "127.0.0.1"].includes(window.location.hostname);
+  return isProductionBuild();
 }
 
 function validateApiUrl(url: string) {
@@ -47,11 +35,10 @@ function validateApiUrl(url: string) {
 }
 
 function resolveApiUrl(): string {
-  const configured = (
-    process.env.NEXT_PUBLIC_API_URL || DEFAULT_PRODUCTION_API_URL
-  ).trim().replace(/\/$/, "");
-  validateApiUrl(configured);
-  return configured;
+  const configured = (process.env.NEXT_PUBLIC_API_URL || "").trim().replace(/\/$/, "");
+  const resolved = configured || (isProductionBuild() ? "" : DEFAULT_DEVELOPMENT_API_URL);
+  validateApiUrl(resolved);
+  return resolved;
 }
 
 export const API_URL = resolveApiUrl();

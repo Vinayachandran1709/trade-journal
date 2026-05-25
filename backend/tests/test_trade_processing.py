@@ -120,13 +120,13 @@ def test_parse_trade_instrument_supports_monthly_option():
 
 
 def test_parse_trade_instrument_supports_weekly_option():
-    parsed = parse_trade_instrument("BANKNIFTY5/28/202648000PE")
+    parsed = parse_trade_instrument("BANKNIFTY2651452000PE")
 
     assert parsed.instrument_type == "OPT"
     assert parsed.underlying_asset == "BANKNIFTY"
     assert parsed.option_type == "PE"
-    assert parsed.strike_price == Decimal("48000")
-    assert parsed.expiry_date == date(2026, 5, 28)
+    assert parsed.strike_price == Decimal("52000")
+    assert parsed.expiry_date == date(2026, 5, 14)
 
 
 def test_parse_trade_instrument_supports_futures():
@@ -163,6 +163,7 @@ def test_calculate_completed_trades_keeps_stock_net_equal_to_gross(db_session):
     assert len(completed) == 1
     assert completed[0].stock_symbol == "RELIANCE"
     assert completed[0].pnl == Decimal("100.00")
+    assert completed[0].gross_pnl == Decimal("100.00")
     assert completed[0].total_charges == Decimal("0.00")
     assert completed[0].net_pnl == Decimal("100.00")
 
@@ -174,7 +175,7 @@ def test_calculate_completed_trades_uses_contract_level_fifo(db_session):
         user_id=user.id,
         stock_symbol="NIFTY26MAY18000CE",
         trade_type="BUY",
-        quantity=50,
+        quantity=1,
         price="100.00",
         trade_date=date(2026, 5, 20),
         instrument_type="OPT",
@@ -184,7 +185,7 @@ def test_calculate_completed_trades_uses_contract_level_fifo(db_session):
         user_id=user.id,
         stock_symbol="NIFTY26MAY18100CE",
         trade_type="BUY",
-        quantity=50,
+        quantity=1,
         price="80.00",
         trade_date=date(2026, 5, 20),
         instrument_type="OPT",
@@ -194,7 +195,7 @@ def test_calculate_completed_trades_uses_contract_level_fifo(db_session):
         user_id=user.id,
         stock_symbol="NIFTY26MAY18000CE",
         trade_type="SELL",
-        quantity=30,
+        quantity=1,
         price="120.00",
         trade_date=date(2026, 5, 21),
         instrument_type="OPT",
@@ -204,71 +205,52 @@ def test_calculate_completed_trades_uses_contract_level_fifo(db_session):
 
     assert len(completed) == 1
     assert completed[0].stock_symbol == "NIFTY26MAY18000CE"
-    assert completed[0].quantity == 30
-    assert completed[0].pnl == Decimal("600.00")
-    assert completed[0].total_charges == Decimal("51.58")
-    assert completed[0].net_pnl == Decimal("548.42")
+    assert completed[0].quantity == 1
+    assert completed[0].pnl == Decimal("1000.00")
+    assert completed[0].gross_pnl == Decimal("1000.00")
+    assert completed[0].total_charges == Decimal("57.45")
+    assert completed[0].net_pnl == Decimal("942.55")
 
 
 def test_detect_expiry_day_tilt_uses_net_pnl_and_returns_severity(db_session):
     user = create_user(db_session)
     trades = [
-        CompletedTrade(
-            user_id=user.id,
-            stock_symbol="NIFTY26MAY18000CE",
-            entry_date=date(2026, 5, 1),
-            exit_date=date(2026, 5, 28),
-            entry_price=Decimal("100"),
-            exit_price=Decimal("90"),
-            quantity=50,
-            pnl=Decimal("-500"),
-            total_charges=Decimal("50"),
-            net_pnl=Decimal("-550"),
-            return_pct=Decimal("-10"),
-            holding_days=0,
-        ),
-        CompletedTrade(
-            user_id=user.id,
-            stock_symbol="NIFTY26MAY18000CE",
-            entry_date=date(2026, 5, 2),
-            exit_date=date(2026, 5, 28),
-            entry_price=Decimal("100"),
-            exit_price=Decimal("80"),
-            quantity=50,
-            pnl=Decimal("-1000"),
-            total_charges=Decimal("50"),
-            net_pnl=Decimal("-1050"),
-            return_pct=Decimal("-20"),
-            holding_days=0,
-        ),
-        CompletedTrade(
-            user_id=user.id,
-            stock_symbol="NIFTY26MAY18000CE",
-            entry_date=date(2026, 5, 3),
-            exit_date=date(2026, 5, 27),
-            entry_price=Decimal("100"),
-            exit_price=Decimal("120"),
-            quantity=50,
-            pnl=Decimal("1000"),
-            total_charges=Decimal("50"),
-            net_pnl=Decimal("950"),
-            return_pct=Decimal("20"),
-            holding_days=0,
-        ),
-        CompletedTrade(
-            user_id=user.id,
-            stock_symbol="NIFTY26MAY18000CE",
-            entry_date=date(2026, 5, 4),
-            exit_date=date(2026, 5, 27),
-            entry_price=Decimal("100"),
-            exit_price=Decimal("130"),
-            quantity=50,
-            pnl=Decimal("1500"),
-            total_charges=Decimal("50"),
-            net_pnl=Decimal("1450"),
-            return_pct=Decimal("30"),
-            holding_days=0,
-        ),
+        *[
+            CompletedTrade(
+                user_id=user.id,
+                stock_symbol="NIFTY26MAY18000CE",
+                entry_date=date(2026, 5, 1),
+                exit_date=date(2026, 5, 28),
+                entry_price=Decimal("100"),
+                exit_price=Decimal("90"),
+                quantity=1,
+                pnl=Decimal("-1500"),
+                gross_pnl=Decimal("-1500"),
+                total_charges=Decimal("50"),
+                net_pnl=Decimal("-1500"),
+                return_pct=Decimal("-10"),
+                holding_days=0,
+            )
+            for _ in range(10)
+        ],
+        *[
+            CompletedTrade(
+                user_id=user.id,
+                stock_symbol="NIFTY26MAY18000CE",
+                entry_date=date(2026, 5, 2),
+                exit_date=date(2026, 5, 27),
+                entry_price=Decimal("100"),
+                exit_price=Decimal("120"),
+                quantity=1,
+                pnl=Decimal("600"),
+                gross_pnl=Decimal("600"),
+                total_charges=Decimal("50"),
+                net_pnl=Decimal("600"),
+                return_pct=Decimal("20"),
+                holding_days=0,
+            )
+            for _ in range(10)
+        ],
     ]
     db_session.add_all(trades)
     db_session.commit()
@@ -278,7 +260,7 @@ def test_detect_expiry_day_tilt_uses_net_pnl_and_returns_severity(db_session):
     assert result is not None
     assert result["pattern_type"] == "expiry_day_tilt"
     assert result["severity"] == "high"
-    assert result["data"]["loss_estimate"] == 1600.0
+    assert result["data"]["estimated_loss"] == 21000.0
 
 
 def test_detect_expiry_day_tilt_returns_none_without_comparison_set(db_session):
@@ -293,6 +275,7 @@ def test_detect_expiry_day_tilt_returns_none_without_comparison_set(db_session):
             exit_price=Decimal("90"),
             quantity=25,
             pnl=Decimal("-250"),
+            gross_pnl=Decimal("-250"),
             total_charges=Decimal("20"),
             net_pnl=Decimal("-270"),
             return_pct=Decimal("-10"),
@@ -329,6 +312,7 @@ def test_trade_summary_and_preferences_round_trip(client, db_session):
             exit_price=Decimal("90"),
             quantity=50,
             pnl=Decimal("-500"),
+            gross_pnl=Decimal("-500"),
             total_charges=Decimal("45"),
             net_pnl=Decimal("-545"),
             return_pct=Decimal("-10"),
@@ -357,6 +341,7 @@ def test_trade_summary_and_preferences_round_trip(client, db_session):
 
     assert completed_response.status_code == 200
     completed_payload = completed_response.json()["trades"][0]
+    assert completed_payload["gross_pnl"] == -500.0
     assert completed_payload["total_charges"] == 45.0
     assert completed_payload["net_pnl"] == -545.0
 

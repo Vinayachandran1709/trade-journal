@@ -48,6 +48,7 @@ export interface CompletedTrade {
   exit_price: number;
   quantity: number;
   pnl: number;
+  gross_pnl: number;
   total_charges: number;
   net_pnl: number;
   return_pct: number;

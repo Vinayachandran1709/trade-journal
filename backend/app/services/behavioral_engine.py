@@ -12,6 +12,9 @@ from app.models.trade import Trade
 from app.services.trade_processor import INDEX_EXPIRY_WEEKDAY, parse_trade_instrument
 
 MIN_PATTERN_TRADE_COUNT = 20
+EXPIRY_TILT_MIN_SAMPLE = 10
+EXPIRY_TILT_MIN_WIN_RATE_DELTA = 0.08
+EXPIRY_TILT_MIN_LOSS_DELTA = Decimal("1000.00")
 
 SECTOR_MAP = {
     "TCS": "IT",
@@ -135,6 +138,12 @@ def _overall_win_rate(trades: list[CompletedTrade]) -> float:
 
 def _safe_trade_net_pnl(trade: CompletedTrade) -> float:
     return _safe_float(getattr(trade, "net_pnl", None))
+
+
+def _safe_decimal(value: Decimal | float | int | None) -> Decimal:
+    if value is None:
+        return Decimal("0")
+    return Decimal(str(value))
 
 
 def _format_currency(value: float) -> str:
@@ -573,17 +582,18 @@ def detect_expiry_day_tilt(user_id: int, db: Session) -> dict | None:
         expiry_total = 0
         normal_wins = 0
         normal_total = 0
-        expiry_pnl_total = 0.0
-        normal_pnl_total = 0.0
+        expiry_pnl_total = Decimal("0.00")
+        normal_pnl_total = Decimal("0.00")
 
         for trade in trades:
+            if trade.exit_date is None:
+                continue
             parsed = parse_trade_instrument(trade.stock_symbol)
-            if parsed.instrument_type != "OPT":
+            if parsed.instrument_type != "OPT" or parsed.underlying_asset not in INDEX_EXPIRY_WEEKDAY:
                 continue
 
-            exit_weekday = trade.exit_date.weekday()
-            is_expiry = INDEX_EXPIRY_WEEKDAY.get(parsed.underlying_asset) == exit_weekday
-            trade_net_pnl = _safe_trade_net_pnl(trade)
+            trade_net_pnl = _safe_decimal(getattr(trade, "net_pnl", None))
+            is_expiry = is_expiry_session(parsed.underlying_asset, trade.exit_date)
 
             if is_expiry:
                 expiry_total += 1
@@ -596,19 +606,27 @@ def detect_expiry_day_tilt(user_id: int, db: Session) -> dict | None:
                 if trade_net_pnl > 0:
                     normal_wins += 1
 
-        if expiry_total == 0 or normal_total == 0:
+        if expiry_total < EXPIRY_TILT_MIN_SAMPLE or normal_total < EXPIRY_TILT_MIN_SAMPLE:
             return None
 
-        expiry_win_rate = expiry_wins / expiry_total * 100
-        normal_win_rate = normal_wins / normal_total * 100
-        diff = normal_win_rate - expiry_win_rate
-        if diff <= 0:
+        expiry_win_rate_ratio = expiry_wins / expiry_total
+        normal_win_rate_ratio = normal_wins / normal_total
+        win_rate_delta = normal_win_rate_ratio - expiry_win_rate_ratio
+        estimated_loss = abs(expiry_pnl_total - normal_pnl_total)
+
+        if win_rate_delta < EXPIRY_TILT_MIN_WIN_RATE_DELTA:
+            return None
+        if estimated_loss < EXPIRY_TILT_MIN_LOSS_DELTA and expiry_pnl_total >= normal_pnl_total:
             return None
 
         severity = "low"
-        if diff > 10:
+        if (
+            win_rate_delta >= 0.20
+            or estimated_loss >= Decimal("10000.00")
+            or expiry_total >= 25
+        ):
             severity = "high"
-        elif diff > 5:
+        elif win_rate_delta >= 0.12 or estimated_loss >= Decimal("5000.00"):
             severity = "medium"
 
         return {
@@ -616,21 +634,25 @@ def detect_expiry_day_tilt(user_id: int, db: Session) -> dict | None:
             "title": "Expiry-day trades are hurting your edge",
             "description": (
                 "Your option trades perform worse on expiry sessions than on non-expiry days "
-                f"({expiry_win_rate:.0f}% vs {normal_win_rate:.0f}% win rate)."
+                f"({expiry_win_rate_ratio:.0%} vs {normal_win_rate_ratio:.0%} win rate)."
             ),
             "severity": severity,
             "data": {
-                "expiry_win_rate": round(expiry_win_rate, 2),
-                "normal_win_rate": round(normal_win_rate, 2),
+                "expiry_win_rate": round(expiry_win_rate_ratio * 100, 2),
+                "normal_win_rate": round(normal_win_rate_ratio * 100, 2),
                 "expiry_trade_count": expiry_total,
                 "normal_trade_count": normal_total,
-                "expiry_net_pnl_total": round(expiry_pnl_total, 2),
-                "normal_net_pnl_total": round(normal_pnl_total, 2),
-                "loss_estimate": round((diff / 100) * abs(expiry_pnl_total), 2),
+                "estimated_loss": round(float(abs(expiry_pnl_total - normal_pnl_total)), 2),
             },
         }
     except Exception:
         return None
+
+
+def is_expiry_session(underlying_asset: str | None, exit_date: date | None) -> bool:
+    if not underlying_asset or exit_date is None:
+        return False
+    return INDEX_EXPIRY_WEEKDAY.get(underlying_asset) == exit_date.weekday()
 
 
 DETECTORS = [

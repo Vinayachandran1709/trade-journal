@@ -54,6 +54,7 @@ function makeCompletedTrade(id: number, pnl: number, overrides: Partial<Complete
     exit_price: 101,
     quantity: 10,
     pnl,
+    gross_pnl: pnl,
     total_charges: 0,
     net_pnl: pnl,
     return_pct: pnl / 1000,

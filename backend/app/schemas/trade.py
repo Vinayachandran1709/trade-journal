@@ -107,6 +107,7 @@ class CompletedTradeResponse(BaseModel):
     exit_price: Decimal
     quantity: int
     pnl: Decimal
+    gross_pnl: Decimal
     total_charges: Decimal
     net_pnl: Decimal
     return_pct: Decimal
@@ -119,6 +120,7 @@ class CompletedTradeResponse(BaseModel):
         "entry_price",
         "exit_price",
         "pnl",
+        "gross_pnl",
         "total_charges",
         "net_pnl",
         "return_pct",

@@ -38,6 +38,7 @@ export interface ExtensionMessage {
     | "website:auth-handoff"
     | "health:ping"
     | "broker:page-detected"
+    | "risk:refresh-summary"
     | "stocks:get-dictionary"
     | "ticker:fetch-intel"
     | "capture:submit"

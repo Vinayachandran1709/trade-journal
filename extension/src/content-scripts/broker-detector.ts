@@ -5,6 +5,11 @@ import { growwAdapter } from "./brokers/groww";
 import { UpstoxAdapter } from "./brokers/upstox";
 import { zerodhaAdapter } from "./brokers/zerodha";
 import type { BrokerAdapter } from "./brokers/types";
+import {
+  createDebounced,
+  shouldLockTrading,
+  type RiskSummaryLike,
+} from "./lockout";
 
 const adapters: BrokerAdapter[] = [
   zerodhaAdapter,
@@ -17,20 +22,59 @@ const adapters: BrokerAdapter[] = [
 const currentHost = window.location.hostname;
 const currentAdapter = adapters.find((adapter) => adapter.matches(currentHost));
 const LOCK_OVERLAY_ID = "indiaCircleLockOverlay";
+const RISK_REFRESH_INTERVAL_MS = 3_000;
+const RISK_REFRESH_DEBOUNCE_MS = 300;
+const LOCK_EVENT_NAMES: Array<keyof DocumentEventMap> = [
+  "click",
+  "mousedown",
+  "mouseup",
+  "keydown",
+  "keyup",
+  "keypress",
+  "contextmenu",
+  "wheel",
+  "submit",
+];
+const LOCK_EVENT_OPTIONS: AddEventListenerOptions = { capture: true, passive: false };
 
-async function getDailySummary(): Promise<{
-  net_pnl_today?: number | null;
-  max_loss_threshold?: number | null;
-} | null> {
+let lockObserver: MutationObserver | null = null;
+let lockRefreshIntervalId: number | null = null;
+let isLockActive = false;
+let previousBodyOverflow: string | null = null;
+
+async function getDailySummary(): Promise<RiskSummaryLike | null> {
   return new Promise((resolve) => {
-    chrome.storage.local.get([ "dailySummary" ], (result) => {
+    chrome.storage.local.get(["dailySummary"], (result) => {
       resolve(
         (result.dailySummary as
-          | { net_pnl_today?: number | null; max_loss_threshold?: number | null }
+          | RiskSummaryLike
           | undefined) ?? null
       );
     });
   });
+}
+
+function blockInteraction(event: Event) {
+  if (!isLockActive) {
+    return;
+  }
+
+  event.preventDefault();
+  event.stopImmediatePropagation();
+}
+
+function addLockEventBlockers() {
+  for (const eventName of LOCK_EVENT_NAMES) {
+    document.addEventListener(eventName, blockInteraction, LOCK_EVENT_OPTIONS);
+  }
+  window.addEventListener("scroll", blockInteraction, LOCK_EVENT_OPTIONS);
+}
+
+function removeLockEventBlockers() {
+  for (const eventName of LOCK_EVENT_NAMES) {
+    document.removeEventListener(eventName, blockInteraction, LOCK_EVENT_OPTIONS);
+  }
+  window.removeEventListener("scroll", blockInteraction, LOCK_EVENT_OPTIONS);
 }
 
 function removeLockOverlay() {
@@ -62,6 +106,7 @@ function injectLockOverlay() {
     padding: "20px",
     fontFamily: "system-ui, sans-serif",
     pointerEvents: "auto",
+    overscrollBehavior: "none",
   } satisfies Partial<CSSStyleDeclaration>);
   overlay.innerHTML =
     "<div style='max-width: 420px; line-height: 1.5;'>" +
@@ -69,36 +114,99 @@ function injectLockOverlay() {
     "<div style='font-size: 16px; opacity: 0.92;'>Daily loss limit exceeded. Trading disabled. Stay disciplined.</div>" +
     "</div>";
 
-  const blockInteraction = (event: Event) => {
-    event.preventDefault();
-    event.stopPropagation();
-  };
   overlay.addEventListener("click", blockInteraction, true);
   overlay.addEventListener("mousedown", blockInteraction, true);
   overlay.addEventListener("mouseup", blockInteraction, true);
   overlay.addEventListener("keydown", blockInteraction, true);
   overlay.addEventListener("keyup", blockInteraction, true);
+  overlay.addEventListener("wheel", blockInteraction, LOCK_EVENT_OPTIONS);
+  overlay.addEventListener("contextmenu", blockInteraction, true);
 
   (document.body ?? document.documentElement).appendChild(overlay);
   overlay.focus();
 }
 
-async function checkDailyRisk() {
-  const dailySummary = await getDailySummary();
-  if (!dailySummary) {
+function startLockObserver() {
+  if (lockObserver || !document.documentElement) {
+    return;
+  }
+
+  lockObserver = new MutationObserver(() => {
+    if (isLockActive && !document.getElementById(LOCK_OVERLAY_ID)) {
+      injectLockOverlay();
+    }
+  });
+  lockObserver.observe(document.documentElement, {
+    childList: true,
+    subtree: true,
+  });
+}
+
+function stopLockObserver() {
+  lockObserver?.disconnect();
+  lockObserver = null;
+}
+
+function enableLockState() {
+  if (!isLockActive) {
+    isLockActive = true;
+    if (previousBodyOverflow === null && document.body) {
+      previousBodyOverflow = document.body.style.overflow;
+    }
+    if (document.body) {
+      document.body.style.overflow = "hidden";
+    }
+    addLockEventBlockers();
+    startLockObserver();
+  }
+
+  injectLockOverlay();
+}
+
+function disableLockState() {
+  if (!isLockActive) {
     removeLockOverlay();
     return;
   }
 
-  const netPnL = Number(dailySummary.net_pnl_today ?? 0);
-  const maxLoss = Number(dailySummary.max_loss_threshold ?? 0);
+  isLockActive = false;
+  stopLockObserver();
+  removeLockEventBlockers();
+  removeLockOverlay();
+  if (document.body) {
+    document.body.style.overflow = previousBodyOverflow ?? "";
+  }
+  previousBodyOverflow = null;
+}
 
-  if (Number.isFinite(maxLoss) && maxLoss > 0 && Number.isFinite(netPnL) && netPnL < -Math.abs(maxLoss)) {
-    injectLockOverlay();
+async function requestRiskRefresh(force = false): Promise<void> {
+  await new Promise<void>((resolve) => {
+    chrome.runtime.sendMessage(
+      {
+        type: "risk:refresh-summary",
+        payload: { force },
+      },
+      () => {
+        void chrome.runtime.lastError;
+        resolve();
+      }
+    );
+  });
+}
+
+async function checkDailyRisk() {
+  const dailySummary = await getDailySummary();
+  if (shouldLockTrading(dailySummary)) {
+    enableLockState();
     return;
   }
 
-  removeLockOverlay();
+  disableLockState();
+}
+
+async function refreshAndCheckDailyRisk(force = false): Promise<void> {
+  await requestRiskRefresh(force);
+  await checkDailyRisk();
 }
 
 function sendCapture(adapter: BrokerAdapter, lastSignatureRef: { value: string }) {
@@ -126,6 +234,7 @@ function sendCapture(adapter: BrokerAdapter, lastSignatureRef: { value: string }
     },
     () => {
       void chrome.runtime.lastError;
+      void refreshAndCheckDailyRisk(true);
     }
   );
 }
@@ -133,6 +242,9 @@ function sendCapture(adapter: BrokerAdapter, lastSignatureRef: { value: string }
 function initializeCapture(adapter: BrokerAdapter) {
   const lastSignatureRef = { value: "" };
   let timeoutId: number | null = null;
+  const scheduleRiskRefresh = createDebounced(() => {
+    void refreshAndCheckDailyRisk();
+  }, RISK_REFRESH_DEBOUNCE_MS);
 
   const scheduleCapture = () => {
     if (timeoutId !== null) {
@@ -141,7 +253,7 @@ function initializeCapture(adapter: BrokerAdapter) {
 
     timeoutId = window.setTimeout(() => {
       sendCapture(adapter, lastSignatureRef);
-      void checkDailyRisk();
+      void refreshAndCheckDailyRisk();
     }, 800);
   };
 
@@ -156,6 +268,7 @@ function initializeCapture(adapter: BrokerAdapter) {
     },
     () => {
       void chrome.runtime.lastError;
+      void refreshAndCheckDailyRisk(true);
     }
   );
 
@@ -164,15 +277,39 @@ function initializeCapture(adapter: BrokerAdapter) {
   } else {
     scheduleCapture();
   }
-  void checkDailyRisk();
+  void refreshAndCheckDailyRisk(true);
 
   const observer = new MutationObserver(() => {
     scheduleCapture();
+    scheduleRiskRefresh();
   });
 
   if (document.body) {
     observer.observe(document.body, { childList: true, subtree: true });
   }
+
+  if (lockRefreshIntervalId === null) {
+    lockRefreshIntervalId = window.setInterval(() => {
+      void refreshAndCheckDailyRisk();
+    }, RISK_REFRESH_INTERVAL_MS);
+  }
+
+  const cleanup = () => {
+    if (timeoutId !== null) {
+      window.clearTimeout(timeoutId);
+      timeoutId = null;
+    }
+    scheduleRiskRefresh.cancel();
+    observer.disconnect();
+    if (lockRefreshIntervalId !== null) {
+      window.clearInterval(lockRefreshIntervalId);
+      lockRefreshIntervalId = null;
+    }
+    disableLockState();
+  };
+
+  window.addEventListener("pagehide", cleanup, { once: true });
+  window.addEventListener("beforeunload", cleanup, { once: true });
 }
 
 if (currentAdapter) {

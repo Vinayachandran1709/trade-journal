@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections import Counter, defaultdict
 from datetime import datetime, timezone
+from decimal import Decimal
 from statistics import mean
 
 from fastapi import APIRouter, Depends
@@ -256,37 +257,37 @@ def get_analytics_summary(
         if not trades:
             return _empty_summary()
 
-        pnl_values = [float(trade.net_pnl or 0) for trade in trades]
-        win_rate = sum(1 for trade in trades if float(trade.net_pnl or 0) > 0) / total_trades
-        total_pnl = sum(pnl_values)
-        avg_pnl_per_trade = total_pnl / total_trades
+        pnl_values = [Decimal(str(trade.net_pnl or 0)) for trade in trades]
+        win_rate = sum(1 for trade in trades if Decimal(str(trade.net_pnl or 0)) > 0) / total_trades
+        total_pnl = sum(pnl_values, start=Decimal("0.00"))
+        avg_pnl_per_trade = total_pnl / Decimal(total_trades)
         avg_holding_days = mean(int(trade.holding_days) for trade in trades)
-        best_trade = max(trades, key=lambda trade: float(trade.net_pnl or 0))
-        worst_trade = min(trades, key=lambda trade: float(trade.net_pnl or 0))
+        best_trade = max(trades, key=lambda trade: Decimal(str(trade.net_pnl or 0)))
+        worst_trade = min(trades, key=lambda trade: Decimal(str(trade.net_pnl or 0)))
         most_traded_symbol = Counter(trade.stock_symbol for trade in trades).most_common(1)[0][0]
 
-        monthly_totals: dict[str, float] = defaultdict(float)
+        monthly_totals: dict[str, Decimal] = defaultdict(lambda: Decimal("0.00"))
         for trade in trades:
-            monthly_totals[trade.exit_date.strftime("%Y-%m")] += float(trade.net_pnl or 0)
+            monthly_totals[trade.exit_date.strftime("%Y-%m")] += Decimal(str(trade.net_pnl or 0))
 
         monthly_pnl = [
-            MonthlyPnlPoint(month=month, pnl=round(monthly_totals[month], 2))
+            MonthlyPnlPoint(month=month, pnl=round(float(monthly_totals[month]), 2))
             for month in sorted(monthly_totals)
         ]
 
         return AnalyticsSummaryResponse(
             total_trades=total_trades,
             win_rate=round(win_rate, 4),
-            total_pnl=round(total_pnl, 2),
-            avg_pnl_per_trade=round(avg_pnl_per_trade, 2),
+            total_pnl=round(float(total_pnl), 2),
+            avg_pnl_per_trade=round(float(avg_pnl_per_trade), 2),
             best_trade=TradeExtremes(
                 symbol=best_trade.stock_symbol,
-                pnl=round(float(best_trade.net_pnl or 0), 2),
+                pnl=round(float(Decimal(str(best_trade.net_pnl or 0))), 2),
                 exit_date=best_trade.exit_date,
             ),
             worst_trade=TradeExtremes(
                 symbol=worst_trade.stock_symbol,
-                pnl=round(float(worst_trade.net_pnl or 0), 2),
+                pnl=round(float(Decimal(str(worst_trade.net_pnl or 0))), 2),
                 exit_date=worst_trade.exit_date,
             ),
             avg_holding_days=round(avg_holding_days, 2),

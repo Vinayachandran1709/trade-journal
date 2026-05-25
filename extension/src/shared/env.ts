@@ -1,5 +1,5 @@
-const DEFAULT_API_BASE_URL = "https://indiacircle.in";
-const DEFAULT_WEB_APP_URL = "https://indiacircle.in";
+const DEFAULT_DEV_API_BASE_URL = "http://localhost:8000";
+const DEFAULT_DEV_WEB_APP_URL = "http://localhost:3000";
 const LOCALHOST_PATTERN =
   /^https?:\/\/(?:localhost|127\.0\.0\.1|\[::1\])(?::\d+)?(?:\/|$)/i;
 
@@ -34,13 +34,19 @@ function normalizeUrl(value: string): string {
 }
 
 export function getExtensionApiBaseUrl(): string {
-  const value = normalizeUrl(import.meta.env.VITE_API_BASE_URL || DEFAULT_API_BASE_URL);
+  const configured = import.meta.env.VITE_API_BASE_URL || "";
+  const value = normalizeUrl(
+    configured || (isProductionBuild() ? "" : DEFAULT_DEV_API_BASE_URL)
+  );
   validateProductionUrl(value, "VITE_API_BASE_URL");
   return value;
 }
 
 export function getExtensionWebAppUrl(): string {
-  const value = normalizeUrl(import.meta.env.VITE_WEB_APP_URL || DEFAULT_WEB_APP_URL);
+  const configured = import.meta.env.VITE_WEB_APP_URL || "";
+  const value = normalizeUrl(
+    configured || (isProductionBuild() ? "" : DEFAULT_DEV_WEB_APP_URL)
+  );
   validateProductionUrl(value, "VITE_WEB_APP_URL");
   return value;
 }

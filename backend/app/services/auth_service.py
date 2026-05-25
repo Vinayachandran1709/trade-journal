@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta, timezone
+from decimal import Decimal
 
 import bcrypt
 import jwt
@@ -73,11 +74,17 @@ def update_user_preferences(
     style: str | None,
     daily_loss_limit,
 ) -> User:
+    serialized_limit = None
+    if daily_loss_limit is not None:
+        serialized_limit = str(Decimal(str(daily_loss_limit)).quantize(Decimal("0.01")))
+
+    existing_preferences = user.preferences or {}
     user.preferences = {
+        **existing_preferences,
         "brokers": brokers,
         "sectors": sectors,
         "style": style,
-        "daily_loss_limit": float(daily_loss_limit) if daily_loss_limit is not None else None,
+        "daily_loss_limit": serialized_limit,
     }
     db.add(user)
     db.commit()

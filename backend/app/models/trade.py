@@ -20,7 +20,7 @@ class Trade(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
-    stock_symbol = Column(String(20), nullable=False)
+    stock_symbol = Column(String(40), nullable=False)
     trade_type = Column(String(10), nullable=False)
     quantity = Column(Integer, nullable=False)
     price = Column(Numeric(10, 2), nullable=False)
