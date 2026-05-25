@@ -20,6 +20,7 @@ import {
 import { clearAuthToken, getAuthToken, onAuthTokenChange, setAuthToken } from "../shared/auth";
 import { getCaptureState, type CaptureState } from "../shared/captures";
 import { storageGet, storageRemove, storageSet } from "../shared/chrome";
+import { getExtensionWebAppUrl } from "../shared/env";
 import type { User } from "../shared/types";
 import AccountTab from "./AccountTab";
 import AiTab from "./AiTab";
@@ -30,7 +31,7 @@ import JournalTab from "./JournalTab";
 import MarketTab from "./MarketTab";
 import TraderPulse from "./TraderPulse";
 
-const WEB_APP_URL = (import.meta.env.VITE_WEB_APP_URL || "https://indiacircle.in").replace(/\/$/, "");
+const WEB_APP_URL = getExtensionWebAppUrl();
 
 type TabId = "market" | "ai" | "insights" | "captures" | "calculators" | "account";
 type ViewState = "signed_out" | "signed_in";

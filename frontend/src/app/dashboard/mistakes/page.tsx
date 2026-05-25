@@ -184,13 +184,13 @@ function buildTradeReviewActions(rawTrade: Trade | null) {
   if (!(rawTrade?.notes ?? "").trim()) {
     actions.push({
       label: "Add note",
-      href: `/dashboard/trades?review=notes-missing${tradeParam}`,
+      href: `/dashboard/trades?review=missing${tradeParam}`,
     });
   }
 
   actions.push({
     label: "Review setup",
-    href: "/dashboard#pre-trade-setups",
+    href: rawTrade ? `/dashboard/trades?tradeId=${rawTrade.id}` : "/dashboard/trades",
   });
 
   return actions;
@@ -343,7 +343,9 @@ export default function MistakesPage() {
         <article className="mistake-summary-card">
           <div className="text-sm font-bold text-gray-500">Estimated Avoidable Loss</div>
           <div className="mt-3 text-3xl font-black text-rose-600">
-            {avoidableEstimate.state === "ready" ? formatCurrency(avoidableEstimate.amount) : "Unavailable"}
+            {avoidableEstimate.state === "ready"
+              ? formatCurrency(avoidableEstimate.amount)
+              : "Estimate unavailable"}
           </div>
           <p className="mt-2 text-sm font-semibold text-slate-800">{avoidableEstimate.label}</p>
           <p className="mt-1 text-sm text-gray-500">{avoidableEstimate.detail}</p>
@@ -405,12 +407,13 @@ export default function MistakesPage() {
               const rawMatch = matchRawTrade(rawTrades, trade);
               const setupMatch = setups.find((setup) => setup.linked_trade_id === trade.id) ?? null;
               const reasons = [
-                !setupMatch ? "No plan existed" : null,
-                !rawMatch?.emotion_tag ? "Missing emotion tag" : null,
-                rawMatch?.emotion_tag?.toLowerCase().includes("revenge") ? "Revenge trade" : null,
-                rawMatch?.emotion_tag?.toLowerCase().includes("fomo") ? "FOMO entry" : null,
-                trade.holding_days === 0 ? "Intraday drift" : null,
-                isChasedEntry(setupMatch, trade) ? "Chased entry" : null,
+                !setupMatch ? "No saved plan was attached." : null,
+                !rawMatch?.emotion_tag ? "This trade lacks emotional context." : null,
+                !setupMatch ? "No checklist was used." : null,
+                rawMatch?.emotion_tag?.toLowerCase().includes("revenge") ? "Revenge emotion was tagged." : null,
+                rawMatch?.emotion_tag?.toLowerCase().includes("fomo") ? "FOMO was tagged on this trade." : null,
+                trade.holding_days === 0 ? "This trade drifted into intraday execution." : null,
+                isChasedEntry(setupMatch, trade) ? "Entry was chased beyond the planned price." : null,
               ].filter((value): value is string => Boolean(value));
 
               return (
@@ -427,9 +430,9 @@ export default function MistakesPage() {
                     </div>
                   ) : null}
                   <div className="mt-4 grid gap-2 text-sm text-slate-600 sm:grid-cols-2">
-                    <div>This trade broke your normal process: {reasons[0] ?? "The plan and execution drifted apart."}</div>
+                    <div>{reasons[0] ?? "The plan and execution drifted apart."}</div>
                     <div>Holding: {trade.holding_days} days</div>
-                    <div>{!rawMatch?.emotion_tag ? "This loss happened without emotional context." : "Review the note and emotional context attached to this trade."}</div>
+                    <div>{!rawMatch?.emotion_tag ? "This trade lacks emotional context." : "Review the note and emotional context attached to this trade."}</div>
                     <div>Date: {new Date(trade.exit_date).toLocaleDateString("en-IN")}</div>
                   </div>
                   <div className="mt-4 flex flex-wrap gap-2">

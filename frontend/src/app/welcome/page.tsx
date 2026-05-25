@@ -81,7 +81,7 @@ function WelcomeContent() {
             Your trading intelligence sidebar is ready
           </h1>
           <p className="mx-auto mt-4 max-w-2xl text-lg leading-8 text-gray-600">
-            Open IndiaCircle beside your broker for live market context, Trade Guard, behavioral coaching, and AI-powered review.
+            Open IndiaCircle beside your broker for market intelligence, Trade Guard, and behavioral coaching built for Indian retail traders.
           </p>
         </div>
 
@@ -99,7 +99,7 @@ function WelcomeContent() {
             [
               "2",
               "Open IndiaCircle Side Panel",
-              "IndiaCircle opens beside your broker so market context, AI research, and behavioral insights stay in view while you trade.",
+              "IndiaCircle opens beside your broker so market context, research, and behavioral insights stay in view while you trade.",
             ],
             [
               "3",
@@ -185,7 +185,7 @@ function WelcomeContent() {
                   <span className="text-indigo-300">Market Intelligence Sidebar</span>
                 </div>
                 <div className="rounded-xl bg-slate-800 px-4 py-3 text-slate-300">
-                  Live market context, Trade Guard, behavioral coaching, and AI research stay beside your broker.
+                  Market intelligence, Trade Guard, and behavioral coaching stay beside your broker.
                 </div>
               </div>
             </div>

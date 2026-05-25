@@ -14,6 +14,7 @@ import {
 import { getAuthToken } from "../shared/auth";
 import type { CaptureState } from "../shared/captures";
 import { storageGet, storageSet } from "../shared/chrome";
+import { getExtensionWebAppUrl } from "../shared/env";
 import {
   buildBehavioralWarnings,
   buildRealtimeRiskAlerts,
@@ -30,7 +31,7 @@ const REFRESH_INTERVAL_MARKET = 30_000;
 const REFRESH_INTERVAL_OFF = 120_000;
 const LAST_MARKET_DATA_KEY = "cachedMarketDashboard";
 const LAST_MARKET_WATCHLIST_KEY = "lastMarketWatchlist";
-const WEB_APP_URL = (import.meta.env.VITE_WEB_APP_URL || "https://indiacircle.in").replace(/\/$/, "");
+const WEB_APP_URL = getExtensionWebAppUrl();
 const LEGACY_MARKET_DATA_KEY = "lastMarketData";
 const DISMISSED_ALERTS_KEY_PREFIX = "riskAlertDismissed";
 const SEEN_ALERTS_KEY_PREFIX = "riskAlertSeen";

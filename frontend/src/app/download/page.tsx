@@ -65,10 +65,10 @@ export default function DownloadPage() {
               Get IndiaCircle for your browser
             </h1>
             <p className="mt-5 text-lg leading-8 text-slate-300">
-              Open live market context, behavioral coaching, Trade Guard, and auto-capture directly beside Zerodha, Groww, and 10+ broker platforms.
+              Open market intelligence, behavioral coaching, Trade Guard, and auto-capture directly beside Zerodha, Groww, and 10+ broker platforms.
             </p>
             <p className="mt-4 text-sm font-semibold text-slate-400">
-              No broker credentials required · Analytics only, not investment advice
+              No broker credentials required - Analytics only, not investment advice
             </p>
           </div>
           <ExtensionMock />

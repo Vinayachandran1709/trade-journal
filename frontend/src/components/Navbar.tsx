@@ -63,6 +63,7 @@ export default function Navbar() {
         { href: "/dashboard/mistakes", label: "Mistakes" },
         { href: "/research", label: "Research" },
         { href: "/download", label: "Download" },
+        { href: "/account", label: "Account" },
       ]
     : [
         { href: "/", label: "Product" },
@@ -72,6 +73,9 @@ export default function Navbar() {
       ];
 
   function isActive(href: string) {
+    if (href === "/dashboard") {
+      return pathname === "/dashboard";
+    }
     return pathname === href || pathname.startsWith(`${href}/`);
   }
 
@@ -116,17 +120,12 @@ export default function Navbar() {
 
         <div className="hidden items-center gap-3 md:flex">
           {loggedIn ? (
-            <>
-              <Link href="/account" className={desktopGhostClass}>
-                Account
-              </Link>
-              <button
-                onClick={handleLogout}
-                className={`${desktopGhostClass} ${solid ? "!text-rose-600 hover:!bg-rose-50" : "!text-rose-200 hover:!bg-white/10 hover:!text-rose-100"}`}
-              >
-                Log out
-              </button>
-            </>
+            <button
+              onClick={handleLogout}
+              className={`${desktopGhostClass} ${solid ? "!text-rose-600 hover:!bg-rose-50" : "!text-rose-200 hover:!bg-white/10 hover:!text-rose-100"}`}
+            >
+              Log out
+            </button>
           ) : (
             <>
               <Link href="/login" className={desktopGhostClass}>
@@ -182,13 +181,6 @@ export default function Navbar() {
         <div className="mt-4 border-t border-gray-100 pt-4">
           {loggedIn ? (
             <div className="grid gap-2">
-              <Link
-                href="/account"
-                onClick={() => setMobileOpen(false)}
-                className="btn-secondary w-full"
-              >
-                Account
-              </Link>
               <button onClick={handleLogout} className="btn-ghost w-full text-rose-600 hover:bg-rose-50">
                 Log out
               </button>

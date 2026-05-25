@@ -16,6 +16,7 @@ import {
   type TickerIntelResponse,
 } from "../shared/api";
 import { fetchCurrentUser } from "../shared/api";
+import { getExtensionApiBaseUrl, getExtensionWebAppUrl } from "../shared/env";
 import {
   shouldRefreshStockDictionaryCache,
   type StockDictionaryCacheEntry,
@@ -27,8 +28,8 @@ import type {
   ExternalAuthHandoffMessage,
 } from "../shared/types";
 
-const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "https://indiacircle.in").replace(/\/$/, "");
-const WEB_APP_URL = (import.meta.env.VITE_WEB_APP_URL || "https://indiacircle.in").replace(/\/$/, "");
+const API_BASE_URL = getExtensionApiBaseUrl();
+const WEB_APP_URL = getExtensionWebAppUrl();
 const TICKER_INTEL_TIMEOUT_MS = 8_000;
 const TICKER_QUOTE_TIMEOUT_MS = 6_000;
 const TICKER_CACHE_TTL_MS = 5 * 60 * 1_000;

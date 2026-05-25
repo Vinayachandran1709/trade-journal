@@ -1,7 +1,6 @@
-const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "https://indiacircle.in").replace(
-  /\/$/,
-  ""
-);
+import { getExtensionApiBaseUrl } from "../shared/env";
+
+const API_BASE_URL = getExtensionApiBaseUrl();
 const ROOT_ID = "indiacircle-checklist-overlay";
 const DEFAULT_CAPITAL = 500_000;
 const DEFAULT_RISK_PCT = 0.02;
@@ -20,6 +19,7 @@ let minimized = false;
 let currentScore: Score | null = null;
 let savedSetupId: number | null = null;
 let planningCapital = DEFAULT_CAPITAL;
+let renderTimer: number | null = null;
 
 function isBrokerOrderVisible(): boolean {
   const host = location.hostname;
@@ -347,6 +347,23 @@ function styles(): string {
 }
 
 void hydratePlanningCapital();
-const observer = new MutationObserver(() => void render());
+function scheduleRender() {
+  if (renderTimer != null) {
+    window.clearTimeout(renderTimer);
+  }
+
+  renderTimer = window.setTimeout(() => {
+    renderTimer = null;
+    void render();
+  }, 120);
+}
+
+const observer = new MutationObserver(() => scheduleRender());
 observer.observe(document.documentElement, { childList: true, subtree: true });
+window.addEventListener("beforeunload", () => {
+  observer.disconnect();
+  if (renderTimer != null) {
+    window.clearTimeout(renderTimer);
+  }
+});
 void render();

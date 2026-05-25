@@ -62,7 +62,7 @@ const previewCards = [
   {
     title: "Research",
     label: "Why is TCS moving?",
-    body: "Example intelligence card: connect stock movement, sector context, and your own trade history in one answer.",
+    body: "Sample market narrative: connect stock movement, sector context, and your own trade history in one answer.",
   },
 ];
 
@@ -150,13 +150,13 @@ export default function Home() {
         <div className="section-container relative grid gap-12 lg:grid-cols-[1.05fr_0.95fr] lg:items-center">
           <div>
             <div className="inline-flex items-center rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-indigo-100 backdrop-blur">
-              Built for Indian traders · No broker credentials · Works with 10+ brokers
+              Built for Indian retail traders - No broker credentials required - Works with 10+ Indian brokers
             </div>
             <h1 className="mt-8 max-w-4xl text-4xl font-black tracking-tight sm:text-5xl lg:text-6xl">
-              See why the market is moving. Catch the mistakes draining your P&amp;L.
+              Trade with context and self-awareness.
             </h1>
             <p className="mt-6 max-w-2xl text-base leading-8 text-slate-300 sm:text-lg">
-              IndiaCircle gives Indian traders live market context during the session and behavioral coaching after the close — inside one Chrome sidebar.
+              IndiaCircle delivers market intelligence during the session and behavioral coaching after the close for Indian retail traders inside one Chrome sidebar.
             </p>
             <div className="mt-6 flex flex-wrap gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-slate-300">
               <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5">Market intelligence</span>
@@ -208,7 +208,7 @@ export default function Home() {
           {[
             "No broker credentials required",
             "Built for Indian retail traders",
-            "AI-powered market context + behavioral analytics",
+            "Market intelligence + behavioral coaching",
             "Analytics only, not investment advice",
           ].map((item) => (
             <div key={item} className="neutral-shell-card px-4 py-4 text-sm font-semibold text-slate-700">
@@ -222,9 +222,9 @@ export default function Home() {
         <div className="section-container">
           <div className="max-w-2xl">
             <span className="badge badge-indigo">Product overview</span>
-            <h2 className="mt-4 text-4xl font-black tracking-tight text-slate-950">Trade with context and self-awareness.</h2>
+              <h2 className="mt-4 text-4xl font-black tracking-tight text-slate-950">Market intelligence + behavioral coaching</h2>
             <p className="mt-4 text-base leading-8 text-slate-600">
-              IndiaCircle combines a market intelligence feed for the session with behavioral intelligence after the close, so traders are not left with only static logs and P&amp;L tables.
+              IndiaCircle combines market intelligence during the session with behavioral coaching after the close, so traders are not left with only static logs and P&amp;L tables.
             </p>
           </div>
           <div className="mt-12 grid gap-6 md:grid-cols-2 xl:grid-cols-4">
@@ -320,14 +320,14 @@ export default function Home() {
 
       <section className="bg-slate-950 px-4 py-20 text-center text-white sm:px-6 lg:px-8">
         <div className="section-container">
-          <h2 className="text-4xl font-black tracking-tight sm:text-5xl">Live market intelligence during the session. Behavioral execution coaching after the close.</h2>
+          <h2 className="text-4xl font-black tracking-tight sm:text-5xl">Market intelligence during the session. Behavioral coaching after the close.</h2>
           <p className="mx-auto mt-4 max-w-3xl text-lg text-slate-300">
-            IndiaCircle helps traders review context, risk, discipline, and repeat behavior in one operating system.
+            IndiaCircle helps Indian retail traders review context, risk, discipline, and repeat behavior in one operating system.
           </p>
           <Link href="/signup" className="btn-primary mt-8">
             Get Started Free
           </Link>
-          <p className="mt-4 text-sm text-slate-400">No credit card required · Works with 10+ Indian brokers</p>
+          <p className="mt-4 text-sm text-slate-400">No credit card required - Works with 10+ Indian brokers</p>
         </div>
       </section>
 
@@ -335,7 +335,7 @@ export default function Home() {
         <div className="section-container flex flex-col gap-8 md:flex-row md:items-start md:justify-between">
           <div>
             <p className="text-xl font-black text-slate-950">IndiaCircle</p>
-            <p className="mt-3 text-sm text-gray-500">Market intelligence + behavioral intelligence for Indian traders</p>
+            <p className="mt-3 text-sm text-gray-500">Market intelligence + behavioral coaching for Indian retail traders</p>
             <p className="mt-2 text-xs text-gray-400">© 2026 IndiaCircle. Not a SEBI-registered investment advisor. Analytics only. Not investment advice.</p>
           </div>
           <div className="flex flex-wrap gap-4 text-sm font-semibold text-gray-600">

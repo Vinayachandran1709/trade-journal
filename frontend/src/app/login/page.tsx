@@ -82,7 +82,7 @@ function LoginContent() {
               Welcome back
             </h1>
             <p className="mt-2 text-sm leading-6 text-gray-500">
-              Sign in for live market context, behavioral coaching, and your personal risk intelligence.
+              Sign in for market intelligence, behavioral coaching, and your personal risk intelligence.
             </p>
           </div>
 

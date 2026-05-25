@@ -2,9 +2,10 @@ import { FormEvent, useEffect, useState } from "react";
 
 import { fetchCurrentUser, loginWithPassword } from "../shared/api";
 import { AUTH_TOKEN_KEY, clearAuthToken, setAuthToken } from "../shared/auth";
+import { getExtensionWebAppUrl } from "../shared/env";
 import type { User } from "../shared/types";
 
-const WEB_APP_URL = (import.meta.env.VITE_WEB_APP_URL || "https://indiacircle.in").replace(/\/$/, "");
+const WEB_APP_URL = getExtensionWebAppUrl();
 
 type ViewState = "ready" | "submitting";
 

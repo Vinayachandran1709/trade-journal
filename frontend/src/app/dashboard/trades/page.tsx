@@ -79,7 +79,9 @@ function TradesContent() {
 
   const isMissingEmotionMode = searchParams.get("emotion") === "missing";
   const isLosersMissingEmotionMode = searchParams.get("review") === "losers-missing-emotion";
-  const isNotesMissingMode = searchParams.get("review") === "notes-missing";
+  const isNotesMissingMode =
+    searchParams.get("review") === "notes-missing" ||
+    searchParams.get("review") === "missing";
   const targetedTradeId = Number(searchParams.get("tradeId") ?? "");
   const isResolutionMode = isMissingEmotionMode || isLosersMissingEmotionMode || isNotesMissingMode;
 

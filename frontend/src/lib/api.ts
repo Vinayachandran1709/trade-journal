@@ -1,13 +1,56 @@
-function resolveApiUrl(): string {
-  const configured = (process.env.NEXT_PUBLIC_API_URL || "https://indiacircle.in/api").replace(
-    /\/$/,
-    ""
-  );
+const DEFAULT_PRODUCTION_API_URL = "https://indiacircle.in/api";
+const LOCALHOST_PATTERN =
+  /^https?:\/\/(?:localhost|127\.0\.0\.1|\[::1\])(?::\d+)?(?:\/|$)/i;
 
-  if (typeof window !== "undefined" && window.location.protocol === "https:") {
-    return configured.replace(/^http:\/\//i, "https://");
+function isProductionBuild(): boolean {
+  return process.env.NODE_ENV === "production";
+}
+
+function shouldEnforceProductionUrl(): boolean {
+  if (!isProductionBuild()) {
+    return false;
   }
 
+  if (process.env.CI || process.env.VERCEL) {
+    return true;
+  }
+
+  if (typeof window === "undefined") {
+    return false;
+  }
+
+  return !["localhost", "127.0.0.1"].includes(window.location.hostname);
+}
+
+function validateApiUrl(url: string) {
+  if (!shouldEnforceProductionUrl()) {
+    return;
+  }
+
+  if (!url) {
+    throw new Error(
+      "NEXT_PUBLIC_API_URL is missing for this production build. Set it to the HTTPS IndiaCircle API URL."
+    );
+  }
+
+  if (LOCALHOST_PATTERN.test(url)) {
+    throw new Error(
+      "NEXT_PUBLIC_API_URL cannot use localhost or 127.0.0.1 in production."
+    );
+  }
+
+  if (!url.startsWith("https://")) {
+    throw new Error(
+      "NEXT_PUBLIC_API_URL must use HTTPS in production."
+    );
+  }
+}
+
+function resolveApiUrl(): string {
+  const configured = (
+    process.env.NEXT_PUBLIC_API_URL || DEFAULT_PRODUCTION_API_URL
+  ).trim().replace(/\/$/, "");
+  validateApiUrl(configured);
   return configured;
 }
 

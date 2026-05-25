@@ -164,7 +164,7 @@ function ResearchContent() {
           <div>
             <h1 className="text-4xl font-black tracking-tight text-white sm:text-5xl">Ask IndiaCircle</h1>
             <p className="mt-3 text-lg text-slate-400">
-              Your AI research assistant, powered by your trading data
+              Market research with your own trading context layered in
             </p>
 
             <form onSubmit={handleSubmit} className="research-search mt-8 max-w-3xl">
@@ -172,7 +172,7 @@ function ResearchContent() {
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
                 className="research-input"
-                placeholder="Ask anything about stocks, your trades, or the market..."
+                placeholder="Ask about a stock, your trades, or the broader market..."
               />
               <button disabled={loading || !query.trim()} className="research-submit">
                 Ask →
@@ -306,7 +306,7 @@ function ResearchPreview() {
         <div className="section-container">
           <span className="badge bg-white/10 text-white ring-1 ring-white/10">Research Preview</span>
           <h1 className="mt-5 max-w-4xl text-4xl font-black tracking-tight sm:text-5xl">
-            Ask why a stock is moving — then connect it to your own trading history.
+            Ask why a stock is moving, then connect it to your own trading history.
           </h1>
           <p className="mt-4 max-w-2xl text-lg leading-8 text-slate-300">
             IndiaCircle turns market context into reviewable intelligence and connects it to your own trade behavior after import or auto-capture.

@@ -14,7 +14,7 @@ const FREE_FEATURES = [
 const PRO_FEATURES = [
   "Unlimited trade imports",
   "Live market sidebar",
-  "AI Research / Why Is It Moving",
+  "Research / Why Is It Moving",
   "Trade Guard risk scoring",
   "Behavioral patterns",
   "Mistakes review",
@@ -28,7 +28,7 @@ const COMPARISON_ROWS = [
   { label: "Brokers supported", free: "Zerodha, Groww", pro: "10+ brokers" },
   { label: "Auto-capture extension", free: false, pro: true },
   { label: "Live market sidebar", free: false, pro: true },
-  { label: "AI Research / Why Is It Moving", free: false, pro: true },
+  { label: "Research / Why Is It Moving", free: false, pro: true },
   { label: "Behavioral patterns", free: false, pro: true },
   { label: "Trade Guard risk scoring", free: false, pro: true },
   { label: "Mistakes review", free: false, pro: true },
@@ -72,10 +72,10 @@ export default function PricingPage() {
         <div className="mt-14 text-center">
           <span className="badge badge-indigo">Pricing</span>
           <h1 className="mx-auto mt-5 max-w-3xl text-5xl font-black tracking-tight text-slate-950">
-            Plans for traders who want faster context and fewer bad trades
+            Plans for traders who want better context and steadier discipline
           </h1>
           <p className="mx-auto mt-4 max-w-2xl text-lg leading-8 text-gray-600">
-            Start free with imports and review. Upgrade for auto-capture, live sidebar intelligence, AI patterns, and Trade Guard.
+            Start free with imports and review. Upgrade for auto-capture, live sidebar intelligence, behavioral coaching, and Trade Guard.
           </p>
 
           <div className="mt-8 inline-flex rounded-full border border-gray-200 bg-white p-1 shadow-sm">
@@ -129,7 +129,7 @@ export default function PricingPage() {
                 <span className="pb-2 text-sm font-semibold text-gray-500">{proSuffix}</span>
               </div>
               <p className="mt-4 text-sm leading-6 text-gray-500">
-                Trade with live context and behavioral guardrails.
+                Trade with live context and self-awareness.
               </p>
               <ul className="mt-8 space-y-4">
                 {PRO_FEATURES.map((feature) => (

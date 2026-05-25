@@ -1,8 +1,8 @@
 import type { CapturedTrade } from "./captures";
+import { getExtensionApiBaseUrl } from "./env";
 import type { LoginRequest, TokenResponse, User } from "./types";
 
-const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "https://indiacircle.in")
-  .replace(/\/$/, "");
+const API_BASE_URL = getExtensionApiBaseUrl();
 
 export class APIError extends Error {
   status: number;

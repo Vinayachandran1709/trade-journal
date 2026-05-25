@@ -736,14 +736,14 @@ export function getAvoidableLossEstimate(args: {
     return {
       state: "unavailable",
       label: "Avoidable loss estimate unavailable",
-      detail: "More completed trades or review data are needed before this estimate is reliable.",
+      detail: "Avoidable loss estimate unavailable — more plan/checklist data needed.",
     };
   }
 
   return {
     state: "unavailable",
     label: "Avoidable loss estimate unavailable",
-    detail: "No evidence-linked avoidable-loss cluster is reliable enough yet.",
+    detail: "Avoidable loss estimate unavailable — more plan/checklist data needed.",
   };
 }
 

@@ -86,7 +86,9 @@ describe("behavioral insights helpers", () => {
     });
 
     expect(result.state).toBe("unavailable");
-    expect(result.detail.toLowerCase()).toContain("more completed trades");
+    expect(result.detail).toBe(
+      "Avoidable loss estimate unavailable — more plan/checklist data needed."
+    );
   });
 
   it("prioritizes weak time buckets for the top mistake to watch", () => {

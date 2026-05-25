@@ -18,8 +18,9 @@ import {
   getSessionContext,
   type PulseBadgeTone,
 } from "./behavioral";
+import { getExtensionWebAppUrl } from "../shared/env";
 
-const WEB_APP_URL = (import.meta.env.VITE_WEB_APP_URL || "https://indiacircle.in").replace(/\/$/, "");
+const WEB_APP_URL = getExtensionWebAppUrl();
 
 type PulseAction = {
   kind: "link" | "warning";

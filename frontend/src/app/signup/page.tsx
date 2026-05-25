@@ -196,7 +196,7 @@ export default function SignupPage() {
                   Create your account
                 </h1>
                 <p className="mt-2 text-sm leading-6 text-gray-500">
-                  Start with live market context, Trade Guard, and behavioral coaching built for Indian traders.
+                  Start with market intelligence, Trade Guard, and behavioral coaching built for Indian retail traders.
                 </p>
               </div>
 
