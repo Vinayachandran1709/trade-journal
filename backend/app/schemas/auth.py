@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 from pydantic import BaseModel, EmailStr, Field
 
 from app.schemas.user import UserResponse
@@ -27,3 +29,4 @@ class PreferencesRequest(BaseModel):
     brokers: list[str] = Field(default_factory=list)
     sectors: list[str] = Field(default_factory=list)
     style: str | None = None
+    daily_loss_limit: Decimal | None = None

@@ -2,6 +2,7 @@ import { AUTH_TOKEN_KEY, clearAuthToken, getAuthToken, setAuthToken } from "../s
 import {
   storageGet,
   storageGetAll,
+  storageRemove,
   storageRemoveMany,
   storageSet,
 } from "../shared/chrome";
@@ -12,7 +13,9 @@ import {
 } from "../shared/captures";
 import {
   postAutoCapture,
+  fetchTradesSummary,
   updateTradeCaptureDetails,
+  type TradesSummary,
   type TickerIntelResponse,
 } from "../shared/api";
 import { fetchCurrentUser } from "../shared/api";
@@ -35,6 +38,8 @@ const TICKER_QUOTE_TIMEOUT_MS = 6_000;
 const TICKER_CACHE_TTL_MS = 5 * 60 * 1_000;
 const STOCK_DICTIONARY_CACHE_KEY = "stockDictionaryCache";
 const PREWARM_DELAY_MS = 500;
+const DAILY_SUMMARY_KEY = "dailySummary";
+const DAILY_SUMMARY_POLL_INTERVAL_MS = 15_000;
 const PREWARM_TICKERS = [
   "RELIANCE",
   "TCS",
@@ -74,6 +79,10 @@ void syncActionSurface();
 void prewarmTickerCache();
 void fetchStockDictionaryWithCache().catch(() => undefined);
 void reinjectTickerHighlighterIntoOpenTabs().catch(() => undefined);
+void pollDailySummary().catch(() => undefined);
+setInterval(() => {
+  void pollDailySummary().catch(() => undefined);
+}, DAILY_SUMMARY_POLL_INTERVAL_MS);
 
 chrome.runtime.onInstalled.addListener((details) => {
   void syncActionSurface();
@@ -101,6 +110,11 @@ chrome.storage.onChanged.addListener((changes, areaName) => {
 
   const nextToken = (changes[AUTH_TOKEN_KEY].newValue as string | undefined) ?? null;
   void configureActionSurface(nextToken);
+  if (nextToken) {
+    void pollDailySummary().catch(() => undefined);
+  } else {
+    void storageRemove(DAILY_SUMMARY_KEY).catch(() => undefined);
+  }
 });
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
@@ -133,6 +147,22 @@ async function configureActionSurface(token: string | null): Promise<void> {
   if (!token) {
     await setCaptureState(createEmptyCaptureState());
     await chrome.action.setBadgeText({ text: "" });
+    await storageRemove(DAILY_SUMMARY_KEY).catch(() => undefined);
+  }
+}
+
+async function pollDailySummary(): Promise<void> {
+  const token = await getAuthToken();
+  if (!token) {
+    await storageRemove(DAILY_SUMMARY_KEY).catch(() => undefined);
+    return;
+  }
+
+  try {
+    const summary = await fetchTradesSummary(token);
+    await storageSet<TradesSummary>(DAILY_SUMMARY_KEY, summary);
+  } catch (error) {
+    console.error("Error fetching daily summary:", error);
   }
 }
 
@@ -290,6 +320,7 @@ async function handleMessage(
       }
       case "auth:logout": {
         await clearAuthToken();
+        await storageRemove(DAILY_SUMMARY_KEY).catch(() => undefined);
         sendResponse({ ok: true });
         return;
       }

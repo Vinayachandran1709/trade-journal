@@ -124,6 +124,8 @@ export interface TradesSummary {
   total_trades: number;
   total_invested: number;
   unique_symbols: number;
+  net_pnl_today: number;
+  max_loss_threshold: number;
 }
 
 export interface TradeListItem {
@@ -151,9 +153,18 @@ export interface CompletedTradeListItem {
   exit_price: number;
   quantity: number;
   pnl: number;
+  total_charges: number;
+  net_pnl: number;
   return_pct: number;
   holding_days: number;
   created_at?: string;
+}
+
+interface PaginatedCompletedTradesResponse {
+  trades: CompletedTradeListItem[];
+  total: number;
+  hidden_trade_count: number;
+  is_limited: boolean;
 }
 
 export async function fetchTradesSummary(token: string): Promise<TradesSummary> {
@@ -211,7 +222,7 @@ export async function fetchCompletedTrades(
   }
 
   const query = params.toString();
-  return request<CompletedTradeListItem[]>(
+  const response = await request<PaginatedCompletedTradesResponse>(
     `/api/trades/completed${query ? `?${query}` : ""}`,
     {
       headers: {
@@ -219,6 +230,7 @@ export async function fetchCompletedTrades(
       },
     }
   );
+  return response.trades;
 }
 
 export interface RiskAlert {

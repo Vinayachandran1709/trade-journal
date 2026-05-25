@@ -1,12 +1,18 @@
 from datetime import datetime
+from decimal import Decimal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_serializer
 
 
 class UserPreferences(BaseModel):
     brokers: list[str] = Field(default_factory=list)
     sectors: list[str] = Field(default_factory=list)
     style: str | None = None
+    daily_loss_limit: Decimal | None = None
+
+    @field_serializer("daily_loss_limit", when_used="json")
+    def serialize_daily_loss_limit(self, value: Decimal | None):
+        return float(value) if value is not None else None
 
 
 class UserResponse(BaseModel):

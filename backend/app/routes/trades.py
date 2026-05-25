@@ -1,5 +1,6 @@
 from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
+from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, Response, UploadFile, status
 from sqlalchemy.orm import Session
@@ -28,6 +29,7 @@ from app.services.universal_csv_parser import parse_universal_csv
 from app.utils.dependencies import get_current_user
 
 router = APIRouter(prefix="/api/trades", tags=["trades"])
+IST = ZoneInfo("Asia/Kolkata")
 
 
 @router.post("/import/zerodha-email", response_model=TradeImportResponse)
@@ -186,6 +188,17 @@ def get_trades_summary(
     db: Session = Depends(get_db),
 ) -> TradesSummary:
     trades = db.query(Trade).filter(Trade.user_id == current_user.id).all()
+    today_ist = datetime.now(IST).date()
+    completed_trades = (
+        db.query(CompletedTrade)
+        .filter(
+            CompletedTrade.user_id == current_user.id,
+            CompletedTrade.exit_date == today_ist,
+        )
+        .all()
+    )
+    preferences = current_user.preferences or {}
+    daily_loss_limit = preferences.get("daily_loss_limit")
 
     total_trades = len(trades)
     total_invested = sum(
@@ -194,11 +207,14 @@ def get_trades_summary(
         if trade.trade_type == "BUY"
     )
     unique_symbols = len({trade.stock_symbol for trade in trades})
+    net_pnl_today = sum(Decimal(str(trade.net_pnl or 0)) for trade in completed_trades)
 
     return TradesSummary(
         total_trades=total_trades,
         total_invested=Decimal(str(total_invested)),
         unique_symbols=unique_symbols,
+        net_pnl_today=Decimal(str(net_pnl_today)),
+        max_loss_threshold=Decimal(str(daily_loss_limit or 0)),
     )
 
 

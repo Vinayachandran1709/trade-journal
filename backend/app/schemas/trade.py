@@ -1,7 +1,7 @@
 from datetime import date, datetime, time
 from decimal import Decimal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field, field_serializer
 from typing import Literal
 
 
@@ -88,7 +88,13 @@ class TradesSummary(BaseModel):
     total_trades: int
     total_invested: Decimal
     unique_symbols: int
+    net_pnl_today: Decimal = Decimal("0")
+    max_loss_threshold: Decimal = Decimal("0")
     hidden_trade_count: int = 0
+
+    @field_serializer("total_invested", "net_pnl_today", "max_loss_threshold", when_used="json")
+    def serialize_decimal_fields(self, value: Decimal) -> float:
+        return float(value)
 
 
 class CompletedTradeResponse(BaseModel):
@@ -101,11 +107,25 @@ class CompletedTradeResponse(BaseModel):
     exit_price: Decimal
     quantity: int
     pnl: Decimal
+    total_charges: Decimal
+    net_pnl: Decimal
     return_pct: Decimal
     holding_days: int
     created_at: datetime
 
-    model_config = {"from_attributes": True}
+    model_config = ConfigDict(from_attributes=True)
+
+    @field_serializer(
+        "entry_price",
+        "exit_price",
+        "pnl",
+        "total_charges",
+        "net_pnl",
+        "return_pct",
+        when_used="json",
+    )
+    def serialize_decimal_fields(self, value: Decimal) -> float:
+        return float(value)
 
 
 class PaginatedTradesResponse(BaseModel):

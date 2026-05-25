@@ -71,11 +71,13 @@ def update_user_preferences(
     brokers: list[str],
     sectors: list[str],
     style: str | None,
+    daily_loss_limit,
 ) -> User:
     user.preferences = {
         "brokers": brokers,
         "sectors": sectors,
         "style": style,
+        "daily_loss_limit": float(daily_loss_limit) if daily_loss_limit is not None else None,
     }
     db.add(user)
     db.commit()

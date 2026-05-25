@@ -181,7 +181,8 @@ export async function exportCompletedTradesCSV(): Promise<void> {
     throw new Error(error.detail || `Error ${response.status}`);
   }
 
-  const trades = (await response.json()) as CompletedTrade[];
+  const payload = (await response.json()) as PaginatedCompletedTradesResponse;
+  const trades = payload.trades;
   const headers = [
     "Symbol",
     "Entry Date",

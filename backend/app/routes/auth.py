@@ -98,4 +98,5 @@ def patch_preferences(
         brokers=request.brokers,
         sectors=request.sectors,
         style=request.style,
+        daily_loss_limit=request.daily_loss_limit,
     )

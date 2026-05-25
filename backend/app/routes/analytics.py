@@ -256,18 +256,18 @@ def get_analytics_summary(
         if not trades:
             return _empty_summary()
 
-        pnl_values = [float(trade.pnl) for trade in trades]
-        win_rate = sum(1 for trade in trades if float(trade.pnl) > 0) / total_trades
+        pnl_values = [float(trade.net_pnl or 0) for trade in trades]
+        win_rate = sum(1 for trade in trades if float(trade.net_pnl or 0) > 0) / total_trades
         total_pnl = sum(pnl_values)
         avg_pnl_per_trade = total_pnl / total_trades
         avg_holding_days = mean(int(trade.holding_days) for trade in trades)
-        best_trade = max(trades, key=lambda trade: float(trade.pnl))
-        worst_trade = min(trades, key=lambda trade: float(trade.pnl))
+        best_trade = max(trades, key=lambda trade: float(trade.net_pnl or 0))
+        worst_trade = min(trades, key=lambda trade: float(trade.net_pnl or 0))
         most_traded_symbol = Counter(trade.stock_symbol for trade in trades).most_common(1)[0][0]
 
         monthly_totals: dict[str, float] = defaultdict(float)
         for trade in trades:
-            monthly_totals[trade.exit_date.strftime("%Y-%m")] += float(trade.pnl)
+            monthly_totals[trade.exit_date.strftime("%Y-%m")] += float(trade.net_pnl or 0)
 
         monthly_pnl = [
             MonthlyPnlPoint(month=month, pnl=round(monthly_totals[month], 2))
@@ -281,12 +281,12 @@ def get_analytics_summary(
             avg_pnl_per_trade=round(avg_pnl_per_trade, 2),
             best_trade=TradeExtremes(
                 symbol=best_trade.stock_symbol,
-                pnl=round(float(best_trade.pnl), 2),
+                pnl=round(float(best_trade.net_pnl or 0), 2),
                 exit_date=best_trade.exit_date,
             ),
             worst_trade=TradeExtremes(
                 symbol=worst_trade.stock_symbol,
-                pnl=round(float(worst_trade.pnl), 2),
+                pnl=round(float(worst_trade.net_pnl or 0), 2),
                 exit_date=worst_trade.exit_date,
             ),
             avg_holding_days=round(avg_holding_days, 2),

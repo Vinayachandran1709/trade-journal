@@ -54,6 +54,8 @@ function makeCompletedTrade(id: number, pnl: number, overrides: Partial<Complete
     exit_price: 101,
     quantity: 10,
     pnl,
+    total_charges: 0,
+    net_pnl: pnl,
     return_pct: pnl / 1000,
     holding_days: 0,
     created_at: `2026-05-${String(id).padStart(2, "0")}T14:45:00`,

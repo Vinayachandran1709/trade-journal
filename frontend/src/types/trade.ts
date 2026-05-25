@@ -34,6 +34,8 @@ export interface TradesSummary {
   total_trades: number;
   total_invested: number;
   unique_symbols: number;
+  net_pnl_today: number;
+  max_loss_threshold: number;
 }
 
 export interface CompletedTrade {
@@ -46,6 +48,8 @@ export interface CompletedTrade {
   exit_price: number;
   quantity: number;
   pnl: number;
+  total_charges: number;
+  net_pnl: number;
   return_pct: number;
   holding_days: number;
   created_at: string;

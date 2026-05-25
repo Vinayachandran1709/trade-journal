@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 
 from app.models.completed_trade import CompletedTrade
 from app.models.trade import Trade
+from app.services.trade_processor import INDEX_EXPIRY_WEEKDAY, parse_trade_instrument
 
 MIN_PATTERN_TRADE_COUNT = 20
 
@@ -130,6 +131,10 @@ def _overall_win_rate(trades: list[CompletedTrade]) -> float:
         return 0.0
     wins = sum(1 for trade in trades if _safe_float(trade.pnl) > 0)
     return wins / len(trades)
+
+
+def _safe_trade_net_pnl(trade: CompletedTrade) -> float:
+    return _safe_float(getattr(trade, "net_pnl", None))
 
 
 def _format_currency(value: float) -> str:
@@ -558,6 +563,76 @@ def detect_losing_streak_tilt(user_id: int, db: Session) -> dict | None:
         return None
 
 
+def detect_expiry_day_tilt(user_id: int, db: Session) -> dict | None:
+    try:
+        trades = _load_completed_trades(user_id, db)
+        if not trades:
+            return None
+
+        expiry_wins = 0
+        expiry_total = 0
+        normal_wins = 0
+        normal_total = 0
+        expiry_pnl_total = 0.0
+        normal_pnl_total = 0.0
+
+        for trade in trades:
+            parsed = parse_trade_instrument(trade.stock_symbol)
+            if parsed.instrument_type != "OPT":
+                continue
+
+            exit_weekday = trade.exit_date.weekday()
+            is_expiry = INDEX_EXPIRY_WEEKDAY.get(parsed.underlying_asset) == exit_weekday
+            trade_net_pnl = _safe_trade_net_pnl(trade)
+
+            if is_expiry:
+                expiry_total += 1
+                expiry_pnl_total += trade_net_pnl
+                if trade_net_pnl > 0:
+                    expiry_wins += 1
+            else:
+                normal_total += 1
+                normal_pnl_total += trade_net_pnl
+                if trade_net_pnl > 0:
+                    normal_wins += 1
+
+        if expiry_total == 0 or normal_total == 0:
+            return None
+
+        expiry_win_rate = expiry_wins / expiry_total * 100
+        normal_win_rate = normal_wins / normal_total * 100
+        diff = normal_win_rate - expiry_win_rate
+        if diff <= 0:
+            return None
+
+        severity = "low"
+        if diff > 10:
+            severity = "high"
+        elif diff > 5:
+            severity = "medium"
+
+        return {
+            "pattern_type": "expiry_day_tilt",
+            "title": "Expiry-day trades are hurting your edge",
+            "description": (
+                "Your option trades perform worse on expiry sessions than on non-expiry days "
+                f"({expiry_win_rate:.0f}% vs {normal_win_rate:.0f}% win rate)."
+            ),
+            "severity": severity,
+            "data": {
+                "expiry_win_rate": round(expiry_win_rate, 2),
+                "normal_win_rate": round(normal_win_rate, 2),
+                "expiry_trade_count": expiry_total,
+                "normal_trade_count": normal_total,
+                "expiry_net_pnl_total": round(expiry_pnl_total, 2),
+                "normal_net_pnl_total": round(normal_pnl_total, 2),
+                "loss_estimate": round((diff / 100) * abs(expiry_pnl_total), 2),
+            },
+        }
+    except Exception:
+        return None
+
+
 DETECTORS = [
     detect_time_of_day,
     detect_day_of_week,
@@ -567,6 +642,7 @@ DETECTORS = [
     detect_sector_concentration,
     detect_winning_streak_tilt,
     detect_losing_streak_tilt,
+    detect_expiry_day_tilt,
 ]
 
 

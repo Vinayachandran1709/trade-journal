@@ -25,6 +25,7 @@ export interface User {
     brokers: string[];
     sectors: string[];
     style: string | null;
+    daily_loss_limit?: number | null;
   } | null;
   created_at: string;
 }

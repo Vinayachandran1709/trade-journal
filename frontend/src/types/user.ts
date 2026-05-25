@@ -2,6 +2,7 @@ export interface UserPreferences {
   brokers: string[];
   sectors: string[];
   style: string | null;
+  daily_loss_limit?: number | null;
 }
 
 export interface User {
