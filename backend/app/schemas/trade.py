@@ -5,6 +5,24 @@ from pydantic import BaseModel, ConfigDict, Field, field_serializer
 from typing import Literal
 
 
+AutoCaptureBroker = Literal[
+    "zerodha",
+    "groww",
+    "dhan",
+    "angelone",
+    "angel_one",
+    "upstox",
+    "5paisa",
+    "sahi",
+]
+
+
+def normalize_auto_capture_broker(broker: AutoCaptureBroker) -> str:
+    if broker == "angelone":
+        return "angel_one"
+    return broker
+
+
 class TradeCreate(BaseModel):
     stock_symbol: str
     trade_type: str
@@ -61,7 +79,7 @@ class AutoCapturedTradeInput(BaseModel):
 
 
 class AutoCaptureRequest(BaseModel):
-    broker: Literal["zerodha", "groww"]
+    broker: AutoCaptureBroker
     capture_method: Literal["dom"]
     trades: list[AutoCapturedTradeInput] = Field(default_factory=list)
 

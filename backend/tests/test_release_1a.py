@@ -180,6 +180,50 @@ def test_repeated_extension_capture_is_idempotent(
     assert second.json()["duplicate_count"] == 1
 
 
+@pytest.mark.parametrize(
+    ("broker_value", "stored_broker"),
+    [
+        ("zerodha", "zerodha"),
+        ("groww", "groww"),
+        ("dhan", "dhan"),
+        ("angelone", "angel_one"),
+        ("angel_one", "angel_one"),
+        ("upstox", "upstox"),
+        ("5paisa", "5paisa"),
+        ("sahi", "sahi"),
+    ],
+)
+def test_auto_capture_accepts_supported_dom_brokers_and_normalizes_storage(
+    client: TestClient,
+    auth_headers: dict[str, str],
+    broker_value: str,
+    stored_broker: str,
+):
+    response = client.post(
+        "/api/trades/auto-capture",
+        headers=auth_headers,
+        json={
+            "broker": broker_value,
+            "capture_method": "dom",
+            "trades": [
+                {
+                    "stock_symbol": f"TEST{abs(hash(broker_value)) % 10000}",
+                    "trade_type": "BUY",
+                    "quantity": 1,
+                    "price": 100,
+                    "trade_date": "2026-04-19",
+                }
+            ],
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["imported_count"] == 1
+    assert payload["detected_broker"] == stored_broker
+    assert payload["trades"][0]["broker"] == stored_broker
+
+
 def test_login_with_malformed_stored_hash_returns_401(client: TestClient):
     db = TestingSessionLocal()
     user = User(

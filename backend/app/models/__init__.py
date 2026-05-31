@@ -11,6 +11,11 @@ from app.models.ai_query_log import AIQueryLog
 from app.models.payment_event import PaymentEvent
 from app.models.coupon import Coupon
 from app.models.watchlist import WatchlistItem
+from app.models.broker_connection import BrokerConnection
+from app.models.broker_order import BrokerOrder
+from app.models.trader_behavior_profile import TraderBehaviorProfile
+from app.models.trade_guard_event import TradeGuardEvent
+from app.models.pnl_saved_event import PnlSavedEvent
 
 __all__ = [
     "User",
@@ -26,4 +31,9 @@ __all__ = [
     "PaymentEvent",
     "Coupon",
     "WatchlistItem",
+    "BrokerConnection",
+    "BrokerOrder",
+    "TraderBehaviorProfile",
+    "TradeGuardEvent",
+    "PnlSavedEvent",
 ]

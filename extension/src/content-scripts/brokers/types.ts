@@ -10,7 +10,15 @@ export interface CapturedTradeDraft {
 }
 
 export interface BrokerAdapter {
-  broker: "zerodha" | "groww" | "dhan" | "angelone" | "upstox" | "5paisa";
+  broker:
+    | "zerodha"
+    | "groww"
+    | "dhan"
+    | "angelone"
+    | "angel_one"
+    | "upstox"
+    | "5paisa"
+    | "sahi";
   matches(hostname: string): boolean;
   capture(documentRef: Document): CapturedTradeDraft[];
 }

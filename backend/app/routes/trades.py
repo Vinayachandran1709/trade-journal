@@ -19,6 +19,7 @@ from app.schemas.trade import (
     TradesSummary,
     PaginatedTradesResponse,
     PaginatedCompletedTradesResponse,
+    normalize_auto_capture_broker,
 )
 from app.services.csv_parser import parse_groww_csv
 from app.services.email_parser import parse_zerodha_contract_note
@@ -161,16 +162,16 @@ def auto_capture_trades(
             detail="No trades received for auto-capture",
         )
 
+    normalized_broker = normalize_auto_capture_broker(request.broker)
+
     result = import_trades(
         db,
         user_id=current_user.id,
         trades=[trade.model_dump() for trade in request.trades],
-        default_broker=request.broker,
+        default_broker=normalized_broker,
         import_source="extension",
         default_entry_method=request.capture_method,
     )
-    for trade in result.imported_trades:
-        link_setup_to_trade(current_user.id, trade.id, db)
 
     return TradeImportResponse(
         imported=len(result.imported_trades),
@@ -178,7 +179,9 @@ def auto_capture_trades(
         duplicate_count=result.duplicate_count,
         imported_trade_ids=[trade.id for trade in result.imported_trades],
         trades=result.imported_trades,
-        detected_broker=request.broker,
+        # TODO: Revisit setup linking once broker-order lineage and completed-trade
+        # mapping are stable. Auto-capture imports raw trades, not completed trades.
+        detected_broker=normalized_broker,
     )
 
 

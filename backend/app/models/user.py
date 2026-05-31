@@ -29,3 +29,8 @@ class User(Base):
     payment_events = relationship("PaymentEvent", back_populates="user")
     ai_query_logs = relationship("AIQueryLog", back_populates="user")
     watchlist_items = relationship("WatchlistItem", back_populates="user")
+    broker_connections = relationship("BrokerConnection", back_populates="user")
+    broker_orders = relationship("BrokerOrder", back_populates="user")
+    trader_behavior_profiles = relationship("TraderBehaviorProfile", back_populates="user")
+    trade_guard_events = relationship("TradeGuardEvent", back_populates="user")
+    pnl_saved_events = relationship("PnlSavedEvent", back_populates="user")
