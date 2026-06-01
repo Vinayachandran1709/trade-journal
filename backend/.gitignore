@@ -13,3 +13,11 @@ env/
 .pytest_cache/
 pytest-cache-files-*/
 .mypy_cache/
+
+
+# Broker research dumps
+docs/broker-research/
+
+# Dhan test outputs
+*dhan-api-after-idea-buy.txt
+*invalid-token-response.txt

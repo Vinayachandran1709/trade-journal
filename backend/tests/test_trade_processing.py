@@ -23,12 +23,14 @@ from app.database import Base, get_db  # noqa: E402
 from app.main import app  # noqa: E402
 from app.models.completed_trade import CompletedTrade  # noqa: E402
 from app.models.trade import Trade  # noqa: E402
+from app.models.trade_setup import TradeSetup  # noqa: E402
 from app.models.user import User  # noqa: E402
 from app.services.auth_service import create_access_token, hash_password  # noqa: E402
 from app.services.behavioral_engine import detect_expiry_day_tilt  # noqa: E402
 from app.services.trade_processor import (  # noqa: E402
     calculate_completed_trades,
     parse_trade_instrument,
+    rebuild_completed_trades,
 )
 
 
@@ -42,13 +44,29 @@ TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engin
 
 @pytest.fixture()
 def db_session():
-    Base.metadata.create_all(bind=engine, tables=[User.__table__, Trade.__table__, CompletedTrade.__table__])
+    Base.metadata.create_all(
+        bind=engine,
+        tables=[
+            User.__table__,
+            Trade.__table__,
+            CompletedTrade.__table__,
+            TradeSetup.__table__,
+        ],
+    )
     db = TestingSessionLocal()
     try:
         yield db
     finally:
         db.close()
-        Base.metadata.drop_all(bind=engine, tables=[CompletedTrade.__table__, Trade.__table__, User.__table__])
+        Base.metadata.drop_all(
+            bind=engine,
+            tables=[
+                TradeSetup.__table__,
+                CompletedTrade.__table__,
+                Trade.__table__,
+                User.__table__,
+            ],
+        )
 
 
 @pytest.fixture()
@@ -347,3 +365,52 @@ def test_trade_summary_and_preferences_round_trip(client, db_session):
 
     assert preferences_response.status_code == 200
     assert preferences_response.json()["preferences"]["daily_loss_limit"] == 2500
+
+
+def test_rebuild_completed_trades_unlinks_trade_setups_before_delete(db_session):
+    user = create_user(db_session, email="linked-setup@example.com")
+    add_trade(
+        db_session,
+        user_id=user.id,
+        stock_symbol="INFY",
+        trade_type="BUY",
+        quantity=10,
+        price="100.00",
+        trade_date=date(2026, 5, 20),
+    )
+    add_trade(
+        db_session,
+        user_id=user.id,
+        stock_symbol="INFY",
+        trade_type="SELL",
+        quantity=10,
+        price="110.00",
+        trade_date=date(2026, 5, 21),
+    )
+
+    original_completed = calculate_completed_trades(db_session, user.id)
+    db_session.add_all(original_completed)
+    db_session.commit()
+    old_completed_trade_id = original_completed[0].id
+
+    setup = TradeSetup(
+        user_id=user.id,
+        name="INFY setup",
+        description="linked setup",
+        is_active=True,
+        symbol="INFY",
+        linked_trade_id=old_completed_trade_id,
+        linked_at=datetime(2026, 5, 21, 10, 0, 0),
+    )
+    db_session.add(setup)
+    db_session.commit()
+
+    rebuilt_count = rebuild_completed_trades(db_session, user.id)
+
+    db_session.refresh(setup)
+    assert rebuilt_count == 1
+    assert setup.linked_trade_id is None
+    assert setup.linked_at is None
+    assert db_session.query(CompletedTrade).filter(
+        CompletedTrade.user_id == user.id
+    ).count() == 1

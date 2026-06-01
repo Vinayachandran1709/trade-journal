@@ -29,6 +29,14 @@ import {
   getAvoidableImpactSummary,
   getTradingIdentitySummary,
 } from "@/lib/behavioral-insights";
+import {
+  demoActivationMeta,
+  demoCompletedTrades,
+  demoPatterns,
+  demoRawTrades,
+  demoSummary,
+  getTradeReadiness,
+} from "@/lib/demo-trader-data";
 import { getCompletedTrades, getTrades } from "@/lib/trades";
 import type { CompletedTrade, Trade } from "@/types/trade";
 import type { User } from "@/types/user";
@@ -167,31 +175,37 @@ export default function AnalyticsPage() {
     );
   }
 
-  const sortedPatterns = sortPatterns(patterns.patterns.filter((pattern) => !pattern.locked));
-  const progress = Math.min(100, (patterns.total_completed_trades / patterns.threshold) * 100);
-  const profile = buildTraderProfile({ user, trades, completedTrades, patterns: sortedPatterns });
-  const beforeAfter = buildBeforeAfter(completedTrades);
-  const performanceScore = buildPerformanceScore({ summary, completedTrades, trades });
-  const biggestLeak = getBiggestLeakSummary(sortedPatterns, summary);
-  const strongestEdge = getStrongestEdgeSummary(sortedPatterns, summary);
+  const tradeReadiness = getTradeReadiness({ rawTrades: trades, completedTrades });
+  const isDemoMode = tradeReadiness.needsDemo;
+  const displaySummary = isDemoMode ? demoSummary : summary;
+  const displayPatternsEnvelope = isDemoMode ? demoPatterns : patterns;
+  const displayTrades = isDemoMode ? demoRawTrades : trades;
+  const displayCompletedTrades = isDemoMode ? demoCompletedTrades : completedTrades;
+  const sortedPatterns = sortPatterns(displayPatternsEnvelope.patterns.filter((pattern) => !pattern.locked));
+  const progress = Math.min(100, (tradeReadiness.completedTradeCount / tradeReadiness.reliableProfileThreshold) * 100);
+  const profile = buildTraderProfile({ user, trades: displayTrades, completedTrades: displayCompletedTrades, patterns: sortedPatterns });
+  const beforeAfter = isDemoMode ? null : buildBeforeAfter(completedTrades);
+  const performanceScore = buildPerformanceScore({ summary: displaySummary, completedTrades: displayCompletedTrades, trades: displayTrades });
+  const biggestLeak = getBiggestLeakSummary(sortedPatterns, displaySummary);
+  const strongestEdge = getStrongestEdgeSummary(sortedPatterns, displaySummary);
   const identitySummary = getTradingIdentitySummary({
-    summary,
+    summary: displaySummary,
     patterns: sortedPatterns,
-    completedTrades,
+    completedTrades: displayCompletedTrades,
   });
-  const scoreFraming = getScoreFraming({ summary, trades, patterns: sortedPatterns });
+  const scoreFraming = getScoreFraming({ summary: displaySummary, trades: displayTrades, patterns: sortedPatterns });
   const groupedPatterns = [
     {
       title: getPatternStatusGroupTitle("costing"),
-      items: sortedPatterns.filter((pattern) => getPatternStatus(pattern, summary) === "costing"),
+      items: sortedPatterns.filter((pattern) => getPatternStatus(pattern, displaySummary) === "costing"),
     },
     {
       title: getPatternStatusGroupTitle("helping"),
-      items: sortedPatterns.filter((pattern) => getPatternStatus(pattern, summary) === "helping"),
+      items: sortedPatterns.filter((pattern) => getPatternStatus(pattern, displaySummary) === "helping"),
     },
     {
       title: getPatternStatusGroupTitle("monitoring"),
-      items: sortedPatterns.filter((pattern) => getPatternStatus(pattern, summary) === "monitoring"),
+      items: sortedPatterns.filter((pattern) => getPatternStatus(pattern, displaySummary) === "monitoring"),
     },
   ].filter((group) => group.items.length > 0);
 
@@ -202,9 +216,15 @@ export default function AnalyticsPage() {
       <div className="flex flex-col gap-6 rounded-[2rem] bg-white p-8 shadow-sm">
         <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
           <div>
-            <span className="badge badge-indigo">Patterns</span>
-            <h1 className="mt-4 text-4xl font-black tracking-tight text-slate-950">Behavioral analytics for your trading edge</h1>
-            <p className="mt-2 max-w-2xl text-gray-600">See the biggest leak, the strongest edge, and the next rule worth protecting this month.</p>
+            <span className="badge badge-indigo">{isDemoMode ? "Demo Personality Snapshot" : "Patterns"}</span>
+            <h1 className="mt-4 text-4xl font-black tracking-tight text-slate-950">
+              {isDemoMode ? "See your future trading profile before it is real" : "Behavioral analytics for your trading edge"}
+            </h1>
+            <p className="mt-2 max-w-2xl text-gray-600">
+              {isDemoMode
+                ? "These sample insights show what IndiaCircle will surface once enough real trades are synced and reviewed."
+                : "See the biggest leak, the strongest edge, and the next rule worth protecting this month."}
+            </p>
           </div>
           <div className="rounded-3xl bg-slate-50 px-8 py-6 text-center">
             <div className="text-xs font-black uppercase tracking-[0.24em] text-slate-500">Performance score</div>
@@ -228,12 +248,33 @@ export default function AnalyticsPage() {
           </div>
           <div className="rounded-3xl bg-indigo-50 p-5">
             <div className="text-xs font-black uppercase tracking-[0.16em] text-indigo-500">Monthly swing</div>
-            <h2 className="mt-3 text-xl font-black text-slate-950">{getAvoidableImpactSummary(sortedPatterns, summary)}</h2>
+            <h2 className="mt-3 text-xl font-black text-slate-950">{getAvoidableImpactSummary(sortedPatterns, displaySummary)}</h2>
             <p className="mt-2 text-sm text-slate-600">Use this as a money-first reminder of why the next rule matters.</p>
           </div>
         </div>
 
-        {!patterns.unlocked ? (
+        {isDemoMode ? (
+          <div className="rounded-3xl border border-indigo-100 bg-indigo-50 p-6">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+              <div>
+                <h2 className="font-black text-indigo-950">Sample insight mode is active</h2>
+                <p className="mt-1 text-sm text-indigo-700">
+                  You have {tradeReadiness.completedTradeCount} completed trades. IndiaCircle needs about{" "}
+                  {tradeReadiness.reliableProfileThreshold}+ completed trades for a more reliable personality snapshot.
+                </p>
+              </div>
+              <div className="rounded-2xl bg-white px-4 py-3 text-sm font-semibold text-indigo-900">
+                {demoActivationMeta.strongestEdge}
+              </div>
+            </div>
+            <div className="mt-4 h-3 rounded-full bg-white">
+              <div className="h-full rounded-full bg-indigo-600" style={{ width: `${progress}%` }} />
+            </div>
+            <div className="mt-4 text-sm text-slate-700">
+              Progress to reliable profile: {tradeReadiness.completedTradeCount}/{tradeReadiness.reliableProfileThreshold}
+            </div>
+          </div>
+        ) : !patterns.unlocked ? (
           <div className="rounded-3xl border border-indigo-100 bg-indigo-50 p-6">
             <div className="flex items-center justify-between gap-4">
               <div>
@@ -334,12 +375,12 @@ export default function AnalyticsPage() {
               <div className="grid gap-5">
                 {group.items.map((pattern) => {
                   const confidence = getConfidenceMeta(pattern);
-                  const impact = estimatePatternImpact(pattern, summary);
+                  const impact = estimatePatternImpact(pattern, displaySummary);
                   const tracked = trackedPatterns.includes(pattern.pattern_type);
                   const metricTiles = getPatternMetricTiles(pattern);
-                  const proofTrades = getPatternProofTrades(pattern, completedTrades);
-                  const progression = getPatternProgressionStatus(pattern, completedTrades);
-                  const status = getPatternStatus(pattern, summary);
+                  const proofTrades = getPatternProofTrades(pattern, displayCompletedTrades);
+                  const progression = getPatternProgressionStatus(pattern, displayCompletedTrades);
+                  const status = getPatternStatus(pattern, displaySummary);
                   const isCosting = status === "costing";
                   const isHelping = status === "helping";
 
@@ -358,6 +399,7 @@ export default function AnalyticsPage() {
                       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                         <div className="max-w-3xl">
                           <div className="flex flex-wrap items-center gap-3">
+                            {isDemoMode ? <span className="badge badge-indigo">Sample insight</span> : null}
                             <span className={`badge ${severityBadgeClass(pattern.severity)}`}>{pattern.severity}</span>
                             <span className={`badge ${isCosting ? "badge-rose" : isHelping ? "badge-emerald" : "badge-indigo"}`}>
                               {getPatternStatusLabel(status)}

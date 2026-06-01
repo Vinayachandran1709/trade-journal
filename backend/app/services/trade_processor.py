@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 
 from app.models.completed_trade import CompletedTrade
 from app.models.trade import Trade
+from app.models.trade_setup import TradeSetup
 
 logger = logging.getLogger(__name__)
 
@@ -469,3 +470,34 @@ def calculate_completed_trades(db: Session, user_id: int) -> list[CompletedTrade
                 positions[position_key].pop(0)
 
     return completed_trades
+
+
+def rebuild_completed_trades(db: Session, user_id: int) -> int:
+    completed = calculate_completed_trades(db, user_id)
+
+    # CompletedTrade IDs are rebuilt from scratch, so clear any setup links that
+    # still point at the old rows before deleting them.
+    (
+        db.query(TradeSetup)
+        .filter(
+            TradeSetup.user_id == user_id,
+            TradeSetup.linked_trade_id.isnot(None),
+        )
+        .update(
+            {
+                TradeSetup.linked_trade_id: None,
+                TradeSetup.linked_at: None,
+            },
+            synchronize_session=False,
+        )
+    )
+
+    db.query(CompletedTrade).filter(
+        CompletedTrade.user_id == user_id
+    ).delete()
+
+    for trade in completed:
+        db.add(trade)
+
+    db.commit()
+    return len(completed)

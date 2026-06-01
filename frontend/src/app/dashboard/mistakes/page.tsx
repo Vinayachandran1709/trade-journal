@@ -12,6 +12,15 @@ import {
   getMostExpensiveBehavior,
   getTopMistakeToWatch,
 } from "@/lib/behavioral-insights";
+import {
+  demoActivationMeta,
+  demoCompletedTrades,
+  demoPatterns,
+  demoRawTrades,
+  demoSetups,
+  demoSummary,
+  getTradeReadiness,
+} from "@/lib/demo-trader-data";
 import type { CompletedTrade, Trade, TradeSetup } from "@/types/trade";
 
 const MISTAKES_CACHE_KEY = "dashboard-mistakes-cache";
@@ -278,31 +287,34 @@ export default function MistakesPage() {
     };
   }, []);
 
+  const tradeReadiness = getTradeReadiness({ rawTrades, completedTrades });
+  const isDemoMode = tradeReadiness.needsDemo;
+  const displaySummary = isDemoMode ? demoSummary : summary;
+  const displayPatterns = isDemoMode ? demoPatterns : patterns;
+  const displayCompletedTrades = isDemoMode ? demoCompletedTrades : completedTrades;
+  const displayRawTrades = isDemoMode ? demoRawTrades : rawTrades;
+  const displaySetups = isDemoMode ? demoSetups : setups;
   const mistakeCategories = useMemo(
-    () => buildMistakeCategories(completedTrades, rawTrades, setups, patterns),
-    [completedTrades, patterns, rawTrades, setups]
+    () => buildMistakeCategories(displayCompletedTrades, displayRawTrades, displaySetups, displayPatterns),
+    [displayCompletedTrades, displayPatterns, displayRawTrades, displaySetups]
   );
 
-  if (loading && !hydratedFromCache) {
-    return <MistakesSkeleton />;
-  }
-
   const avoidableLosses = getAvoidableLosses(mistakeCategories);
-  const worstTrade = completedTrades.filter((trade) => trade.pnl < 0).sort((left, right) => left.pnl - right.pnl)[0] ?? null;
-  const worstTrades = completedTrades.filter((trade) => trade.pnl < 0).sort((left, right) => left.pnl - right.pnl).slice(0, 4);
-  const linkedSetups = setups.filter((setup) => setup.linked_trade_id).slice(0, 4);
-  const biggestLeak = getBiggestLeakSummary((patterns?.patterns ?? []).filter((pattern) => !pattern.locked), summary);
+  const worstTrade = displayCompletedTrades.filter((trade) => trade.pnl < 0).sort((left, right) => left.pnl - right.pnl)[0] ?? null;
+  const worstTrades = displayCompletedTrades.filter((trade) => trade.pnl < 0).sort((left, right) => left.pnl - right.pnl).slice(0, 4);
+  const linkedSetups = displaySetups.filter((setup) => setup.linked_trade_id).slice(0, 4);
+  const biggestLeak = getBiggestLeakSummary((displayPatterns?.patterns ?? []).filter((pattern) => !pattern.locked), displaySummary);
   const avoidableEstimate = getAvoidableLossEstimate({
     categories: mistakeCategories,
-    trades: rawTrades,
-    completedTrades,
-    summary,
+    trades: displayRawTrades,
+    completedTrades: displayCompletedTrades,
+    summary: displaySummary,
   });
   const mostExpensiveBehavior = getMostExpensiveBehavior(mistakeCategories);
   const topMistakeToWatch = getTopMistakeToWatch({
-    patterns: (patterns?.patterns ?? []).filter((pattern) => !pattern.locked),
+    patterns: (displayPatterns?.patterns ?? []).filter((pattern) => !pattern.locked),
     categories: mistakeCategories,
-    trades: rawTrades,
+    trades: displayRawTrades,
   });
   const correctionPlan = mistakeCategories.slice(0, 3).map((item) => ({
     leak: item.name,
@@ -316,6 +328,10 @@ export default function MistakesPage() {
           : "Fixed",
   }));
 
+  if (loading && !hydratedFromCache) {
+    return <MistakesSkeleton />;
+  }
+
   return (
     <div className="section-container py-10">
       {error ? <div className="mb-6 rounded-2xl bg-rose-50 p-4 text-sm font-semibold text-rose-700">{error}</div> : null}
@@ -325,6 +341,39 @@ export default function MistakesPage() {
         <h1 className="mt-4 text-4xl font-black tracking-tight text-slate-950">Where did you lose money unnecessarily?</h1>
         <p className="mt-2 max-w-3xl text-sm text-slate-600">This page turns avoidable losses into fixes you can actually act on in your review workflow.</p>
       </section>
+
+      {isDemoMode ? (
+        <section className="mt-8 rounded-[2rem] border border-rose-200 bg-rose-50/80 p-8 shadow-sm">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div className="max-w-3xl">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="badge badge-rose">Demo Graveyard Setup</span>
+                <span className="rounded-full bg-white px-3 py-1 text-xs font-black uppercase tracking-[0.14em] text-rose-700">
+                  Sample insight
+                </span>
+              </div>
+              <h2 className="mt-4 text-3xl font-black text-slate-950">{demoActivationMeta.graveyardSetup.pattern}</h2>
+              <p className="mt-3 text-sm leading-7 text-slate-700">
+                {demoActivationMeta.graveyardSetup.similarTrades} similar trades,{" "}
+                {Math.round(demoActivationMeta.graveyardSetup.winRate * 100)}% win rate, and around{" "}
+                {formatCurrency(demoActivationMeta.graveyardSetup.netLoss)} lost in this one repeat setup.
+              </p>
+              <p className="mt-4 rounded-2xl bg-white px-4 py-3 text-sm font-semibold text-slate-800">
+                What this will look like after Dhan sync: IndiaCircle will compare your live trade behavior to the mistakes that already cost you money.
+              </p>
+            </div>
+            <div className="rounded-3xl border border-white bg-white px-5 py-4 text-sm shadow-sm">
+              <div className="text-xs font-black uppercase tracking-[0.16em] text-rose-500">Trade Guard sample</div>
+              <div className="mt-2 text-lg font-black text-slate-950">
+                {demoActivationMeta.graveyardSetup.message}
+              </div>
+              <div className="mt-2 text-slate-600">
+                We never tell you what to buy or sell. We only compare current behavior to your own past mistakes.
+              </div>
+            </div>
+          </div>
+        </section>
+      ) : null}
 
       <section className="mt-8 glass-card p-6">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
@@ -362,7 +411,7 @@ export default function MistakesPage() {
         </article>
         <article className="mistake-summary-card">
           <div className="text-sm font-bold text-gray-500">Trades without plan</div>
-          <div className="mt-3 text-3xl font-black text-slate-950">{completedTrades.filter((trade) => !setups.find((setup) => setup.linked_trade_id === trade.id)).length}</div>
+          <div className="mt-3 text-3xl font-black text-slate-950">{displayCompletedTrades.filter((trade) => !displaySetups.find((setup) => setup.linked_trade_id === trade.id)).length}</div>
           <p className="mt-2 text-sm text-gray-500">Trades without saved plan context are harder to learn from and easier to repeat poorly.</p>
         </article>
       </section>
@@ -404,8 +453,8 @@ export default function MistakesPage() {
         <div className="mt-5 grid gap-4">
           {worstTrades.length ? (
             worstTrades.map((trade) => {
-              const rawMatch = matchRawTrade(rawTrades, trade);
-              const setupMatch = setups.find((setup) => setup.linked_trade_id === trade.id) ?? null;
+              const rawMatch = matchRawTrade(displayRawTrades, trade);
+              const setupMatch = displaySetups.find((setup) => setup.linked_trade_id === trade.id) ?? null;
               const reasons = [
                 !setupMatch ? "No saved plan was attached." : null,
                 !rawMatch?.emotion_tag ? "This trade lacks emotional context." : null,
@@ -456,7 +505,7 @@ export default function MistakesPage() {
         {linkedSetups.length ? (
           <div className="mt-5 grid gap-4">
             {linkedSetups.map((setup) => {
-              const trade = completedTrades.find((item) => item.id === setup.linked_trade_id);
+              const trade = displayCompletedTrades.find((item) => item.id === setup.linked_trade_id);
               if (!trade) return null;
               return (
                 <article key={setup.id} className="plan-comparison-card">

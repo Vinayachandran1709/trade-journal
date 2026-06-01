@@ -2,12 +2,14 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 
+from app import models  # noqa: F401
 from app.config import settings
 from app.database import engine
 from app.routes.auth import router as auth_router
 from app.routes.ai_agents import router as ai_agents_router
 from app.routes.analytics import router as analytics_router
 from app.routes.billing import billing_router, webhook_router
+from app.routes.brokers import router as brokers_router
 from app.routes.health import router as health_router
 from app.routes.market_data import router as market_data_router
 from app.routes.research import router as research_router
@@ -32,6 +34,7 @@ app.include_router(auth_router)
 app.include_router(trades_router)
 app.include_router(billing_router)
 app.include_router(webhook_router)
+app.include_router(brokers_router)
 app.include_router(market_data_router)
 app.include_router(research_router)
 app.include_router(stocks_router)

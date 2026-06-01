@@ -15,6 +15,7 @@ REQUIRED_CORS_ORIGINS = [
 class Settings(BaseSettings):
     DATABASE_URL: str
     SECRET_KEY: str
+    BROKER_TOKEN_ENCRYPTION_KEY: str = ""
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 10080
     CORS_ALLOW_ORIGINS: list[str] = REQUIRED_CORS_ORIGINS.copy()

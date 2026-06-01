@@ -58,16 +58,13 @@ export default function Navbar() {
   const navLinks = loggedIn
     ? [
         { href: "/dashboard", label: "Dashboard" },
-        { href: "/dashboard/trades", label: "Trades" },
-        { href: "/dashboard/analytics", label: "Patterns" },
+        { href: "/dashboard/analytics", label: "Personality" },
         { href: "/dashboard/mistakes", label: "Mistakes" },
-        { href: "/research", label: "Research" },
-        { href: "/download", label: "Download" },
+        { href: "/dashboard/trades", label: "Trades" },
         { href: "/account", label: "Account" },
       ]
     : [
         { href: "/", label: "Product" },
-        { href: "/research", label: "Research Preview" },
         { href: "/download", label: "Download" },
         { href: "/pricing", label: "Pricing" },
       ];

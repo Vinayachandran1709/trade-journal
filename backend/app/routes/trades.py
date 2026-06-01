@@ -24,7 +24,7 @@ from app.schemas.trade import (
 from app.services.csv_parser import parse_groww_csv
 from app.services.email_parser import parse_zerodha_contract_note
 from app.services.trade_import_service import import_trades
-from app.services.trade_processor import calculate_completed_trades, clean_stock_symbol
+from app.services.trade_processor import rebuild_completed_trades
 from app.services.checklist_service import link_setup_to_trade
 from app.services.universal_csv_parser import parse_universal_csv
 from app.utils.dependencies import get_current_user
@@ -311,24 +311,20 @@ def process_trades(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> dict:
-    completed = calculate_completed_trades(db, current_user.id)
+    processed_count = rebuild_completed_trades(db, current_user.id)
 
-    # Delete existing completed trades for user
-    db.query(CompletedTrade).filter(
-        CompletedTrade.user_id == current_user.id
-    ).delete()
-
-    # Add all new completed trades
-    for trade in completed:
-        db.add(trade)
-
-    db.commit()
-    for trade in completed:
+    refreshed_completed = (
+        db.query(CompletedTrade)
+        .filter(CompletedTrade.user_id == current_user.id)
+        .order_by(CompletedTrade.id.asc())
+        .all()
+    )
+    for trade in refreshed_completed:
         link_setup_to_trade(current_user.id, trade.id, db)
 
     return {
-        "processed": len(completed),
-        "completed_trades": len(completed),
+        "processed": processed_count,
+        "completed_trades": processed_count,
         "message": "Trades processed successfully",
     }
 

@@ -26,6 +26,11 @@ import {
   getTodayTraderInsight,
   getWeeklyCoachingBlock,
 } from "@/lib/behavioral-insights";
+import { getBrokerConnections, type BrokerConnection } from "@/lib/brokers";
+import {
+  demoActivationMeta,
+  getTradeReadiness,
+} from "@/lib/demo-trader-data";
 import type { CompletedTrade, Trade, TradeSetup } from "@/types/trade";
 import type { User } from "@/types/user";
 
@@ -54,6 +59,113 @@ type AttentionItem = {
   actionLabel: string;
   priority: "high" | "medium" | "low";
 };
+
+function DemoDisciplineLayer({
+  hasDhanConnection,
+  completedTradeCount,
+}: {
+  hasDhanConnection: boolean;
+  completedTradeCount: number;
+}) {
+  const connectHref = "/welcome#connect-dhan";
+  const exploreHref = "/dashboard/analytics";
+
+  return (
+    <section id="demo-discipline-layer" className="mt-6 rounded-[2rem] border border-indigo-100 bg-gradient-to-br from-white via-indigo-50/70 to-amber-50/60 p-6 shadow-sm">
+      <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+        <div className="max-w-3xl">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="badge badge-indigo">Demo Discipline Layer</span>
+            <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-black uppercase tracking-[0.14em] text-amber-800">
+              Sample insight
+            </span>
+          </div>
+          <h2 className="mt-4 text-3xl font-black text-slate-950">
+            See what IndiaCircle becomes before your real profile is ready
+          </h2>
+          <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-600">
+            These demo cards show how IndiaCircle highlights your repeat mistakes, strongest edge,
+            and session discipline. Once you connect Dhan, demo insights are replaced by your own
+            trading behavior.
+          </p>
+        </div>
+        <div className="rounded-3xl border border-indigo-100 bg-white px-5 py-4 text-sm shadow-sm">
+          <div className="text-xs font-black uppercase tracking-[0.16em] text-indigo-500">Current progress</div>
+          <div className="mt-2 text-3xl font-black text-slate-950">{completedTradeCount}/30</div>
+          <p className="mt-2 max-w-[220px] text-slate-600">
+            {hasDhanConnection
+              ? "Dhan is connected. Sync more trades to replace demo insights with your reliable profile."
+              : "Connect Dhan to start replacing sample cards with your real discipline layer."}
+          </p>
+        </div>
+      </div>
+
+      <div className="mt-6 grid gap-4 xl:grid-cols-4">
+        <article className="rounded-3xl border border-indigo-100 bg-white p-5 shadow-sm">
+          <div className="text-xs font-black uppercase tracking-[0.16em] text-indigo-500">Demo Personality Snapshot</div>
+          <h3 className="mt-3 text-xl font-black text-slate-950">{demoActivationMeta.traderType}</h3>
+          <p className="mt-2 text-sm text-slate-600">
+            Strongest edge: {demoActivationMeta.strongestEdge}. Biggest leak: {demoActivationMeta.biggestLeak}.
+          </p>
+          <div className="mt-4 rounded-2xl bg-slate-50 p-3 text-sm text-slate-700">
+            Best window: {demoActivationMeta.bestTimeWindow}
+            <br />
+            Worst window: {demoActivationMeta.worstTimeWindow}
+          </div>
+        </article>
+
+        <article className="rounded-3xl border border-rose-200 bg-rose-50 p-5 shadow-sm">
+          <div className="text-xs font-black uppercase tracking-[0.16em] text-rose-600">Demo Graveyard Setup</div>
+          <h3 className="mt-3 text-xl font-black text-slate-950">{demoActivationMeta.graveyardSetup.pattern}</h3>
+          <p className="mt-2 text-sm text-slate-700">
+            {demoActivationMeta.graveyardSetup.similarTrades} similar trades •{" "}
+            {Math.round(demoActivationMeta.graveyardSetup.winRate * 100)}% win rate •{" "}
+            {formatCurrency(demoActivationMeta.graveyardSetup.netLoss)} net loss
+          </p>
+          <p className="mt-3 text-sm font-semibold text-rose-700">
+            {demoActivationMeta.graveyardSetup.message}
+          </p>
+        </article>
+
+        <article className="rounded-3xl border border-amber-200 bg-amber-50 p-5 shadow-sm">
+          <div className="text-xs font-black uppercase tracking-[0.16em] text-amber-700">Demo Session Replay</div>
+          <h3 className="mt-3 text-xl font-black text-slate-950">
+            Discipline score {demoActivationMeta.sessionReplay.disciplineScore}/100
+          </h3>
+          <div className="mt-4 space-y-2 text-sm text-slate-700">
+            {demoActivationMeta.sessionReplay.trades.map((trade) => (
+              <div key={trade.id} className="rounded-2xl bg-white px-3 py-2">
+                <div className="font-semibold text-slate-900">{trade.label}</div>
+                <div>{trade.outcome}</div>
+              </div>
+            ))}
+          </div>
+        </article>
+
+        <article className="rounded-3xl border border-emerald-100 bg-emerald-50 p-5 shadow-sm">
+          <div className="text-xs font-black uppercase tracking-[0.16em] text-emerald-700">Unlock ladder</div>
+          <div className="mt-4 space-y-3 text-sm text-slate-700">
+            {demoActivationMeta.unlocks.map((item) => (
+              <div key={item.label} className="rounded-2xl bg-white px-3 py-3">
+                <div className="font-semibold text-slate-900">{item.label}</div>
+                <div className="mt-1">{item.description}</div>
+              </div>
+            ))}
+          </div>
+        </article>
+      </div>
+
+      <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+        <Link href={connectHref} className="btn-primary">
+          {hasDhanConnection ? "Finish Dhan sync" : "Connect Dhan"}
+        </Link>
+        <Link href={exploreHref} className="btn-secondary">
+          Explore demo
+        </Link>
+      </div>
+    </section>
+  );
+}
 
 function matchRawTrade(rawTrades: Trade[], trade: CompletedTrade) {
   return (
@@ -266,6 +378,7 @@ export default function DashboardPage() {
   const [setups, setSetups] = useState<TradeSetup[]>([]);
   const [error, setError] = useState("");
   const [exporting, setExporting] = useState(false);
+  const [brokerConnections, setBrokerConnections] = useState<BrokerConnection[]>([]);
 
   useEffect(() => {
     const cached = readSessionCache<DashboardSnapshot>(DASHBOARD_CACHE_KEY);
@@ -284,13 +397,14 @@ export default function DashboardPage() {
     async function load() {
       try {
         const resolvedUser = await getMe();
-        const [summaryResult, patternsResult, completedResult, rawTradesResult, setupsResult] =
+        const [summaryResult, patternsResult, completedResult, rawTradesResult, setupsResult, brokerConnectionsResult] =
           await Promise.allSettled([
             getAnalyticsSummary(),
             getPatterns(),
             getCompletedTrades(50, 0),
             getTrades({ limit: 50, offset: 0 }),
             getTradeSetups(20, 0),
+            getBrokerConnections(),
           ]);
 
         if (!active) return;
@@ -300,6 +414,7 @@ export default function DashboardPage() {
         const nextCompleted = completedResult.status === "fulfilled" ? completedResult.value : [];
         const nextTrades = rawTradesResult.status === "fulfilled" ? rawTradesResult.value : [];
         const nextSetups = setupsResult.status === "fulfilled" ? setupsResult.value : [];
+        const nextConnections = brokerConnectionsResult.status === "fulfilled" ? brokerConnectionsResult.value : [];
 
         setUser(resolvedUser);
         setSummary(nextSummary);
@@ -307,6 +422,7 @@ export default function DashboardPage() {
         setCompletedTrades(nextCompleted);
         setRawTrades(nextTrades);
         setSetups(nextSetups);
+        setBrokerConnections(nextConnections);
         setError("");
         writeSessionCache(DASHBOARD_CACHE_KEY, {
           user: resolvedUser,
@@ -334,6 +450,13 @@ export default function DashboardPage() {
   const visiblePatterns = useMemo(
     () => (patternsEnvelope?.patterns ?? []).filter((pattern) => !pattern.locked),
     [patternsEnvelope]
+  );
+  const tradeReadiness = getTradeReadiness({
+    rawTrades,
+    completedTrades,
+  });
+  const hasDhanConnection = brokerConnections.some(
+    (connection) => connection.broker_name === "dhan" && connection.is_active
   );
 
   const firstName = user?.name?.split(" ")[0] || user?.email?.split("@")[0] || "Trader";
@@ -403,6 +526,13 @@ export default function DashboardPage() {
     <div className="command-center py-10">
       {error ? (
         <div className="mb-6 rounded-2xl bg-rose-50 p-4 text-sm font-semibold text-rose-700">{error}</div>
+      ) : null}
+
+      {tradeReadiness.needsDemo ? (
+        <DemoDisciplineLayer
+          hasDhanConnection={hasDhanConnection}
+          completedTradeCount={tradeReadiness.completedTradeCount}
+        />
       ) : null}
 
       <section className="glass-card p-6">
@@ -565,27 +695,29 @@ export default function DashboardPage() {
         </div>
       </section>
 
-      <section className="mt-6 glass-card p-6">
-        <div className="flex items-center justify-between gap-4">
-          <div>
-            <span className="badge badge-indigo">Market context preview</span>
-            <h2 className="mt-4 text-2xl font-black text-slate-950">Retail Narrative Feed</h2>
-            <p className="mt-2 text-sm text-slate-600">Beta context cards to support review, not a trade call.</p>
-          </div>
-        </div>
-        <div className="mt-5 grid gap-3 lg:grid-cols-4">
-          {[
-            "Banking narrative is active today",
-            "Retail attention rising in PSU names",
-            "Avoid treating social hype as confirmation",
-            "Use this as context, not a trade call",
-          ].map((item) => (
-            <div key={item} className="rounded-2xl border border-gray-100 bg-slate-50 p-4 text-sm font-semibold text-slate-700">
-              {item}
+      {!tradeReadiness.needsDemo ? (
+        <section className="mt-6 glass-card p-6">
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <span className="badge badge-indigo">Review context</span>
+              <h2 className="mt-4 text-2xl font-black text-slate-950">Context worth remembering</h2>
+              <p className="mt-2 text-sm text-slate-600">Use these reminders to improve review quality, not to find new trades.</p>
             </div>
-          ))}
-        </div>
-      </section>
+          </div>
+          <div className="mt-5 grid gap-3 lg:grid-cols-4">
+            {[
+              "What conditions were actually present when the trade worked",
+              "Where impulse replaced the original plan",
+              "How size changed after wins or losses",
+              "What to avoid repeating tomorrow",
+            ].map((item) => (
+              <div key={item} className="rounded-2xl border border-gray-100 bg-slate-50 p-4 text-sm font-semibold text-slate-700">
+                {item}
+              </div>
+            ))}
+          </div>
+        </section>
+      ) : null}
 
       <section id="trader-dna" className="mt-6 glass-card p-6">
         <div className="flex flex-col gap-5 lg:flex-row lg:justify-between">
@@ -702,7 +834,7 @@ export default function DashboardPage() {
         <h2 className="text-xl font-black text-slate-950">Quick Actions</h2>
         <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           <Link href="/import" className="rounded-2xl border border-gray-100 bg-white px-4 py-4 text-sm font-semibold text-slate-700 transition hover:border-indigo-100 hover:bg-indigo-50/40">Import trades</Link>
-          <Link href="/dashboard/analytics#patterns" className="rounded-2xl border border-gray-100 bg-white px-4 py-4 text-sm font-semibold text-slate-700 transition hover:border-indigo-100 hover:bg-indigo-50/40">Open patterns</Link>
+          <Link href="/dashboard/analytics#patterns" className="rounded-2xl border border-gray-100 bg-white px-4 py-4 text-sm font-semibold text-slate-700 transition hover:border-indigo-100 hover:bg-indigo-50/40">Open personality</Link>
           <Link href="/dashboard/mistakes" className="rounded-2xl border border-gray-100 bg-white px-4 py-4 text-sm font-semibold text-slate-700 transition hover:border-indigo-100 hover:bg-indigo-50/40">Correction workflow</Link>
           <button onClick={() => void handleExport()} disabled={exporting} className="rounded-2xl border border-gray-100 bg-white px-4 py-4 text-left text-sm font-semibold text-slate-700 transition hover:border-indigo-100 hover:bg-indigo-50/40 disabled:opacity-60">
             {exporting ? "Exporting..." : "Export journal"}
