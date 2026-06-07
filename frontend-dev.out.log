@@ -7,14 +7,17 @@
   - Environments: .env.local
 
  ✓ Starting...
- ✓ Ready in 7.3s
- ○ Compiling /welcome ...
- ✓ Compiled /welcome in 34.9s (528 modules)
- GET /welcome 200 in 35530ms
- GET /_next/static/webpack/86bd3fefbc0d99ff.webpack.hot-update.json 404 in 35831ms
- GET /welcome 200 in 309ms
- ○ Compiling /download ...
- ✓ Compiled /download in 1397ms (522 modules)
- ○ Compiling /dashboard ...
- ✓ Compiled /dashboard in 990ms (523 modules)
- ✓ Compiled in 5.1s (537 modules)
+
+   We detected TypeScript in your project and reconfigured your tsconfig.json file for you. Strict-mode is set to false by default.
+   The following suggested values were added to your tsconfig.json. These values can be changed to fit your project's needs:
+
+   	- include was updated to add '.next-dev/types/**/*.ts'
+
+ ✓ Ready in 6s
+ ○ Compiling / ...
+ ✓ Compiled / in 11.2s (525 modules)
+ GET / 200 in 11529ms
+ GET / 200 in 12069ms
+ ✓ Compiled in 3.7s (266 modules)
+ ✓ Compiled in 1406ms (266 modules)
+ ✓ Compiled in 2.5s (266 modules)

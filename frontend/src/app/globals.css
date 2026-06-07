@@ -393,6 +393,24 @@
   .fade-in-delay-4 {
     animation-delay: 0.4s;
   }
+
+  .float-soft {
+    animation: floatSoft 7s ease-in-out infinite;
+  }
+
+  .float-soft-delayed {
+    animation: floatSoft 9s ease-in-out infinite;
+    animation-delay: 1.2s;
+  }
+
+  .drift-soft {
+    animation: driftSoft 8s ease-in-out infinite;
+  }
+
+  .drift-soft-delayed {
+    animation: driftSoft 10s ease-in-out infinite;
+    animation-delay: 1.4s;
+  }
 }
 
 @keyframes fadeIn {
@@ -415,6 +433,30 @@
 
   50% {
     background-position: 100% 50%;
+  }
+}
+
+@keyframes floatSoft {
+  0%,
+  100% {
+    transform: translateY(0px);
+    opacity: 0.42;
+  }
+
+  50% {
+    transform: translateY(-10px);
+    opacity: 0.62;
+  }
+}
+
+@keyframes driftSoft {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+
+  50% {
+    transform: translate3d(0, -6px, 0);
   }
 }
 

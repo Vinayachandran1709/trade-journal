@@ -49,6 +49,10 @@ export default function Navbar() {
     return () => window.removeEventListener("scroll", handler);
   }, []);
 
+  if (pathname === "/") {
+    return null;
+  }
+
   if (!loggedIn) {
     return <LandingHeader />;
   }

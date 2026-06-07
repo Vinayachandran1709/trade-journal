@@ -34,6 +34,7 @@ validateProductionApiUrl();
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  distDir: process.env.NODE_ENV === "development" ? ".next-dev" : ".next",
   env: {
     NEXT_PUBLIC_API_URL:
       process.env.NEXT_PUBLIC_API_URL || DEFAULT_PRODUCTION_API_URL,
