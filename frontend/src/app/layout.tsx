@@ -6,9 +6,9 @@ import Navbar from "@/components/Navbar";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "IndiaCircle - Market Intelligence + Behavioral Coaching for Indian Retail Traders",
+  title: "IndiaCircle - Join the Waitlist",
   description:
-    "Market intelligence during the session. Behavioral coaching after the close. IndiaCircle helps Indian retail traders review context, discipline, and repeat mistakes without sharing broker credentials.",
+    "Stop repeating the trade that already cost you money. Join the IndiaCircle waitlist for broker-linked trading review that detects costly repeat patterns without placing orders or giving buy or sell recommendations.",
 };
 
 export default function RootLayout({

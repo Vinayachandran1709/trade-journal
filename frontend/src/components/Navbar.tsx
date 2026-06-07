@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { isAuthenticated, logout } from "@/lib/auth";
+import LandingHeader from "@/components/LandingHeader";
 
 function Logo({ light = false }: { light?: boolean }) {
   return (
@@ -48,6 +49,10 @@ export default function Navbar() {
     return () => window.removeEventListener("scroll", handler);
   }, []);
 
+  if (!loggedIn) {
+    return <LandingHeader />;
+  }
+
   const handleLogout = () => {
     logout();
     setLoggedIn(false);
@@ -55,19 +60,13 @@ export default function Navbar() {
     router.push("/login");
   };
 
-  const navLinks = loggedIn
-    ? [
-        { href: "/dashboard", label: "Dashboard" },
-        { href: "/dashboard/analytics", label: "Personality" },
-        { href: "/dashboard/mistakes", label: "Mistakes" },
-        { href: "/dashboard/trades", label: "Trades" },
-        { href: "/account", label: "Account" },
-      ]
-    : [
-        { href: "/", label: "Product" },
-        { href: "/download", label: "Download" },
-        { href: "/pricing", label: "Pricing" },
-      ];
+  const navLinks = [
+    { href: "/dashboard", label: "Dashboard" },
+    { href: "/dashboard/analytics", label: "Personality" },
+    { href: "/dashboard/mistakes", label: "Mistakes" },
+    { href: "/dashboard/trades", label: "Trades" },
+    { href: "/account", label: "Account" },
+  ];
 
   function isActive(href: string) {
     if (href === "/dashboard") {
@@ -116,23 +115,12 @@ export default function Navbar() {
         </div>
 
         <div className="hidden items-center gap-3 md:flex">
-          {loggedIn ? (
-            <button
-              onClick={handleLogout}
-              className={`${desktopGhostClass} ${solid ? "!text-rose-600 hover:!bg-rose-50" : "!text-rose-200 hover:!bg-white/10 hover:!text-rose-100"}`}
-            >
-              Log out
-            </button>
-          ) : (
-            <>
-              <Link href="/login" className={desktopGhostClass}>
-                Sign In
-              </Link>
-              <Link href="/signup" className="btn-primary">
-                Get Started
-              </Link>
-            </>
-          )}
+          <button
+            onClick={handleLogout}
+            className={`${desktopGhostClass} ${solid ? "!text-rose-600 hover:!bg-rose-50" : "!text-rose-200 hover:!bg-white/10 hover:!text-rose-100"}`}
+          >
+            Log out
+          </button>
         </div>
 
         <button
@@ -176,30 +164,11 @@ export default function Navbar() {
           ))}
         </div>
         <div className="mt-4 border-t border-gray-100 pt-4">
-          {loggedIn ? (
-            <div className="grid gap-2">
-              <button onClick={handleLogout} className="btn-ghost w-full text-rose-600 hover:bg-rose-50">
-                Log out
-              </button>
-            </div>
-          ) : (
-            <div className="grid gap-2">
-              <Link
-                href="/login"
-                onClick={() => setMobileOpen(false)}
-                className="btn-ghost w-full"
-              >
-                Sign In
-              </Link>
-              <Link
-                href="/signup"
-                onClick={() => setMobileOpen(false)}
-                className="btn-primary w-full"
-              >
-                Get Started
-              </Link>
-            </div>
-          )}
+          <div className="grid gap-2">
+            <button onClick={handleLogout} className="btn-ghost w-full text-rose-600 hover:bg-rose-50">
+              Log out
+            </button>
+          </div>
         </div>
       </div>
     </nav>

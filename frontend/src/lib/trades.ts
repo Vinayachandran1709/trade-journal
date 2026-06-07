@@ -1,4 +1,4 @@
-import { API_URL, apiFetch } from "@/lib/api";
+import { apiFetch, getApiUrl } from "@/lib/api";
 import type {
   Trade,
   TradeImportResponse,
@@ -44,7 +44,7 @@ export async function importGrowwCSV(
     headers["Authorization"] = `Bearer ${token}`;
   }
 
-  const res = await fetch(`${API_URL}/trades/import/groww-csv`, {
+  const res = await fetch(`${getApiUrl()}/trades/import/groww-csv`, {
     method: "POST",
     headers,
     body: formData,
@@ -72,7 +72,7 @@ export async function importUniversalCSV(
     headers["Authorization"] = `Bearer ${token}`;
   }
 
-  const res = await fetch(`${API_URL}/trades/import/universal-csv`, {
+  const res = await fetch(`${getApiUrl()}/trades/import/universal-csv`, {
     method: "POST",
     headers,
     body: formData,
@@ -172,7 +172,7 @@ export async function exportCompletedTradesCSV(): Promise<void> {
     throw new Error("Not authenticated");
   }
 
-  const response = await fetch(`${API_URL}/trades/completed?limit=10000&offset=0`, {
+  const response = await fetch(`${getApiUrl()}/trades/completed?limit=10000&offset=0`, {
     headers: { Authorization: `Bearer ${token}` },
   });
 

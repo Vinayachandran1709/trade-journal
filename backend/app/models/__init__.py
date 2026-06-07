@@ -16,6 +16,7 @@ from app.models.broker_order import BrokerOrder
 from app.models.trader_behavior_profile import TraderBehaviorProfile
 from app.models.trade_guard_event import TradeGuardEvent
 from app.models.pnl_saved_event import PnlSavedEvent
+from app.models.waitlist_entry import WaitlistEntry
 
 __all__ = [
     "User",
@@ -36,4 +37,5 @@ __all__ = [
     "TraderBehaviorProfile",
     "TradeGuardEvent",
     "PnlSavedEvent",
+    "WaitlistEntry",
 ]

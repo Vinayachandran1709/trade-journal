@@ -41,7 +41,9 @@ function resolveApiUrl(): string {
   return resolved;
 }
 
-export const API_URL = resolveApiUrl();
+export function getApiUrl(): string {
+  return resolveApiUrl();
+}
 
 type ApiFetchOptions = RequestInit & {
   timeoutMs?: number;
@@ -75,7 +77,7 @@ export async function apiFetch<T>(
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), timeoutMs);
     try {
-      return await fetch(`${API_URL}${endpoint}`, {
+      return await fetch(`${getApiUrl()}${endpoint}`, {
         ...requestOptions,
         headers,
         signal: controller.signal,

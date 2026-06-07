@@ -1,2 +1,12 @@
-<w> [webpack.cache.PackFileCacheStrategy] Caching failed for pack: Error: EPERM: operation not permitted, rename 'C:\Users\VinaychandranRamacha\github folder\trade-journal\frontend\.next\cache\webpack\client-development\0.pack.gz_' -> 'C:\Users\VinaychandranRamacha\github folder\trade-journal\frontend\.next\cache\webpack\client-development\0.pack.gz'
-<w> [webpack.cache.PackFileCacheStrategy] Caching failed for pack: Error: ENOENT: no such file or directory, rename 'C:\Users\VinaychandranRamacha\github folder\trade-journal\frontend\.next\cache\webpack\client-development\1.pack.gz_' -> 'C:\Users\VinaychandranRamacha\github folder\trade-journal\frontend\.next\cache\webpack\client-development\1.pack.gz'
+C:\Users\vinayachandran\OneDrive\Desktop\Github folder\trade-journal\frontend\node_modules\rimraf\bin.js:46
+      throw er
+      ^
+
+[Error: EPERM: operation not permitted, unlink 'C:\Users\vinayachandran\OneDrive\Desktop\Github folder\trade-journal\frontend\.next\react-loadable-manifest.json'] {
+  errno: -4048,
+  code: 'EPERM',
+  syscall: 'unlink',
+  path: 'C:\\Users\\vinayachandran\\OneDrive\\Desktop\\Github folder\\trade-journal\\frontend\\.next\\react-loadable-manifest.json'
+}
+
+Node.js v24.11.1
